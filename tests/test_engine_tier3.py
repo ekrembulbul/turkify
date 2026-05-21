@@ -41,6 +41,18 @@ def test_ambiguous_word_keeps_tier1_when_llm_returns_none(ambiguous_morphology, 
     assert engine.correct("sis", use_llm=True) == "sis"
 
 
+def test_model_is_forwarded_to_reranker(ambiguous_morphology, monkeypatch):
+    captured = {}
+
+    def fake_choose(sentence, word, candidates, *, model=None, **kwargs):
+        captured["model"] = model
+        return candidates[0]
+
+    monkeypatch.setattr(reranker, "choose", fake_choose)
+    engine.correct("sis", use_llm=True, model="deneme-model:1b")
+    assert captured["model"] == "deneme-model:1b"
+
+
 def test_tier3_call_is_logged(ambiguous_morphology, monkeypatch, caplog):
     import logging
 

@@ -82,7 +82,9 @@ class _Server(socketserver.ThreadingUnixStreamServer):
         super().__init__(socket_path, _Handler)
 
 
-def serve(*, socket_path: str | None = None, use_llm: bool = False) -> None:
+def serve(
+    *, socket_path: str | None = None, use_llm: bool = False, model: str | None = None
+) -> None:
     """Düzeltme motorunu yükleyip Unix soketinde dinlemeye başlar.
 
     Motor başlangıçta ısıtılır (morfoloji bir kez yüklenir). ``Ctrl-C`` ile
@@ -109,7 +111,7 @@ def serve(*, socket_path: str | None = None, use_llm: bool = False) -> None:
     signal.signal(signal.SIGTERM, _on_term)
 
     def correct_fn(text: str) -> str:
-        return correct(text, use_llm=use_llm)
+        return correct(text, use_llm=use_llm, model=model)
 
     correct_fn("isinma")  # motoru ısıt (morfoloji yüklensin)
 

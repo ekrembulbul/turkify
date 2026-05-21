@@ -11,6 +11,7 @@ adaylardan biri değilse ``None`` döner ve çağıran taraf güvenli tarafta
 """
 
 import json
+import os
 import re
 import urllib.error
 import urllib.request
@@ -20,7 +21,9 @@ from pathlib import Path
 _WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
 
 OLLAMA_HOST = "http://localhost:11434"
-DEFAULT_MODEL = "qwen2.5:7b"
+# Varsayılan model TURKIFY_MODEL ortam değişkeniyle değiştirilebilir; CLI'deki
+# --model bayrağı bunu da geçersiz kılar (bkz. __main__).
+DEFAULT_MODEL = os.environ.get("TURKIFY_MODEL", "qwen2.5:7b")
 DEFAULT_TIMEOUT = 10.0
 
 _PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "rerank_prompt.txt"
@@ -44,7 +47,7 @@ def _build_prompt(sentence: str, word: str, candidates: tuple[str, ...]) -> str:
     return _prompt_template().format(
         sentence=sentence,
         word=word,
-        candidates="\n".join(f"- {c}" for c in candidates),
+        candidates=", ".join(candidates),
     )
 
 

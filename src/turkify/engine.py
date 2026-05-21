@@ -80,6 +80,7 @@ def _resolve_word(
     *,
     use_morphology: bool,
     use_llm: bool,
+    model: str | None = None,
 ) -> str:
     """Bir kelimeyi katmanlı önceliklerle çözer.
 
@@ -132,7 +133,9 @@ def _resolve_word(
         _log.info(
             "[Tier3] %r: belirsiz adaylar %s; LLM'e soruluyor", ascii_word, valid
         )
-        choice = reranker.choose(sentence, ascii_word, tuple(valid))
+        choice = reranker.choose(
+            sentence, ascii_word, tuple(valid), model=model or reranker.DEFAULT_MODEL
+        )
         if choice is not None:
             _log.info("[Tier3] %r: LLM secti -> %r", ascii_word, choice)
             return choice
@@ -155,6 +158,7 @@ def _resolve_words(
     *,
     use_morphology: bool,
     use_llm: bool,
+    model: str | None = None,
 ) -> str:
     """Korunmayan kelimelere katmanlı çözümlemeyi uygular.
 
@@ -174,6 +178,7 @@ def _resolve_words(
             corrected,
             use_morphology=use_morphology,
             use_llm=use_llm,
+            model=model,
         )
         if new_word != token.text:
             result[token.start : token.end] = new_word
@@ -181,7 +186,11 @@ def _resolve_words(
 
 
 def correct(
-    text: str, *, use_llm: bool = False, use_morphology: bool = True
+    text: str,
+    *,
+    use_llm: bool = False,
+    use_morphology: bool = True,
+    model: str | None = None,
 ) -> str:
     """ASCII Türkçe metni doğru diakritiklerle düzeltir.
 
@@ -196,6 +205,8 @@ def correct(
             kullanılır; aksi hâlde deterministik karar korunur.
         use_morphology: Tier 2 morfolojik doğrulamayı etkinleştirir. ``zeyrek``
             kurulu değilse otomatik atlanır.
+        model: Tier 3 için kullanılacak Ollama modeli. ``None`` ise
+            ``reranker.DEFAULT_MODEL`` (TURKIFY_MODEL env veya yerleşik varsayılan).
 
     Returns:
         Diakritikleri restore edilmiş metin.
@@ -208,5 +219,10 @@ def correct(
     corrected = restore_spans(corrected, text, spans)
 
     return _resolve_words(
-        text, corrected, spans, use_morphology=use_morphology, use_llm=use_llm
+        text,
+        corrected,
+        spans,
+        use_morphology=use_morphology,
+        use_llm=use_llm,
+        model=model,
     )

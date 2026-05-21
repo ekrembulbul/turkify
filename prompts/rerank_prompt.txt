@@ -1,10 +1,33 @@
-Görev: Türkçe bir cümlede, ASCII ile yazılmış bir kelimenin doğru diakritikli
-(şapkalı) hâlini SEÇ. Yeni kelime üretme, kelimeyi değiştirme, açıklama yazma.
-Yalnızca aşağıdaki adaylardan TAM OLARAK BİRİNİ, olduğu gibi döndür.
+Görev: Türkçe bir cümlede, ASCII (şapkasız) yazılmış bir kelimenin cümleyi
+ANLAMLI kılan doğru diakritikli (şapkalı) biçimini adaylardan SEÇ.
 
+Kurallar:
+- Yalnızca verilen adaylardan birini, harfi harfine olduğu gibi döndür.
+- Cümlenin anlamına bak; bağlamda en doğru anlamı veren adayı seç.
+- Kelime zaten doğru olabilir; öyleyse o adayı seç.
+- Yeni kelime üretme, kelimeyi değiştirme, açıklama veya noktalama ekleme.
+- Yanıtın yalnızca tek bir kelime olsun.
+
+Örnek 1:
+Cümle: kalbimde sana karşı büyük bir ask var
+Kelime: ask
+Adaylar: ask, aşk
+Cevap: aşk
+
+Örnek 2:
+Cümle: bıçağın ucu çok keskin
+Kelime: ucu
+Adaylar: ucu, uçu, üçü
+Cevap: ucu
+
+Örnek 3:
+Cümle: bu zorluğu birlikte asmak zorundayız
+Kelime: asmak
+Adaylar: asmak, aşmak
+Cevap: aşmak
+
+Şimdi sen seç:
 Cümle: {sentence}
-Düzeltilecek kelime: {word}
-Adaylar:
-{candidates}
-
-Cevap (yalnızca tek aday, başka hiçbir şey yazma):
+Kelime: {word}
+Adaylar: {candidates}
+Cevap:
