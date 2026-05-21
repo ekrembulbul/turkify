@@ -6,13 +6,13 @@ Komutlar:
         çalışan daemon'a bağlanmayı dener (hızlı); yoksa in-process düzeltir.
     python -m turkify serve [--llm]
         Kalıcı süreci (daemon) başlatır.
-    python -m turkify learn ASCII_KELIME DOGRU_BICIM
-        Bir kelime için kullanıcı tercihini kaydeder (Faz 7).
-    python -m turkify forget ASCII_KELIME
-        Bir kelimenin tercihini siler.
+
+NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
+şimdilik DEVRE DIŞIDIR; ilgili fonksiyonlar aşağıda korunmuştur ama dağıtıma
+(``_COMMANDS``) bağlı değildir.
 
 Çıktı sonuna yeni satır eklenmez; girdi yapısı birebir korunur. Hafif komutlar
-(daemon istemcisi, learn/forget) ağır motor modüllerini yüklemez.
+(daemon istemcisi) ağır motor modüllerini yüklemez.
 """
 
 import sys
@@ -51,6 +51,8 @@ def _cmd_serve(args: list[str]) -> int:
     return 0
 
 
+# Faz 7 devre dışı: _cmd_learn ve _cmd_forget korunur ama _COMMANDS'a kayıtlı
+# değildir. Yeniden etkinleştirmek için aşağıdaki _COMMANDS girdilerini aç.
 def _cmd_learn(args: list[str]) -> int:
     if len(args) < 2:
         sys.stderr.write("Kullanım: turkify learn ASCII_KELIME DOGRU_BICIM\n")
@@ -73,8 +75,9 @@ def _cmd_forget(args: list[str]) -> int:
 
 _COMMANDS = {
     "serve": _cmd_serve,
-    "learn": _cmd_learn,
-    "forget": _cmd_forget,
+    # Faz 7 devre dışı — yeniden açmak için yorumu kaldır:
+    # "learn": _cmd_learn,
+    # "forget": _cmd_forget,
 }
 
 

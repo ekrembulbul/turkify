@@ -2,9 +2,16 @@
 
 ``isolated_preferences`` fixture'ı (conftest) sayesinde her test geçici bir
 depo dosyası kullanır.
+
+NOT: Faz 7 şimdilik devre dışı (engine ``_FAZ7_ENABLED=False``); bu modüldeki
+testler tümüyle atlanır. Yeniden etkinleştirildiğinde aşağıdaki skip kaldırılır.
 """
 
+import pytest
+
 from turkify import correct, learn
+
+pytestmark = pytest.mark.skip(reason="Faz 7 (öğrenen sistem) şimdilik devre dışı")
 
 
 def test_record_and_get_preference():

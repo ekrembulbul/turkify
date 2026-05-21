@@ -136,8 +136,9 @@ Tüm komutlar venv etkinken (`source .venv/bin/activate`) ya da
 | `python -m turkify --no-daemon` | Daemon'u atla, doğrudan in-process çalış |
 | `python -m turkify --llm` | Tier 3 LLM'i etkinleştir (in-process) |
 | `python -m turkify serve` | Daemon'u başlat |
-| `python -m turkify learn ask aşk` | Bir kelime için tercih kaydet (Faz 7) |
-| `python -m turkify forget ask` | Tercihi sil |
+
+> `learn` / `forget` komutları **Faz 7 ile birlikte şimdilik devre dışıdır**
+> (bkz. [Bölüm 9](#9-öğrenen-sistem-tercihler)).
 
 **Davranış notları:**
 - Çıktının sonuna yeni satır eklenmez; boşluk/noktalama/büyük-küçük harf birebir korunur.
@@ -212,19 +213,20 @@ Panodaki (clipboard) metni düzelten basit bir script command.
 
 ## 9. Öğrenen sistem (tercihler)
 
-Belirli bir kelimenin nasıl düzeltileceğini sen belirleyebilirsin. Tercihler
-lokal bir dosyada saklanır (`cache/preferences.json`) ve **hiçbir yere gönderilmez**.
+> ⚠️ **Faz 7 şimdilik DEVRE DIŞIDIR; daha sonra ele alınacaktır.**
+>
+> Kod tabanı korunmuştur ancak ne motor ne de CLI buna bağlıdır:
+> - `engine.py` içinde `_FAZ7_ENABLED = False` (tercih sorgulanmaz),
+> - `learn` / `forget` komutları `__main__.py` dağıtımına kayıtlı değildir.
+>
+> Yeniden etkinleştirmek için: `_FAZ7_ENABLED = True` yap, `__main__.py`'deki
+> `_COMMANDS` girdilerinin yorumunu kaldır ve `tests/test_learn.py`'deki skip'i sil.
 
-```bash
-python -m turkify learn ask aşk     # "ask" -> her zaman "aşk"
-echo "ask" | python -m turkify --no-daemon   # -> aşk
-python -m turkify forget ask        # tercihi kaldır
-```
-
-- Eşleştirme büyük/küçük harf duyarsızdır; uygulama sırasında kelimenin
-  büyük/küçük harf deseni korunur (`Ask` → `Aşk`).
-- Tercih, diğer tüm katmanların **önüne** geçer (en yüksek öncelik).
-- Daemon çalışıyorsa, yeni tercihin geçerli olması için daemon'u yeniden başlat.
+**Tasarlanan davranış (etkinleştirildiğinde):** belirli bir kelimenin nasıl
+düzeltileceğini kullanıcı belirler; tercihler lokal `cache/preferences.json`
+dosyasında saklanır ve diğer tüm katmanların önüne geçer. Otomatik öğrenme
+(kullanıcı düzeltmesini algılama) henüz yoktur — yalnızca elle `learn` komutu
+tasarlanmıştır.
 
 ---
 
@@ -233,7 +235,7 @@ python -m turkify forget ask        # tercihi kaldır
 | Ne | Nerede | Açıklama |
 |---|---|---|
 | Korumalı kelimeler | `config/protected_words.txt` | Her satıra bir kelime; `#` yorum. Dönüştürülmez. |
-| Tercihler | `cache/preferences.json` | `learn`/`forget` ile yönetilir. |
+| Tercihler | `cache/preferences.json` | Faz 7 (devre dışı) — şu an kullanılmıyor. |
 | LLM modeli | `src/turkify/reranker.py` → `DEFAULT_MODEL` | Varsayılan `qwen2.5:7b`. |
 | Rerank prompt'u | `prompts/rerank_prompt.txt` | LLM'e verilen şablon. |
 | Hotkey / timeout | `hammerspoon/turkify.lua` (dosya başı) | Hyper+T, süreler. |
@@ -278,9 +280,9 @@ Daemon yeniden başlayınca eski soketi kendisi temizler. Elle:
 `rm -f /tmp/turkify-$(id -u).sock` sonra `python -m turkify serve`.
 
 **Düzeltme bir kelimeyi yanlış değiştirdi**
-O kelime için tercih kaydet: `python -m turkify learn <ascii> <doğru>`.
 Sürekli yanlış dönüştürülen yabancı/teknik bir terimse
-`config/protected_words.txt`'e ekle.
+`config/protected_words.txt`'e ekle (her satıra bir kelime). Kelime bazlı
+kullanıcı tercihi (Faz 7) şimdilik devre dışıdır.
 
 ---
 

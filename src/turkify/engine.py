@@ -3,12 +3,16 @@
 Kademeli/hibrit akış:
     metin → koruma aralıkları → Tier 1 deasciify → korunan aralıkları geri yaz
           → kelime bazında çözümleme:
-                kullanıcı tercihi (Faz 7) > Tier 2 morfoloji > Tier 3 LLM > Tier 1
+                Tier 2 morfoloji > Tier 3 LLM > Tier 1
 
 Her katman opsiyoneldir ve graceful biçimde atlanır:
   * Tier 2 yalnızca ``zeyrek`` kuruluysa ve ``use_morphology=True`` iken,
   * Tier 3 yalnızca ``use_llm=True`` ve Ollama erişilebilirken çalışır.
 Hiçbiri yoksa sistem Faz 1 deterministik davranışını korur.
+
+NOT: Faz 7 (öğrenen sistem / kullanıcı tercihi) şimdilik DEVRE DIŞIDIR
+(``_FAZ7_ENABLED = False``). İlgili kod yerinde tutuldu; tek satırla yeniden
+etkinleştirilebilir. Etkinken tercih, tüm katmanların önüne geçer.
 """
 
 from functools import lru_cache
@@ -19,6 +23,9 @@ from turkify.deasciifier import deasciify
 from turkify.protect import load_protected_words, protected_spans, tr_lower
 from turkify.reconstruct import restore_spans
 from turkify.tokenizer import tokenize
+
+# Faz 7 (öğrenen sistem) ana anahtarı. Şimdilik kapalı; daha sonra ele alınacak.
+_FAZ7_ENABLED = False
 
 
 @lru_cache(maxsize=1)
@@ -50,23 +57,25 @@ def _resolve_word(
 ) -> str:
     """Bir kelimeyi katmanlı önceliklerle çözer.
 
-    Öncelik: kullanıcı tercihi → tek geçerli aday → (çoklu geçerli + LLM) → Tier 1.
+    Öncelik: (Faz 7 tercihi — devre dışı) → tek geçerli aday → (çoklu + LLM) → Tier 1.
     """
-    preference = learn.get_preference(ascii_word)
-    if preference is None and not use_morphology:
-        return tier1_word  # hızlı yol: yapılacak bir şey yok
+    if not (use_morphology and morphology.available()):
+        return tier1_word
 
     candidates = generate_candidates(ascii_word)
     if not candidates:  # çok fazla çevrilebilir karakter → atla
         return tier1_word
 
-    if preference is not None:
-        chosen = _apply_preference(candidates, preference)
-        if chosen is not None:
-            return chosen
-
-    if not (use_morphology and morphology.available()):
-        return tier1_word
+    # Faz 7 (kullanıcı tercihi) şimdilik devre dışı. _FAZ7_ENABLED=True
+    # yapıldığında tercih, aşağıdaki morfoloji katmanının önüne geçer.
+    # (Yeniden etkinleştirirken: tercih morfoloji kurulu olmasa da uygulanmak
+    # isteniyorsa bu blok yukarıdaki gate'in önüne taşınmalıdır.)
+    if _FAZ7_ENABLED:
+        preference = learn.get_preference(ascii_word)
+        if preference is not None:
+            chosen = _apply_preference(candidates, preference)
+            if chosen is not None:
+                return chosen
 
     valid = [c for c in candidates if morphology.is_valid_word(c)]
     if not valid:

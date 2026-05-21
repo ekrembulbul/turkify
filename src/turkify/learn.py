@@ -1,5 +1,9 @@
 """Faz 7 — Öğrenen sistem (lokal kullanıcı tercih deposu).
 
+DURUM: Faz 7 ŞİMDİLİK DEVRE DIŞIDIR. Bu modül çalışır durumda korunmuştur,
+ancak ne ``engine`` (bkz. ``_FAZ7_ENABLED``) ne de CLI (``learn``/``forget``)
+şu an buraya bağlıdır. Daha sonra ele alınacaktır.
+
 Kullanıcı bir düzeltmeyi değiştirdiğinde (ör. ``ask`` → ``aşk``) tercih lokal
 olarak saklanır ve sonraki düzeltmelerde uygulanır. Tüm veri lokal kalır;
 hiçbir şey dışarı gönderilmez.
