@@ -1,0 +1,5 @@
+# Turkify — Faz 1 (Deterministik MVP)
+# Çalışma zamanı bağımlılığı YOK: Tier 1 (Yüret deasciifier) tamamen offline,
+# yalnızca standart kütüphane kullanır. Aşağıdakiler sadece geliştirme/test içindir.
+
+pytest>=8.0
