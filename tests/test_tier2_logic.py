@@ -24,26 +24,32 @@ def fake_morphology(monkeypatch):
     return install
 
 
+def _resolve(ascii_word, tier1_word, sentence="", *, use_llm=False):
+    return engine._resolve_word(
+        ascii_word, tier1_word, sentence, use_morphology=True, use_llm=use_llm
+    )
+
+
 def test_tier1_valid_word_is_kept(fake_morphology):
     fake_morphology({"görüşme"})
-    assert engine._correct_word_tier2("gorusme", "görüşme") == "görüşme"
+    assert _resolve("gorusme", "görüşme") == "görüşme"
 
 
 def test_tier1_invalid_word_switches_to_unique_valid_candidate(fake_morphology):
     # Tier 1 "sırıl" gecersiz; tek gecerli aday "şırıl" -> ona gecilir.
     fake_morphology({"şırıl"})
-    assert engine._correct_word_tier2("siril", "sırıl") == "şırıl"
+    assert _resolve("siril", "sırıl") == "şırıl"
 
 
-def test_multiple_valid_candidates_keep_tier1(fake_morphology):
-    # Hem "şiş" hem "sis" gecerli -> belirsiz -> Tier 1 ("sis") korunur.
+def test_multiple_valid_candidates_keep_tier1_without_llm(fake_morphology):
+    # Hem "şiş" hem "sis" gecerli, LLM kapali -> belirsiz -> Tier 1 ("sis") korunur.
     fake_morphology({"şiş", "sis"})
-    assert engine._correct_word_tier2("sis", "sis") == "sis"
+    assert _resolve("sis", "sis") == "sis"
 
 
 def test_no_valid_candidate_keeps_tier1(fake_morphology):
     fake_morphology(set())
-    assert engine._correct_word_tier2("sudcu", "sudcu") == "sudcu"
+    assert _resolve("sudcu", "sudcu") == "sudcu"
 
 
 def test_correct_applies_tier2_in_sentence(fake_morphology):

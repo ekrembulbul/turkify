@@ -1,0 +1,10 @@
+Görev: Türkçe bir cümlede, ASCII ile yazılmış bir kelimenin doğru diakritikli
+(şapkalı) hâlini SEÇ. Yeni kelime üretme, kelimeyi değiştirme, açıklama yazma.
+Yalnızca aşağıdaki adaylardan TAM OLARAK BİRİNİ, olduğu gibi döndür.
+
+Cümle: {sentence}
+Düzeltilecek kelime: {word}
+Adaylar:
+{candidates}
+
+Cevap (yalnızca tek aday, başka hiçbir şey yazma):
