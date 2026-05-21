@@ -1,0 +1,65 @@
+"""Tier 2 escalation mantığı — zeyrek'ten bağımsız, kontrollü doğrulayıcı ile.
+
+``morphology.is_valid_word`` ve ``morphology.available`` monkeypatch edilerek
+escalation kararları deterministik biçimde test edilir; gerçek morfoloji
+motoruna bağımlı kalınmaz.
+"""
+
+import pytest
+
+from turkify import engine, morphology
+
+
+@pytest.fixture
+def fake_morphology(monkeypatch):
+    """Belirli kelimeleri 'geçerli' sayan sahte bir morfoloji katmanı kurar."""
+
+    def install(valid_words):
+        valid = set(valid_words)
+        monkeypatch.setattr(morphology, "available", lambda: True)
+        monkeypatch.setattr(
+            morphology, "is_valid_word", lambda w: w in valid
+        )
+
+    return install
+
+
+def test_tier1_valid_word_is_kept(fake_morphology):
+    fake_morphology({"görüşme"})
+    assert engine._correct_word_tier2("gorusme", "görüşme") == "görüşme"
+
+
+def test_tier1_invalid_word_switches_to_unique_valid_candidate(fake_morphology):
+    # Tier 1 "sırıl" gecersiz; tek gecerli aday "şırıl" -> ona gecilir.
+    fake_morphology({"şırıl"})
+    assert engine._correct_word_tier2("siril", "sırıl") == "şırıl"
+
+
+def test_multiple_valid_candidates_keep_tier1(fake_morphology):
+    # Hem "şiş" hem "sis" gecerli -> belirsiz -> Tier 1 ("sis") korunur.
+    fake_morphology({"şiş", "sis"})
+    assert engine._correct_word_tier2("sis", "sis") == "sis"
+
+
+def test_no_valid_candidate_keeps_tier1(fake_morphology):
+    fake_morphology(set())
+    assert engine._correct_word_tier2("sudcu", "sudcu") == "sudcu"
+
+
+def test_correct_applies_tier2_in_sentence(fake_morphology):
+    fake_morphology({"şırıl"})
+    # "siril akan su" -> Tier1 "sırıl" gecersiz, "şırıl" gecerli; digerleri dokunulmaz.
+    out = engine.correct("siril akan su")
+    assert out.startswith("şırıl ")
+
+
+def test_correct_skips_protected_words_in_tier2(fake_morphology):
+    # "mail" korumali; gecerli kelime sayilmasa bile Tier 2 ona dokunmaz.
+    fake_morphology(set())
+    assert engine.correct("mail") == "mail"
+
+
+def test_use_morphology_false_disables_tier2(fake_morphology):
+    fake_morphology({"şırıl"})
+    # Tier 2 kapali -> Tier 1 ciktisi ("sırıl") aynen kalir.
+    assert engine.correct("siril", use_morphology=False) == "sırıl"
