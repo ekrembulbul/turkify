@@ -1,5 +1,10 @@
-# Turkify — Faz 1 (Deterministik MVP)
-# Çalışma zamanı bağımlılığı YOK: Tier 1 (Yüret deasciifier) tamamen offline,
-# yalnızca standart kütüphane kullanır. Aşağıdakiler sadece geliştirme/test içindir.
+# Turkify
+# Tier 1 (Faz 1) çalışma zamanı bağımlılığı YOK: tamamen offline, sadece stdlib.
+#
+# Tier 2 (Faz 2) morfolojik doğrulama opsiyoneldir:
+#   pip install -e ".[morphology]"
+# zeyrek kurulu değilse Tier 2 sessizce atlanır (sistem deterministik kalır).
+# Not: zeyrek, nltk + numpy çeker; biz nltk tokenizer'ını baypas ederiz.
 
+# Geliştirme/test:
 pytest>=8.0
