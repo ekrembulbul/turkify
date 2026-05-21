@@ -1,0 +1,38 @@
+# Korumalı kelimeler — diakritik dönüşümü UYGULANMAZ.
+# Yabancı/teknik terimler; her satıra bir kelime. '#' ile başlayan satırlar yorumdur.
+# Karşılaştırma büyük/küçük harf duyarsızdır (Türkçe locale).
+# Bu liste zamanla (Faz 7) kullanıcı düzeltmeleriyle genişletilebilir.
+
+mail
+email
+framework
+backend
+frontend
+software
+hardware
+server
+client
+cache
+commit
+merge
+branch
+deploy
+build
+debug
+release
+update
+upgrade
+default
+review
+design
+meeting
+deadline
+feedback
+online
+offline
+laptop
+mouse
+scanner
+printer
+router
+modem
