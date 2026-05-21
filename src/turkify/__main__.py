@@ -1,10 +1,13 @@
 """CLI giriş noktası ve komut dağıtımı.
 
 Komutlar:
-    python -m turkify [DOSYA] [--no-daemon] [--llm]
+    python -m turkify [DOSYA] [--no-daemon] [--llm] [--verbose|-v]
         Metni düzeltir. DOSYA verilmezse stdin okunur. Varsayılan olarak
         çalışan daemon'a bağlanmayı dener (hızlı); yoksa in-process düzeltir.
-    python -m turkify serve [--llm]
+        --verbose: hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü
+        stderr'e yazar; stdout temiz kalır. Loglar in-process üretildiği için
+        --verbose, daemon yerine in-process düzeltmeyi zorlar.
+    python -m turkify serve [--llm] [--verbose|-v]
         Kalıcı süreci (daemon) başlatır.
 
 NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
@@ -15,6 +18,7 @@ NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
 (daemon istemcisi) ağır motor modüllerini yüklemez.
 """
 
+import logging
 import sys
 
 from turkify import server
@@ -27,15 +31,35 @@ def _read_input(path: str | None) -> str:
     return sys.stdin.read()
 
 
+def _is_verbose(args: list[str]) -> bool:
+    return "--verbose" in args or "-v" in args
+
+
+def _enable_verbose() -> None:
+    """``turkify`` karar günlüğünü stderr'e açar (stdout'a dokunmaz)."""
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger = logging.getLogger("turkify")
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+
 def _cmd_correct(args: list[str]) -> int:
     use_llm = "--llm" in args
     no_daemon = "--no-daemon" in args
-    positionals = [a for a in args if not a.startswith("--")]
+    verbose = _is_verbose(args)
+    if verbose:
+        _enable_verbose()
+
+    positionals = [a for a in args if not a.startswith("-")]
     text = _read_input(positionals[0] if positionals else None)
 
     result = None
-    # LLM istenirse daemon'u atla (basit protokol use_llm taşımaz).
-    if not no_daemon and not use_llm:
+    # LLM veya --verbose istenirse daemon'u atla: basit protokol use_llm
+    # taşımaz ve karar günlükleri yalnızca in-process süreçte üretilir.
+    if not no_daemon and not use_llm and not verbose:
         result = server.correct_via_daemon(text)
     if result is None:
         from turkify.engine import correct
@@ -47,6 +71,8 @@ def _cmd_correct(args: list[str]) -> int:
 
 
 def _cmd_serve(args: list[str]) -> int:
+    if _is_verbose(args):
+        _enable_verbose()
     server.serve(use_llm="--llm" in args)
     return 0
 

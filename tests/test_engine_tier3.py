@@ -39,6 +39,16 @@ def test_ambiguous_word_keeps_tier1_when_llm_returns_none(ambiguous_morphology, 
     assert engine.correct("sis", use_llm=True) == "sis"
 
 
+def test_tier3_call_is_logged(ambiguous_morphology, monkeypatch, caplog):
+    import logging
+
+    monkeypatch.setattr(reranker, "choose", lambda *a, **k: "şiş")
+    with caplog.at_level(logging.INFO, logger="turkify"):
+        engine.correct("sis", use_llm=True)
+    messages = " ".join(record.getMessage() for record in caplog.records)
+    assert "[Tier3]" in messages and "LLM secti" in messages
+
+
 def test_valid_tier1_word_is_never_overridden_by_llm(monkeypatch):
     # Tier 1 "sana" gecerli; baska gecerli aday ("şana") olsa bile LLM cagrilmaz.
     monkeypatch.setattr(morphology, "available", lambda: True)

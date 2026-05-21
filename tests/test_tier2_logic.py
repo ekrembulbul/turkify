@@ -52,6 +52,15 @@ def test_no_valid_candidate_keeps_tier1(fake_morphology):
     assert _resolve("sudcu", "sudcu") == "sudcu"
 
 
+def test_tier2_decision_is_logged(fake_morphology, caplog):
+    import logging
+
+    fake_morphology({"şırıl"})
+    with caplog.at_level(logging.INFO, logger="turkify"):
+        _resolve("siril", "sırıl")
+    assert any("[Tier2]" in record.getMessage() for record in caplog.records)
+
+
 def test_correct_applies_tier2_in_sentence(fake_morphology):
     fake_morphology({"şırıl"})
     # "siril akan su" -> Tier1 "sırıl" gecersiz, "şırıl" gecerli; digerleri dokunulmaz.

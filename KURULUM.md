@@ -135,6 +135,7 @@ Tüm komutlar venv etkinken (`source .venv/bin/activate`) ya da
 | `python -m turkify dosya.txt` | Dosyadan okur |
 | `python -m turkify --no-daemon` | Daemon'u atla, doğrudan in-process çalış |
 | `python -m turkify --llm` | Tier 3 LLM'i etkinleştir (in-process) |
+| `python -m turkify --verbose` | Hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü `stderr`'e yazar (in-process'i zorlar) |
 | `python -m turkify serve` | Daemon'u başlat |
 
 > `learn` / `forget` komutları **Faz 7 ile birlikte şimdilik devre dışıdır**

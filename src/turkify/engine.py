@@ -15,9 +15,14 @@ NOT: Faz 7 (öğrenen sistem / kullanıcı tercihi) şimdilik DEVRE DIŞIDIR
 etkinleştirilebilir. Etkinken tercih, tüm katmanların önüne geçer.
 """
 
+import logging
 from functools import lru_cache
 
 from turkify import learn, morphology, reranker
+
+# Karar günlüğü. Varsayılan olarak sessizdir; CLI'deki --verbose bunu
+# stderr'e açar (bkz. __main__._enable_verbose).
+_log = logging.getLogger("turkify")
 from turkify.candidates import generate_candidates
 from turkify.deasciifier import deasciify
 from turkify.protect import load_protected_words, protected_spans, tr_lower
@@ -91,13 +96,31 @@ def _resolve_word(
 
     # Buradan itibaren Tier 1 geçersiz bir kelime üretmiştir.
     if len(valid) == 1:
+        _log.info(
+            "[Tier2] %r: Tier1 %r gecersiz -> %r (tek gecerli aday)",
+            ascii_word, tier1_word, valid[0],
+        )
         return valid[0]  # tek geçerli alternatif → düzelt (Tier 2)
 
     # Birden fazla geçerli alternatif ve Tier 1 başarısız → bağlam gerekir (Tier 3).
     if use_llm:
+        _log.info(
+            "[Tier3] %r: Tier1 %r gecersiz, belirsiz adaylar %s; LLM'e soruluyor",
+            ascii_word, tier1_word, valid,
+        )
         choice = reranker.choose(sentence, ascii_word, tuple(valid))
         if choice is not None:
+            _log.info("[Tier3] %r: LLM secti -> %r", ascii_word, choice)
             return choice
+        _log.info(
+            "[Tier3] %r: LLM yanit vermedi; Tier1 %r korunuyor",
+            ascii_word, tier1_word,
+        )
+    else:
+        _log.info(
+            "[Tier3] %r: belirsiz adaylar %s (Tier1 %r gecersiz), --llm kapali; Tier1 korunuyor",
+            ascii_word, valid, tier1_word,
+        )
     return tier1_word
 
 
