@@ -11,6 +11,7 @@ adaylardan biri değilse ``None`` döner ve çağıran taraf güvenli tarafta
 """
 
 import json
+import logging
 import os
 import re
 import urllib.error
@@ -18,13 +19,22 @@ import urllib.request
 from functools import lru_cache
 from pathlib import Path
 
+# Tanı mesajları "turkify" günlüğüne yazılır. Bunlar WARNING seviyesindedir;
+# böylece --verbose olmasa bile (kullanıcı --llm/--model'i bilerek istediği için)
+# stderr'de görünür, stdout temiz kalır.
+_log = logging.getLogger("turkify")
+
 _WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
 
 OLLAMA_HOST = "http://localhost:11434"
 # Varsayılan model TURKIFY_MODEL ortam değişkeniyle değiştirilebilir; CLI'deki
 # --model bayrağı bunu da geçersiz kılar (bkz. __main__).
 DEFAULT_MODEL = os.environ.get("TURKIFY_MODEL", "qwen2.5:7b")
-DEFAULT_TIMEOUT = 10.0
+# Büyük modeller ilk çağrıda belleğe yüklenirken (cold start) yavaş olabilir;
+# bu yüzden cömert bir varsayılan. Ollama kapalıysa bağlantı zaten anında
+# reddedilir, bu süre yalnızca "açık ama yavaş" durumunda beklenir.
+# TURKIFY_TIMEOUT ortam değişkeniyle ayarlanabilir.
+DEFAULT_TIMEOUT = float(os.environ.get("TURKIFY_TIMEOUT", "60"))
 
 _PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "rerank_prompt.txt"
 
@@ -69,6 +79,15 @@ def _match_candidate(answer: str, candidates: tuple[str, ...]) -> str | None:
     return None
 
 
+def _http_detail(exc: urllib.error.HTTPError) -> str:
+    """HTTP hata gövdesinden Ollama'nın 'error' mesajını çıkarır."""
+    try:
+        body = exc.read().decode("utf-8")
+        return json.loads(body).get("error", body)
+    except Exception:
+        return str(exc)
+
+
 def _query_ollama(prompt: str, model: str, timeout: float) -> str | None:
     payload = json.dumps(
         {
@@ -86,7 +105,36 @@ def _query_ollama(prompt: str, model: str, timeout: float) -> str | None:
     try:
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            _log.warning(
+                "[Tier3] Ollama: model %r bulunamadi (once: ollama pull %s)",
+                model, model,
+            )
+        else:
+            _log.warning(
+                "[Tier3] Ollama HTTP %s hatasi: %s", exc.code, _http_detail(exc)
+            )
+        return None
+    except TimeoutError:
+        # TimeoutError, OSError'in alt sinifidir; aşağıdaki bloktan ÖNCE yakalanmalı.
+        _log.warning(
+            "[Tier3] Ollama zaman asimi (%.0f sn). Model yukleniyor olabilir; "
+            "tekrar deneyin veya TURKIFY_TIMEOUT'u artirin.",
+            timeout,
+        )
+        return None
+    except (urllib.error.URLError, OSError) as exc:
+        _log.warning(
+            "[Tier3] Ollama'ya erisilemedi (calisiyor mu? 'ollama serve'): %s", exc
+        )
+        return None
+    except json.JSONDecodeError:
+        _log.warning("[Tier3] Ollama yaniti cozulemedi (gecersiz JSON)")
+        return None
+
+    if data.get("error"):
+        _log.warning("[Tier3] Ollama hatasi: %s", data["error"])
         return None
     return data.get("response")
 

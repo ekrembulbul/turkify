@@ -1,5 +1,10 @@
 """Tier 3 LLM rerank testleri — Ollama HTTP çağrısı mock'lanır."""
 
+import io
+import logging
+import urllib.error
+import urllib.request
+
 import pytest
 
 from turkify import reranker
@@ -51,3 +56,43 @@ def test_choose_returns_none_when_ollama_unavailable(monkeypatch):
 def test_choose_returns_none_when_llm_answer_invalid(monkeypatch):
     monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "bambaska")
     assert reranker.choose("cumle", "ask", ("ask", "aşk")) is None
+
+
+def test_missing_model_logs_clear_warning(monkeypatch, caplog):
+    def raise_404(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            "http://localhost:11434/api/generate",
+            404,
+            "Not Found",
+            {},
+            io.BytesIO(b'{"error":"model not found"}'),
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", raise_404)
+    with caplog.at_level(logging.WARNING, logger="turkify"):
+        result = reranker.choose("cumle", "ucu", ("ucu", "üçü"), model="yok:14b")
+    assert result is None
+    assert any("bulunamadi" in r.getMessage() for r in caplog.records)
+
+
+def test_ollama_unreachable_logs_warning(monkeypatch, caplog):
+    def raise_conn(*args, **kwargs):
+        raise urllib.error.URLError("connection refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", raise_conn)
+    with caplog.at_level(logging.WARNING, logger="turkify"):
+        result = reranker.choose("cumle", "ucu", ("ucu", "üçü"))
+    assert result is None
+    assert any("erisilemedi" in r.getMessage() for r in caplog.records)
+
+
+def test_timeout_logs_distinct_warning(monkeypatch, caplog):
+    def raise_timeout(*args, **kwargs):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(urllib.request, "urlopen", raise_timeout)
+    with caplog.at_level(logging.WARNING, logger="turkify"):
+        result = reranker.choose("cumle", "ucu", ("ucu", "üçü"))
+    assert result is None
+    messages = " ".join(r.getMessage() for r in caplog.records)
+    assert "zaman asimi" in messages and "erisilemedi" not in messages
