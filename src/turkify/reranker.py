@@ -4,6 +4,10 @@ Yalnızca birden fazla geçerli aday bağlam gerektirdiğinde (ör. ``ask`` → 
 / ``aşk``) devreye girer. LLM **metin üretmez**, yalnızca verilen adaylardan
 birini seçer; bu sayede anlam bozulmaz, kelime uydurulmaz.
 
+Bir cümledeki tüm belirsiz kelimeler ``choose_batch`` ile TEK istekte
+çözülür (kelime başına ayrı çağrı yerine); böylece çok belirsizli cümlelerde
+gecikme düşer.
+
 Ollama'nın yerel HTTP API'sini standart kütüphane (``urllib``) ile kullanır;
 ekstra çalışma zamanı bağımlılığı eklemez. Ollama erişilemezse veya yanıt
 adaylardan biri değilse ``None`` döner ve çağıran taraf güvenli tarafta
@@ -29,7 +33,7 @@ _WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
 OLLAMA_HOST = "http://localhost:11434"
 # Varsayılan model TURKIFY_MODEL ortam değişkeniyle değiştirilebilir; CLI'deki
 # --model bayrağı bunu da geçersiz kılar (bkz. __main__).
-DEFAULT_MODEL = os.environ.get("TURKIFY_MODEL", "qwen2.5:7b")
+DEFAULT_MODEL = os.environ.get("TURKIFY_MODEL", "qwen3.5:9b")
 # Büyük modeller ilk çağrıda belleğe yüklenirken (cold start) yavaş olabilir;
 # bu yüzden cömert bir varsayılan. Ollama kapalıysa bağlantı zaten anında
 # reddedilir, bu süre yalnızca "açık ama yavaş" durumunda beklenir.
@@ -53,11 +57,34 @@ def available(*, timeout: float = 2.0) -> bool:
         return False
 
 
-def _build_prompt(sentence: str, word: str, candidates: tuple[str, ...]) -> str:
-    return _prompt_template().format(
-        sentence=sentence,
-        word=word,
-        candidates=", ".join(candidates),
+# "1: secim" / "1. secim" / "1) secim" gibi satırları yakalar.
+_BATCH_LINE_RE = re.compile(r"\s*(\d+)\s*[:.)\-]\s*(.+)")
+
+
+def _build_batch_prompt(sentence: str, asks: tuple[tuple[str, tuple[str, ...]], ...]) -> str:
+    items = "\n".join(
+        f"{i}. {word} -> {', '.join(cands)}"
+        for i, (word, cands) in enumerate(asks, start=1)
+    )
+    return _prompt_template().format(sentence=sentence, items=items)
+
+
+def _parse_batch(
+    response: str, asks: tuple[tuple[str, tuple[str, ...]], ...]
+) -> tuple[str | None, ...]:
+    """LLM toplu yanıtını her soru için seçilen adaya çözer.
+
+    Yanıt "numara: secim" satırları içerir. Her soru indeksi için ilgili satırın
+    seçimi adaylarla eşleştirilir; eşleşmezse o soru için ``None`` döner.
+    """
+    chosen: dict[int, str] = {}
+    for line in response.splitlines():
+        match = _BATCH_LINE_RE.match(line)
+        if match:
+            chosen[int(match.group(1)) - 1] = match.group(2)
+    return tuple(
+        _match_candidate(chosen[i], cands) if i in chosen else None
+        for i, (_word, cands) in enumerate(asks)
     )
 
 
@@ -139,30 +166,32 @@ def _query_ollama(prompt: str, model: str, timeout: float) -> str | None:
     return data.get("response")
 
 
-@lru_cache(maxsize=2048)
-def choose(
+@lru_cache(maxsize=512)
+def choose_batch(
     sentence: str,
-    word: str,
-    candidates: tuple[str, ...],
+    asks: tuple[tuple[str, tuple[str, ...]], ...],
     *,
     model: str = DEFAULT_MODEL,
     timeout: float = DEFAULT_TIMEOUT,
-) -> str | None:
-    """Adaylar arasından bağlama en uygun olanı LLM ile seçer.
+) -> tuple[str | None, ...]:
+    """Bir cümledeki tüm belirsiz kelimeleri TEK LLM isteğinde seçtirir.
+
+    Kelime başına ayrı çağrı yerine, tüm cümle ve belirsiz kelimelerin adayları
+    bir kez gönderilir; LLM her biri için seçim yapar. Bu, çok belirsizli
+    cümlelerde gecikmeyi düşürür (N çağrı yerine 1).
 
     Args:
-        sentence: Kelimenin geçtiği (üzerinde çalışılan) cümle.
-        word: Düzeltilecek özgün (ASCII) kelime.
-        candidates: Geçerli adaylar (hashlenebilir olması için ``tuple``).
+        sentence: Üzerinde çalışılan (Tier 1/2 uygulanmış) cümle.
+        asks: ``(kelime, adaylar)`` ikilileri (hashlenebilir olması için tuple).
         model: Ollama model adı.
         timeout: İstek zaman aşımı (sn).
 
     Returns:
-        Seçilen aday; LLM erişilemez veya yanıt adaylardan biri değilse ``None``.
+        ``asks`` ile aynı sırada seçimler; bir soru çözülemezse o öğe ``None``.
     """
-    if len(candidates) < 2:
-        return candidates[0] if candidates else None
-    response = _query_ollama(_build_prompt(sentence, word, candidates), model, timeout)
+    if not asks:
+        return ()
+    response = _query_ollama(_build_batch_prompt(sentence, asks), model, timeout)
     if response is None:
-        return None
-    return _match_candidate(response, candidates)
+        return tuple(None for _ in asks)
+    return _parse_batch(response, asks)

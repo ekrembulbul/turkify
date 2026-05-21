@@ -27,10 +27,12 @@ def fake_morphology(monkeypatch):
     return install
 
 
-def _resolve(ascii_word, tier1_word, sentence="", *, use_llm=False):
-    return engine._resolve_word(
-        ascii_word, tier1_word, sentence, use_morphology=True, use_llm=use_llm
+def _resolve(ascii_word, tier1_word):
+    # Deterministik cozumun sonucunu (LLM oncesi) doner.
+    word, _ambiguous = engine._resolve_word_deterministic(
+        ascii_word, tier1_word, use_morphology=True
     )
+    return word
 
 
 def test_tier1_valid_word_is_kept(fake_morphology):

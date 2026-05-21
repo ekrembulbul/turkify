@@ -73,40 +73,36 @@ def _dominant_by_frequency(valid: list[str]) -> str | None:
     return None
 
 
-def _resolve_word(
+def _resolve_word_deterministic(
     ascii_word: str,
     tier1_word: str,
-    sentence: str,
     *,
     use_morphology: bool,
-    use_llm: bool,
-    model: str | None = None,
-) -> str:
-    """Bir kelimeyi katmanlı önceliklerle çözer.
+) -> tuple[str, tuple[str, ...] | None]:
+    """Bir kelimeyi LLM olmadan çözer.
 
-    Öncelik: (Faz 7 — devre dışı) → tek geçerli aday → baskın frekans → LLM → Tier 1.
+    Döner: ``(sonuc, belirsiz_adaylar)``. ``belirsiz_adaylar`` yalnızca kelime
+    Tier 3 (LLM) gerektiriyorsa (çoklu geçerli aday, frekans baskın değil)
+    doludur; o durumda ``sonuc`` deterministik yedek (Tier 1) çıktısıdır.
     """
     if not (use_morphology and morphology.available()):
-        return tier1_word
+        return tier1_word, None
 
     candidates = generate_candidates(ascii_word)
     if not candidates:  # çok fazla çevrilebilir karakter → atla
-        return tier1_word
+        return tier1_word, None
 
-    # Faz 7 (kullanıcı tercihi) şimdilik devre dışı. _FAZ7_ENABLED=True
-    # yapıldığında tercih, aşağıdaki morfoloji katmanının önüne geçer.
-    # (Yeniden etkinleştirirken: tercih morfoloji kurulu olmasa da uygulanmak
-    # isteniyorsa bu blok yukarıdaki gate'in önüne taşınmalıdır.)
+    # Faz 7 (kullanıcı tercihi) şimdilik devre dışı (bkz. _FAZ7_ENABLED).
     if _FAZ7_ENABLED:
         preference = learn.get_preference(ascii_word)
         if preference is not None:
             chosen = _apply_preference(candidates, preference)
             if chosen is not None:
-                return chosen
+                return chosen, None
 
     valid = [c for c in candidates if morphology.is_valid_word(c)]
     if not valid:
-        return tier1_word
+        return tier1_word, None
 
     if len(valid) == 1:
         if valid[0] != tier1_word:
@@ -114,11 +110,10 @@ def _resolve_word(
                 "[Tier2] %r: Tier1 %r gecersiz -> %r (tek gecerli aday)",
                 ascii_word, tier1_word, valid[0],
             )
-        return valid[0]
+        return valid[0], None
 
     # Birden fazla geçerli aday → önce frekansla ayır. Baskın bir aday varsa
-    # (ör. "sana"≫"şana", "çiş"≫"çis") deterministik seçilir; bu hem Tier 1'in
-    # bağlamsal hatasını düzeltir hem de yaygın kelimelerde LLM'e gerek bırakmaz.
+    # (ör. "sana"≫"şana", "çiş"≫"çis") deterministik seçilir.
     dominant = _dominant_by_frequency(valid)
     if dominant is not None:
         if dominant != tier1_word:
@@ -126,29 +121,49 @@ def _resolve_word(
                 "[Tier2-frekans] %r: %r -> %r (baskin frekans)",
                 ascii_word, tier1_word, dominant,
             )
-        return dominant
+        return dominant, None
 
-    # Frekanslar yakın veya bilinmiyor → gerçek bağlamsal belirsizlik (Tier 3).
-    if use_llm:
-        _log.info(
-            "[Tier3] %r: belirsiz adaylar %s; LLM'e soruluyor", ascii_word, valid
-        )
-        choice = reranker.choose(
-            sentence, ascii_word, tuple(valid), model=model or reranker.DEFAULT_MODEL
-        )
-        if choice is not None:
+    # Frekanslar yakın/bilinmiyor → gerçek bağlamsal belirsizlik → Tier 3'e bırak.
+    return tier1_word, tuple(valid)
+
+
+def _apply_tier3_batch(
+    result: list[str],
+    sentence: str,
+    pending: list[tuple],
+    *,
+    use_llm: bool,
+    model: str | None,
+) -> None:
+    """Belirsiz kelimeleri TEK LLM isteğinde çözer ve ``result``'a uygular.
+
+    ``pending`` öğeleri ``(token, ascii_word, candidates)`` üçlüleridir. LLM
+    kapalıysa ya da bir kelime için seçim gelmezse o kelime Tier 1 hâlinde kalır.
+    """
+    if not use_llm:
+        for token, ascii_word, cands in pending:
+            _log.info(
+                "[Tier3] %r: belirsiz adaylar %s, --llm kapali; Tier1 %r korunuyor",
+                ascii_word, list(cands), token.text,
+            )
+        return
+
+    asks = tuple((ascii_word, cands) for _token, ascii_word, cands in pending)
+    _log.info(
+        "[Tier3] %d belirsiz kelime tek istekte LLM'e soruluyor: %s",
+        len(asks), [word for word, _ in asks],
+    )
+    choices = reranker.choose_batch(
+        sentence, asks, model=model or reranker.DEFAULT_MODEL
+    )
+    for (token, ascii_word, cands), choice in zip(pending, choices):
+        if choice is not None and choice in cands:
             _log.info("[Tier3] %r: LLM secti -> %r", ascii_word, choice)
-            return choice
-        _log.info(
-            "[Tier3] %r: LLM yanit vermedi; Tier1 %r korunuyor",
-            ascii_word, tier1_word,
-        )
-    else:
-        _log.info(
-            "[Tier3] %r: belirsiz adaylar %s, --llm kapali; Tier1 %r korunuyor",
-            ascii_word, valid, tier1_word,
-        )
-    return tier1_word
+            result[token.start : token.end] = choice
+        else:
+            _log.info(
+                "[Tier3] %r: LLM secmedi; Tier1 %r korunuyor", ascii_word, token.text
+            )
 
 
 def _resolve_words(
@@ -160,28 +175,40 @@ def _resolve_words(
     use_llm: bool,
     model: str | None = None,
 ) -> str:
-    """Korunmayan kelimelere katmanlı çözümlemeyi uygular.
+    """Korunmayan kelimeleri çözer: önce deterministik, sonra belirsizleri tek
+    batch LLM isteğiyle.
 
     ``original`` ve ``corrected`` aynı uzunlukta olmalıdır (Tier 1 ve aday
     üretimi tek karakterlik yerine-koyma yapar, uzunluğu değiştirmez).
     """
     result = list(corrected)
+    pending: list[tuple] = []  # (token, ascii_word, candidates)
     for token in tokenize(corrected):
         if not token.is_word:
             continue
         if _overlaps_protected(token.start, token.end, spans):
             continue
         ascii_word = original[token.start : token.end]
-        new_word = _resolve_word(
-            ascii_word,
-            token.text,
-            corrected,
-            use_morphology=use_morphology,
-            use_llm=use_llm,
-            model=model,
+        resolved, ambiguous = _resolve_word_deterministic(
+            ascii_word, token.text, use_morphology=use_morphology
         )
-        if new_word != token.text:
-            result[token.start : token.end] = new_word
+        if ambiguous is None:
+            if resolved != token.text:
+                result[token.start : token.end] = resolved
+        else:
+            pending.append((token, ascii_word, ambiguous))
+
+    if pending:
+        # LLM'e verilecek bağlam: belirsiz OLMAYAN kelimeler düzeltilmiş hâlde
+        # (result), belirsiz kelimeler ise orijinal ASCII hâlinde gösterilir.
+        # Böylece Tier 1'in (bazen yanlış) tahmini LLM'i yanıltmaz; LLM her
+        # belirsiz kelimeyi yalnızca adaylarına bakarak seçer.
+        context = list(result)
+        for token, ascii_word, _cands in pending:
+            context[token.start : token.end] = ascii_word
+        _apply_tier3_batch(
+            result, "".join(context), pending, use_llm=use_llm, model=model
+        )
     return "".join(result)
 
 

@@ -1,33 +1,25 @@
-Görev: Türkçe bir cümlede, ASCII (şapkasız) yazılmış bir kelimenin cümleyi
-ANLAMLI kılan doğru diakritikli (şapkalı) biçimini adaylardan SEÇ.
+Task: For each Turkish word listed below, choose the correct diacritic form
+from its candidates so that the sentence reads naturally and is meaningful in
+Turkish.
 
-Kurallar:
-- Yalnızca verilen adaylardan birini, harfi harfine olduğu gibi döndür.
-- Cümlenin anlamına bak; bağlamda en doğru anlamı veren adayı seç.
-- Kelime zaten doğru olabilir; öyleyse o adayı seç.
-- Yeni kelime üretme, kelimeyi değiştirme, açıklama veya noktalama ekleme.
-- Yanıtın yalnızca tek bir kelime olsun.
+Rules:
+- For each word, choose ONLY one of the candidates listed for that word, exactly as written.
+- Use the meaning of the whole sentence to pick the candidate that fits the context.
+- A word may already be correct; if so, choose it.
+- Do not invent words, do not change the word, do not add explanations.
+- Answer EXACTLY in this format, one line per word: "number: choice".
 
-Örnek 1:
-Cümle: kalbimde sana karşı büyük bir ask var
-Kelime: ask
-Adaylar: ask, aşk
-Cevap: aşk
+Example:
+Sentence: bıçağın ucu keskin ama bu engeli asmak gerek
+Words:
+1. ucu -> ucu, uçu, üçü
+2. asmak -> asmak, aşmak
+Answer:
+1: ucu
+2: aşmak
 
-Örnek 2:
-Cümle: bıçağın ucu çok keskin
-Kelime: ucu
-Adaylar: ucu, uçu, üçü
-Cevap: ucu
-
-Örnek 3:
-Cümle: bu zorluğu birlikte asmak zorundayız
-Kelime: asmak
-Adaylar: asmak, aşmak
-Cevap: aşmak
-
-Şimdi sen seç:
-Cümle: {sentence}
-Kelime: {word}
-Adaylar: {candidates}
-Cevap:
+Now choose:
+Sentence: {sentence}
+Words:
+{items}
+Answer:
