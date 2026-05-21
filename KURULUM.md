@@ -106,21 +106,52 @@ echo "citcit kopardim" | python -m turkify --no-daemon
 
 ### 4.3 Tier 3 — LLM rerank (opsiyonel)
 
+Tier 3 **tamamen opsiyoneldir**; kurmasan da sistem Tier 1 + morfoloji + frekans
+ile çalışır. LLM yalnızca **frekansın bile karar veremediği** gerçek bağlamsal
+belirsizliklerde (`asmak`/`aşmak`, `ucu`/`üçü` gibi) ve `--llm` ile devreye girer.
+
 ```bash
 brew install ollama
-ollama serve            # ayrı bir terminalde açık kalmalı
-ollama pull qwen2.5:7b  # modeli indir (tek seferlik)
+ollama serve                 # ayrı bir terminalde açık kalmalı
+ollama pull qwen3.5:9b       # önerilen model (aşağıya bakın)
+
+echo "bu zorlugu birlikte asmak zorundayiz" | python -m turkify --llm
 ```
 
-Tier 3 yalnızca `--llm` bayrağıyla ve birden fazla geçerli aday bağlam
-gerektirdiğinde çalışır:
+> Tier 3 daemon üzerinden **gitmez**; `--llm` her zaman in-process çalışır. İlk
+> çağrıda model belleğe yüklenir (yavaş), sonrakiler hızlanır.
+
+#### Hangi modeli kullanmalı?
+
+**Model seçimi sana kalmış.** Genel kural: model büyüdükçe Türkçe bağlamı daha
+iyi çözer ama yavaşlar ve daha çok bellek ister. Doğruluk/hız dengesini kendi
+makinende ölç ve sana uyanı seç.
+
+| Seviye | Model | Not |
+|---|---|---|
+| **Minimum** | Tier 3'süz (model yok) | Tier 1+2+frekans çoğu metni zaten doğru çözer |
+| Hafif | `qwen2.5:7b` / `qwen3.5:4b` | Çalışır ama zor vakalarda hata yapabilir |
+| **Önerilen** | `qwen3.5:9b` | Belirgin daha isabetli; biraz yavaş ama değer 🟢 |
+| Daha güçlü | `qwen3.6:27b` / `qwen3.6:35b-a3b` | Daha iyi olabilir; ciddi bellek ister |
+
+Kabaca bellek: 7b ~5 GB, 9b ~6–9 GB, 27b ~16 GB+ RAM/VRAM.
+
+Modeli ayarlama (`--model` veya `TURKIFY_MODEL`):
 
 ```bash
-echo "kalbimde sana karsi buyuk bir ask var" | python -m turkify --llm
+# Tek seferlik:
+echo "..." | python -m turkify --llm --model qwen3.5:9b-mlx
+
+# Kalıcı (her komutta yazmadan):
+export TURKIFY_MODEL=qwen3.5:9b-mlx
+
+# Yavaş/büyük model için zaman aşımını da artırabilirsin (varsayılan 60 sn):
+export TURKIFY_TIMEOUT=120
 ```
 
-> Tier 3 yavaştır (~0.3–2 sn) ve daemon üzerinden **gitmez**; `--llm` her zaman
-> in-process çalışır.
+> Belirttiğin model Ollama'da yüklü değilse **hata vermez**; `--verbose` ile
+> "model bulunamadi (once: ollama pull ...)" uyarısını görür, sistem
+> deterministik sonuçla devam eder.
 
 ---
 
@@ -238,7 +269,8 @@ tasarlanmıştır.
 | Korumalı kelimeler | `config/protected_words.txt` | Her satıra bir kelime; `#` yorum. Dönüştürülmez. |
 | Frekans listesi | `data/tr_frequency.txt` | Tier 2 belirsizlik çözümü için (MIT, gömülü). `kelime sayı` biçimi. |
 | Tercihler | `cache/preferences.json` | Faz 7 (devre dışı) — şu an kullanılmıyor. |
-| LLM modeli | `src/turkify/reranker.py` → `DEFAULT_MODEL` | Varsayılan `qwen2.5:7b`. |
+| LLM modeli | `--model` bayrağı / `TURKIFY_MODEL` env | Önerilen `qwen3.5:9b-mlx`; bkz. [§4.3](#43-tier-3--llm-rerank-opsiyonel). |
+| LLM zaman aşımı | `TURKIFY_TIMEOUT` env | Saniye; varsayılan 60. |
 | Rerank prompt'u | `prompts/rerank_prompt.txt` | LLM'e verilen şablon. |
 | Hotkey / timeout | `hammerspoon/turkify.lua` (dosya başı) | Hyper+T, süreler. |
 | Soket yolu | `src/turkify/server.py` → `default_socket_path()` | `/tmp/turkify-<uid>.sock` |
