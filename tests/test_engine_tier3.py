@@ -8,10 +8,11 @@ iki aday geçerli sayılır.
 
 import pytest
 
-from turkify import engine, morphology, reranker
+from turkify import engine, frequency, morphology, reranker
 
 # "sis" kelimesinin adaylari arasinda Tier 1 ciktisi ("sis") gecersiz,
-# "şiş" ve "sış" gecerli sayilir -> belirsiz -> Tier 3.
+# "şiş" ve "sış" gecerli sayilir. Frekans notrlenir (tumu 0) ki frekans-baskinligi
+# devreye girmesin ve belirsizlik LLM'e (Tier 3) yukselsin.
 _VALID = {"şiş", "sış"}
 
 
@@ -19,6 +20,7 @@ _VALID = {"şiş", "sış"}
 def ambiguous_morphology(monkeypatch):
     monkeypatch.setattr(morphology, "available", lambda: True)
     monkeypatch.setattr(morphology, "is_valid_word", lambda w: w in _VALID)
+    monkeypatch.setattr(frequency, "get_frequency", lambda w: 0)
 
 
 def test_llm_resolves_ambiguous_word_when_enabled(ambiguous_morphology, monkeypatch):
@@ -49,13 +51,14 @@ def test_tier3_call_is_logged(ambiguous_morphology, monkeypatch, caplog):
     assert "[Tier3]" in messages and "LLM secti" in messages
 
 
-def test_valid_tier1_word_is_never_overridden_by_llm(monkeypatch):
-    # Tier 1 "sana" gecerli; baska gecerli aday ("şana") olsa bile LLM cagrilmaz.
+def test_dominant_frequency_resolves_without_llm(monkeypatch):
+    # "sana" >> "şana" (gercek frekans) -> baskin frekans deterministik secer,
+    # LLM cagrilmaz; boylece yaygin kelimeler LLM hatasina maruz kalmaz.
     monkeypatch.setattr(morphology, "available", lambda: True)
     monkeypatch.setattr(morphology, "is_valid_word", lambda w: w in {"sana", "şana"})
 
     def fail(*a, **k):
-        raise AssertionError("gecerli Tier 1 ciktisi icin LLM cagrilmamali")
+        raise AssertionError("baskin frekansta LLM cagrilmamali")
 
     monkeypatch.setattr(reranker, "choose", fail)
     assert engine.correct("sana", use_llm=True) == "sana"

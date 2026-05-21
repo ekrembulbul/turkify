@@ -52,7 +52,7 @@ Sistem kademelidir; her katman opsiyoneldir ve kurulu değilse sessizce atlanır
 | Katman | Ne yapar | Gerektirdiği | Kurmasan ne olur |
 |---|---|---|---|
 | **Tier 1** | Deterministik şapka restorasyonu | Yok (sadece Python) | — (her zaman çalışır) |
-| **Tier 2** | Morfolojik doğrulama (geçersiz kelimeleri düzeltir) | `zeyrek` paketi | Tier 1 ile devam eder |
+| **Tier 2** | Morfolojik doğrulama + frekans (geçersiz/belirsiz kelimeleri çözer) | `zeyrek` paketi (frekans verisi gömülü) | Tier 1 ile devam eder |
 | **Tier 3** | Bağlamsal belirsizlik için LLM | Ollama + model | LLM atlanır, deterministik kalır |
 | **Daemon** | Gecikmeyi ~1 sn → ~30 ms düşürür | — | Her çağrı motoru yeniden yükler |
 | **Hammerspoon / Raycast** | Sistem geneli kısayol | İlgili uygulama | CLI'den elle çalıştırırsın |
@@ -236,6 +236,7 @@ tasarlanmıştır.
 | Ne | Nerede | Açıklama |
 |---|---|---|
 | Korumalı kelimeler | `config/protected_words.txt` | Her satıra bir kelime; `#` yorum. Dönüştürülmez. |
+| Frekans listesi | `data/tr_frequency.txt` | Tier 2 belirsizlik çözümü için (MIT, gömülü). `kelime sayı` biçimi. |
 | Tercihler | `cache/preferences.json` | Faz 7 (devre dışı) — şu an kullanılmıyor. |
 | LLM modeli | `src/turkify/reranker.py` → `DEFAULT_MODEL` | Varsayılan `qwen2.5:7b`. |
 | Rerank prompt'u | `prompts/rerank_prompt.txt` | LLM'e verilen şablon. |

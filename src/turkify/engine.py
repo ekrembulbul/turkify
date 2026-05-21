@@ -3,7 +3,7 @@
 Kademeli/hibrit akış:
     metin → koruma aralıkları → Tier 1 deasciify → korunan aralıkları geri yaz
           → kelime bazında çözümleme:
-                Tier 2 morfoloji > Tier 3 LLM > Tier 1
+                Tier 2 (morfoloji + frekans) > Tier 3 LLM > Tier 1
 
 Her katman opsiyoneldir ve graceful biçimde atlanır:
   * Tier 2 yalnızca ``zeyrek`` kuruluysa ve ``use_morphology=True`` iken,
@@ -18,19 +18,23 @@ etkinleştirilebilir. Etkinken tercih, tüm katmanların önüne geçer.
 import logging
 from functools import lru_cache
 
-from turkify import learn, morphology, reranker
-
-# Karar günlüğü. Varsayılan olarak sessizdir; CLI'deki --verbose bunu
-# stderr'e açar (bkz. __main__._enable_verbose).
-_log = logging.getLogger("turkify")
+from turkify import frequency, learn, morphology, reranker
 from turkify.candidates import generate_candidates
 from turkify.deasciifier import deasciify
 from turkify.protect import load_protected_words, protected_spans, tr_lower
 from turkify.reconstruct import restore_spans
 from turkify.tokenizer import tokenize
 
+# Karar günlüğü. Varsayılan olarak sessizdir; CLI'deki --verbose bunu
+# stderr'e açar (bkz. __main__._enable_verbose).
+_log = logging.getLogger("turkify")
+
 # Faz 7 (öğrenen sistem) ana anahtarı. Şimdilik kapalı; daha sonra ele alınacak.
 _FAZ7_ENABLED = False
+
+# Bir adayın "baskın" sayılması için ikinci adaydan kaç kat daha sık olması
+# gerektiği. Baskınsa frekansla deterministik seçilir; değilse belirsizdir.
+_FREQ_DOMINANCE_FACTOR = 5
 
 
 @lru_cache(maxsize=1)
@@ -52,6 +56,23 @@ def _apply_preference(candidates: list[str], preference: str) -> str | None:
     return None
 
 
+def _dominant_by_frequency(valid: list[str]) -> str | None:
+    """Adaylar arasında frekansça baskın olanı döner; yoksa ``None``.
+
+    En sık adayın frekansı, ikinci adayınkinin ``_FREQ_DOMINANCE_FACTOR`` katı
+    veya üzeriyse "baskın" sayılıp deterministik seçilir. Aksi hâlde (frekanslar
+    yakın veya tümü bilinmiyor) belirsizdir → ``None``.
+    """
+    ranked = sorted(valid, key=frequency.get_frequency, reverse=True)
+    top_freq = frequency.get_frequency(ranked[0])
+    if top_freq <= 0:
+        return None
+    second_freq = frequency.get_frequency(ranked[1]) if len(ranked) > 1 else 0
+    if top_freq >= _FREQ_DOMINANCE_FACTOR * max(second_freq, 1):
+        return ranked[0]
+    return None
+
+
 def _resolve_word(
     ascii_word: str,
     tier1_word: str,
@@ -62,7 +83,7 @@ def _resolve_word(
 ) -> str:
     """Bir kelimeyi katmanlı önceliklerle çözer.
 
-    Öncelik: (Faz 7 tercihi — devre dışı) → tek geçerli aday → (çoklu + LLM) → Tier 1.
+    Öncelik: (Faz 7 — devre dışı) → tek geçerli aday → baskın frekans → LLM → Tier 1.
     """
     if not (use_morphology and morphology.available()):
         return tier1_word
@@ -86,27 +107,30 @@ def _resolve_word(
     if not valid:
         return tier1_word
 
-    # Hassasiyet önceliği: Tier 1 geçerli bir kelime ürettiyse ona güveniriz.
-    # Deterministik çekirdek yüksek isabetlidir; geçerli bir seçimi yalnızca
-    # başka geçerli aday var diye ezmek (ör. "sana"→"şana") false positive
-    # üretir. Geçerli-ama-bağlamsal-yanlış override'ı frekans modeline (Faz 5)
-    # bırakılır.
-    if tier1_word in valid:
-        return tier1_word
-
-    # Buradan itibaren Tier 1 geçersiz bir kelime üretmiştir.
     if len(valid) == 1:
-        _log.info(
-            "[Tier2] %r: Tier1 %r gecersiz -> %r (tek gecerli aday)",
-            ascii_word, tier1_word, valid[0],
-        )
-        return valid[0]  # tek geçerli alternatif → düzelt (Tier 2)
+        if valid[0] != tier1_word:
+            _log.info(
+                "[Tier2] %r: Tier1 %r gecersiz -> %r (tek gecerli aday)",
+                ascii_word, tier1_word, valid[0],
+            )
+        return valid[0]
 
-    # Birden fazla geçerli alternatif ve Tier 1 başarısız → bağlam gerekir (Tier 3).
+    # Birden fazla geçerli aday → önce frekansla ayır. Baskın bir aday varsa
+    # (ör. "sana"≫"şana", "çiş"≫"çis") deterministik seçilir; bu hem Tier 1'in
+    # bağlamsal hatasını düzeltir hem de yaygın kelimelerde LLM'e gerek bırakmaz.
+    dominant = _dominant_by_frequency(valid)
+    if dominant is not None:
+        if dominant != tier1_word:
+            _log.info(
+                "[Tier2-frekans] %r: %r -> %r (baskin frekans)",
+                ascii_word, tier1_word, dominant,
+            )
+        return dominant
+
+    # Frekanslar yakın veya bilinmiyor → gerçek bağlamsal belirsizlik (Tier 3).
     if use_llm:
         _log.info(
-            "[Tier3] %r: Tier1 %r gecersiz, belirsiz adaylar %s; LLM'e soruluyor",
-            ascii_word, tier1_word, valid,
+            "[Tier3] %r: belirsiz adaylar %s; LLM'e soruluyor", ascii_word, valid
         )
         choice = reranker.choose(sentence, ascii_word, tuple(valid))
         if choice is not None:
@@ -118,7 +142,7 @@ def _resolve_word(
         )
     else:
         _log.info(
-            "[Tier3] %r: belirsiz adaylar %s (Tier1 %r gecersiz), --llm kapali; Tier1 korunuyor",
+            "[Tier3] %r: belirsiz adaylar %s, --llm kapali; Tier1 %r korunuyor",
             ascii_word, valid, tier1_word,
         )
     return tier1_word

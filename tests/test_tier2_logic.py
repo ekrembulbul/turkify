@@ -7,19 +7,22 @@ motoruna bağımlı kalınmaz.
 
 import pytest
 
-from turkify import engine, morphology
+from turkify import engine, frequency, morphology
 
 
 @pytest.fixture
 def fake_morphology(monkeypatch):
-    """Belirli kelimeleri 'geçerli' sayan sahte bir morfoloji katmanı kurar."""
+    """Belirli kelimeleri 'geçerli' sayan sahte morfoloji + nötr frekans kurar.
+
+    Frekans nötrlenir (tümü 0) ki bu testler yalnızca morfoloji escalation
+    mantığını izole etsin; frekans-baskınlığı ayrı testlerde sınanır.
+    """
 
     def install(valid_words):
         valid = set(valid_words)
         monkeypatch.setattr(morphology, "available", lambda: True)
-        monkeypatch.setattr(
-            morphology, "is_valid_word", lambda w: w in valid
-        )
+        monkeypatch.setattr(morphology, "is_valid_word", lambda w: w in valid)
+        monkeypatch.setattr(frequency, "get_frequency", lambda w: 0)
 
     return install
 
