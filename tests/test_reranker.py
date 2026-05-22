@@ -1,6 +1,7 @@
 """Tier 3 batch LLM rerank testleri — Ollama HTTP çağrısı mock'lanır."""
 
 import io
+import json
 import logging
 import urllib.error
 import urllib.request
@@ -8,6 +9,24 @@ import urllib.request
 import pytest
 
 from turkify import reranker
+
+
+class _FakeResponse:
+    """urlopen için sahte bağlam yöneticisi (başarılı yanıt)."""
+
+    status = 200
+
+    def __init__(self, payload: dict):
+        self._body = json.dumps(payload).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self):
+        return self._body
 
 
 @pytest.fixture(autouse=True)
@@ -85,6 +104,47 @@ def test_returns_all_none_when_ollama_unavailable(monkeypatch):
     monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: None)
     asks = (("ucu", ("ucu", "üçü")), ("asmak", ("asmak", "aşmak")))
     assert reranker.choose_batch("cumle", asks) == (None, None)
+
+
+# --- "düşünen" model yaniti (reasoning blogu) ---
+
+
+def test_strip_thinking_removes_block_and_special_tokens():
+    text = "<think>uzun uzun dusunuyorum...</think>\n1: aşk<|im_start|>"
+    assert reranker._strip_thinking(text) == "1: aşk"
+
+
+def test_strip_thinking_removes_unclosed_block():
+    # num_predict ile kesilmis (kapanmamis) <think> tum kalani temizlemeli.
+    text = "1: aşk\n<think>kesik dusunce sonsuza dek"
+    assert reranker._strip_thinking(text) == "1: aşk"
+
+
+def test_choose_batch_strips_thinking_before_parsing(monkeypatch):
+    payload = {"response": "<think>cok uzun reasoning</think>\n1: aşk"}
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: _FakeResponse(payload))
+    result = reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
+    assert result == ("aşk",)
+
+
+def test_unsupported_think_param_falls_back(monkeypatch):
+    # Ilk istek (think=False) "think" hatasi verir; parametresiz tekrar denenir.
+    calls = []
+
+    def fake_urlopen(request, timeout=None):
+        body = json.loads(request.data.decode("utf-8"))
+        calls.append("think" in body)
+        if "think" in body:
+            raise urllib.error.HTTPError(
+                request.full_url, 400, "Bad Request", {},
+                io.BytesIO(b'{"error":"this model does not support think"}'),
+            )
+        return _FakeResponse({"response": "1: aşk"})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    result = reranker.choose_batch("cumle", (("ask", ("ask", "aşk")),))
+    assert result == ("aşk",)
+    assert calls == [True, False]  # once think'li, sonra think'siz
 
 
 # --- Ollama hata tanilari ---

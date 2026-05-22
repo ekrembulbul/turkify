@@ -115,33 +115,58 @@ def _http_detail(exc: urllib.error.HTTPError) -> str:
         return str(exc)
 
 
-def _query_ollama(prompt: str, model: str, timeout: float) -> str | None:
-    payload = json.dumps(
-        {
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {"temperature": 0},
-        }
-    ).encode("utf-8")
+# Qwen3 vb. "düşünen" modellerin ürettiği reasoning bloğunu ve şablon özel
+# tokenlarını yanıttan ayıklamak için desenler.
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+_OPEN_THINK_RE = re.compile(r"<think>.*", re.DOTALL | re.IGNORECASE)
+_SPECIAL_TOKEN_RE = re.compile(r"<\|[^|]*\|>")
+
+# 'think' parametresini desteklemeyen modeller için yeniden-deneme işareti.
+_THINK_UNSUPPORTED = object()
+
+# Çıktı uzunluğu sınırı: yalnızca "1: secim" gibi kısa yanıt gerekir. Reasoning
+# sızsa bile üretimi keserek timeout'a takılmayı önler.
+_NUM_PREDICT = 256
+
+
+def _strip_thinking(text: str) -> str:
+    """Yanıttan <think>...</think> bloğunu ve özel şablon tokenlarını temizler."""
+    text = _THINK_RE.sub("", text)
+    text = _OPEN_THINK_RE.sub("", text)  # kapanmamış (kesik) blok
+    text = _SPECIAL_TOKEN_RE.sub("", text)
+    return text.strip()
+
+
+def _post_generate(prompt: str, model: str, timeout: float, *, think: bool | None):
+    """Tek bir /api/generate isteği. ``think`` desteklenmiyorsa sentinel döner."""
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": 0, "num_predict": _NUM_PREDICT},
+    }
+    if think is not None:
+        payload["think"] = think  # düşünen modellerde reasoning'i kapatır
+
     request = urllib.request.Request(
         f"{OLLAMA_HOST}/api/generate",
-        data=payload,
+        data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        detail = _http_detail(exc)
+        if think is not None and "think" in str(detail).lower():
+            return _THINK_UNSUPPORTED  # model 'think' parametresini bilmiyor
         if exc.code == 404:
             _log.warning(
                 "[Tier3] Ollama: model %r bulunamadi (once: ollama pull %s)",
                 model, model,
             )
         else:
-            _log.warning(
-                "[Tier3] Ollama HTTP %s hatasi: %s", exc.code, _http_detail(exc)
-            )
+            _log.warning("[Tier3] Ollama HTTP %s hatasi: %s", exc.code, detail)
         return None
     except TimeoutError:
         # TimeoutError, OSError'in alt sinifidir; aşağıdaki bloktan ÖNCE yakalanmalı.
@@ -161,9 +186,22 @@ def _query_ollama(prompt: str, model: str, timeout: float) -> str | None:
         return None
 
     if data.get("error"):
+        if think is not None and "think" in str(data["error"]).lower():
+            return _THINK_UNSUPPORTED
         _log.warning("[Tier3] Ollama hatasi: %s", data["error"])
         return None
     return data.get("response")
+
+
+def _query_ollama(prompt: str, model: str, timeout: float) -> str | None:
+    # Önce reasoning kapalı dene ("düşünen" modellerde 60 sn takılmayı önler).
+    result = _post_generate(prompt, model, timeout, think=False)
+    if result is _THINK_UNSUPPORTED:
+        # Model 'think' parametresini desteklemiyor → parametresiz tekrar dene.
+        result = _post_generate(prompt, model, timeout, think=None)
+    if isinstance(result, str):
+        return _strip_thinking(result)
+    return None
 
 
 @lru_cache(maxsize=512)
