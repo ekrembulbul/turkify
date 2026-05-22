@@ -14,9 +14,9 @@ ASCII ile yazılmış Türkçe metni (`bugun gorusme yapacagiz`) doğru diakriti
 3. [Ön koşullar](#3-ön-koşullar)
 4. [Adım adım kurulum](#4-adım-adım-kurulum)
 5. [Komut satırı kullanımı](#5-komut-satırı-kullanımı)
-6. [Daemon (kalıcı süreç) — hız için](#6-daemon-kalıcı-süreç--hız-için)
-7. [Hammerspoon kısayolu (Hyper + T)](#7-hammerspoon-kısayolu-hyper--t)
-8. [Raycast komutu](#8-raycast-komutu)
+6. [Yapılandırma (config)](#6-yapılandırma-config)
+7. [Kısayol ajanı (Hyper+T) — çok-platform](#7-kısayol-ajanı-hypert--çok-platform)
+8. [Diğer platformlar (Windows / Linux)](#8-diğer-platformlar-windows--linux)
 9. [Öğrenen sistem (tercihler)](#9-öğrenen-sistem-tercihler)
 10. [Yapılandırma](#10-yapılandırma)
 11. [Testler](#11-testler)
@@ -53,22 +53,21 @@ Sistem kademelidir; her katman opsiyoneldir ve kurulu değilse sessizce atlanır
 |---|---|---|---|
 | **Tier 1** | Deterministik şapka restorasyonu | Yok (sadece Python) | — (her zaman çalışır) |
 | **Tier 2** | Morfolojik doğrulama + frekans (geçersiz/belirsiz kelimeleri çözer) | `zeyrek` paketi (frekans verisi gömülü) | Tier 1 ile devam eder |
-| **Tier 3** | Bağlamsal belirsizlik için LLM | Ollama + model | LLM atlanır, deterministik kalır |
-| **Daemon** | Gecikmeyi ~1 sn → ~30 ms düşürür | — | Her çağrı motoru yeniden yükler |
-| **Hammerspoon / Raycast** | Sistem geneli kısayol | İlgili uygulama | CLI'den elle çalıştırırsın |
+| **Tier 3** | Bağlamsal belirsizlik için LLM | Ollama + model (config'te) | LLM atlanır, deterministik kalır |
+| **Kısayol ajanı** | Sistem geneli kısayol (seç → düzelt → yapıştır) | `pynput` + `pyperclip` | CLI'den elle çalıştırırsın |
 
-**Öneri:** Tier 1 + Tier 2 + Daemon + Hammerspoon kombinasyonu çoğu kullanıcı için
-en iyi denge (yüksek doğruluk + anlık hız). Tier 3'ü yalnızca bağlamsal
-belirsizliklerle uğraşıyorsan ekle.
+**Öneri:** Tier 1 + Tier 2 + Ajan kombinasyonu çoğu kullanıcı için en iyi denge
+(yüksek doğruluk + anlık kısayol). Tier 3'ü yalnızca bağlamsal belirsizliklerle
+uğraşıyorsan, config'e bir model yazarak ekle.
 
 ---
 
 ## 3. Ön koşullar
 
-- **macOS** (Hammerspoon/Raycast/daemon yolları macOS'a göredir; çekirdek motor taşınabilir).
+- **macOS** (öncelikli; çekirdek motor ve ajan kodu çok-platform — bkz. [Bölüm 8](#8-diğer-platformlar-windows--linux)).
 - **Python 3.10+** — kontrol: `python3 --version`
 - (Tier 3 için) **Ollama** — `brew install ollama`
-- (Kısayol için) **Hammerspoon** — `brew install --cask hammerspoon` ve/veya **Raycast**
+- (Kısayol için) **ajan bağımlılıkları** — `pip install -e ".[agent]"` (pynput + pyperclip)
 
 ---
 
@@ -100,7 +99,7 @@ gerekmez**. Kurulu olunca Tier 2 otomatik devreye girer.
 Kontrol:
 
 ```bash
-echo "citcit kopardim" | python -m turkify --no-daemon
+echo "citcit kopardim" | python -m turkify
 # Çıktı: çıtçıt kopardım   (Tier 2 olmadan: çitçit)
 ```
 
@@ -118,8 +117,9 @@ ollama pull qwen3.5:9b       # önerilen model (aşağıya bakın)
 echo "bu zorlugu birlikte asmak zorundayiz" | python -m turkify --llm
 ```
 
-> Tier 3 daemon üzerinden **gitmez**; `--llm` her zaman in-process çalışır. İlk
-> çağrıda model belleğe yüklenir (yavaş), sonrakiler hızlanır.
+> Tier 3 için config'te (ya da `--model` ile) bir model belirtilmelidir; model
+> yoksa Tier 3 atlanır. İlk çağrıda model belleğe yüklenir (yavaş); ajan
+> kullanıldığında motor sıcak kaldığı için sonraki çağrılar hızlıdır.
 
 #### Hangi modeli kullanmalı?
 
@@ -164,82 +164,82 @@ Tüm komutlar venv etkinken (`source .venv/bin/activate`) ya da
 |---|---|
 | `echo "metin" \| python -m turkify` | stdin'den okur, düzeltilmişi yazar |
 | `python -m turkify dosya.txt` | Dosyadan okur |
-| `python -m turkify --no-daemon` | Daemon'u atla, doğrudan in-process çalış |
-| `python -m turkify --llm` | Tier 3 LLM'i etkinleştir (in-process) |
-| `python -m turkify --verbose` | Hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü `stderr`'e yazar (in-process'i zorlar) |
-| `python -m turkify serve` | Daemon'u başlat |
+| `python -m turkify --llm` | Tier 3 LLM'i etkinleştir |
+| `python -m turkify --model AD` | Tier 3 modelini seç (config'i geçersiz kılar) |
+| `python -m turkify --verbose` | Hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü `stderr`'e yazar |
+| `python -m turkify agent` | Çok-platform kısayol ajanını başlatır (bkz. [Bölüm 7](#7-kısayol-ajanı-hypert--çok-platform)) |
 
 > `learn` / `forget` komutları **Faz 7 ile birlikte şimdilik devre dışıdır**
 > (bkz. [Bölüm 9](#9-öğrenen-sistem-tercihler)).
 
 **Davranış notları:**
 - Çıktının sonuna yeni satır eklenmez; boşluk/noktalama/büyük-küçük harf birebir korunur.
-- Varsayılan olarak önce çalışan daemon denenir; yoksa in-process'e düşülür.
+- Ayarlar config'ten okunur (bkz. [Bölüm 6](#6-yapılandırma-config)); bayrak/env onları geçersiz kılar.
 - URL, e-posta, sayı/kod içeren parçalar ve korumalı kelimeler **dokunulmaz**.
 
 ---
 
-## 6. Daemon (kalıcı süreç) — hız için
+## 6. Yapılandırma (config)
 
-Sorun: her çağrıda Python başlatma + morfoloji motoru yükleme ~1 saniye sürer.
-Daemon motoru **bir kez** yükleyip bir Unix soketinde dinler; istemci sadece
-sokete bağlanır → gecikme **~30 ms**'ye iner.
+Tüm ayarlar tek bir JSON config dosyasında toplanır.
 
-### Elle başlatma
+- **Konum:** macOS/Linux → `~/.config/turkify/config.json`, Windows →
+  `%APPDATA%\turkify\config.json` (`TURKIFY_CONFIG` ile değiştirilebilir).
+- **Öncelik:** CLI bayrağı > `TURKIFY_*` env > config > varsayılan.
 
-```bash
-python -m turkify serve
-# Soket: /tmp/turkify-<kullanıcı-id>.sock
-# Durdurmak için: Ctrl-C
+```jsonc
+{
+  "model": "qwen3.5:9b-mlx",        // ZORUNLU (Tier 3 için); null ise Tier 3 kapalı
+  "use_llm": true,
+  "use_morphology": true,
+  "timeout": 120,
+  "ollama_host": "http://localhost:11434",
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "t" }
+}
 ```
 
-Daemon çalışırken normal komutlar otomatik olarak ona bağlanır.
-
-### Oturum açılışında otomatik başlatma (launchd)
+Başlamak için örneği kopyalayıp düzenle:
 
 ```bash
-# plist içindeki YOL'ların doğru olduğundan emin ol (varsayılan kullanıcı: ekrem)
-cp launchd/com.turkify.daemon.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.turkify.daemon.plist
+mkdir -p ~/.config/turkify
+cp config/config.example.json ~/.config/turkify/config.json
+# en azından "model" alanını doldur (Tier 3 isteniyorsa)
 ```
-
-Durdurma:
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.turkify.daemon.plist
-```
-
-Loglar: `/tmp/turkify-daemon.out.log` ve `/tmp/turkify-daemon.err.log`
 
 ---
 
-## 7. Hammerspoon kısayolu (Hyper + T)
+## 7. Kısayol ajanı (Hyper+T) — çok-platform
 
-Herhangi bir uygulamada seçili metni **Ctrl+Alt+Cmd+T** ile yerinde düzeltir
-(kopyala → düzelt → yapıştır; panonu eski haline döndürür).
+Herhangi bir uygulamada **seçili metni** kısayolla yerinde düzeltir (kopyala →
+düzelt → yapıştır; panonu geri yükler). Hammerspoon/Raycast yerine **kendi
+çok-platform ajanımız** kullanılır.
 
-1. Hammerspoon'u kur ve aç: `brew install --cask hammerspoon`
-2. `~/.hammerspoon/init.lua` dosyasına şu satırı ekle:
+```bash
+pip install -e ".[agent]"     # pynput + pyperclip
+python -m turkify agent        # config'teki kısayolu dinler (varsayılan Hyper+T)
+```
 
-   ```lua
-   dofile(os.getenv("HOME") .. "/projects/turkify/hammerspoon/turkify.lua")
-   ```
-
-3. Hammerspoon menüsünden **Reload Config**.
-4. Bir yere `bugun gorusme` yaz, seç, **Hyper+T**'ye bas.
-
-> Daemon çalışıyorsa anlık; çalışmıyorsa ilk basışta ~1 sn sürer (motor yüklenir).
-> Hammerspoon betiğinde hotkey, timeout gibi ayarlar dosyanın başındadır.
+- Kısayolu değiştirmek için `config.json`'daki `hotkey` alanını düzenle, ajanı
+  yeniden başlat.
+- **macOS:** ilk çalıştırmada **Erişilebilirlik (Accessibility) izni** gerekir
+  (Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik). Pano/tuş
+  simülasyonu için zorunludur.
+- Çıkış: `Ctrl-C`.
 
 ---
 
-## 8. Raycast komutu
+## 8. Diğer platformlar (Windows / Linux)
 
-Panodaki (clipboard) metni düzelten basit bir script command.
+Çekirdek motor ve ajan kodu çok-platformdur; **öncelik macOS'tur**, diğerleri
+peyderpey doğrulanacaktır.
 
-1. Raycast → **Settings → Extensions → Script Commands → Add Script Directory**
-2. `~/projects/turkify/raycast` klasörünü ekle.
-3. Kullanım: metni kopyala (Cmd+C) → Raycast'te **"Türkçe Düzelt (pano)"** komutunu çalıştır → sonuç panoya yazılır.
+| Platform | Durum |
+|---|---|
+| Windows | Beklenen şekilde çalışır (henüz doğrulanmadı) |
+| Linux / X11 | Pano için `xclip` veya `xsel` kurulu olmalı |
+| Linux / Wayland | Global kısayol/enjeksiyon OS kısıtları nedeniyle sınırlı |
+
+Ayrıntı: [PORTABILITY.md](PORTABILITY.md).
 
 ---
 
@@ -269,11 +269,11 @@ tasarlanmıştır.
 | Korumalı kelimeler | `config/protected_words.txt` | Her satıra bir kelime; `#` yorum. Dönüştürülmez. |
 | Frekans listesi | `data/tr_frequency.txt` | Tier 2 belirsizlik çözümü için (MIT, gömülü). `kelime sayı` biçimi. |
 | Tercihler | `cache/preferences.json` | Faz 7 (devre dışı) — şu an kullanılmıyor. |
-| LLM modeli | `--model` bayrağı / `TURKIFY_MODEL` env | Önerilen `qwen3.5:9b-mlx`; bkz. [§4.3](#43-tier-3--llm-rerank-opsiyonel). |
-| LLM zaman aşımı | `TURKIFY_TIMEOUT` env | Saniye; varsayılan 60. |
+| Ana ayarlar | `~/.config/turkify/config.json` | model, use_llm, timeout, hotkey (bkz. [§6](#6-yapılandırma-config)) |
+| LLM modeli | config `model` / `--model` / `TURKIFY_MODEL` | Önerilen `qwen3.5:9b-mlx`. |
+| LLM zaman aşımı | config `timeout` / `TURKIFY_TIMEOUT` | Saniye; varsayılan 60. |
+| Kısayol (hotkey) | config `hotkey` | Varsayılan Hyper+T; ajan okur. |
 | Rerank prompt'u | `prompts/rerank_prompt.txt` | LLM'e verilen şablon. |
-| Hotkey / timeout | `hammerspoon/turkify.lua` (dosya başı) | Hyper+T, süreler. |
-| Soket yolu | `src/turkify/server.py` → `default_socket_path()` | `/tmp/turkify-<uid>.sock` |
 
 ---
 
@@ -301,17 +301,16 @@ venv etkin değil ya da paket kurulu değil. `source .venv/bin/activate` ve
 `zeyrek` kurulu mu? `pip install -e ".[morphology]"`. Kontrol:
 `python -c "from turkify import morphology; print(morphology.available())"` → `True` olmalı.
 
-**`--llm` etkisiz / yavaş**
-Ollama açık mı? `ollama serve` çalışıyor olmalı ve `ollama pull qwen2.5:7b`
-yapılmış olmalı. Kontrol: `curl -s http://localhost:11434/api/tags`.
+**`--llm` etkisiz / Tier 3 atlanıyor**
+Config'te bir `model` var mı? Model yoksa Tier 3 çalışmaz. Ollama açık mı
+(`ollama serve`) ve o model kurulu mu (`ollama list`)? Kontrol:
+`curl -s http://localhost:11434/api/tags`. `--verbose` ile sebebi görebilirsin.
 
-**Hammerspoon Hyper+T tepki vermiyor**
-init.lua'daki `dofile` yolunu ve Reload Config'i kontrol et. Betikteki `PYTHON`
-yolu `~/projects/turkify/.venv/bin/python` ile eşleşmeli.
-
-**Daemon'a bağlanmıyor / eski soket**
-Daemon yeniden başlayınca eski soketi kendisi temizler. Elle:
-`rm -f /tmp/turkify-$(id -u).sock` sonra `python -m turkify serve`.
+**Kısayol ajanı tepki vermiyor**
+`pip install -e ".[agent]"` yapıldı mı? **macOS'ta Erişilebilirlik izni**
+gerekir (Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik → terminal/
+Python'a izin ver). Kısayolu `config.json`'dan kontrol et. Linux/Wayland'da
+kısıt olabilir (bkz. [§8](#8-diğer-platformlar-windows--linux)).
 
 **Düzeltme bir kelimeyi yanlış değiştirdi**
 Sürekli yanlış dönüştürülen yabancı/teknik bir terimse
@@ -323,13 +322,9 @@ kullanıcı tercihi (Faz 7) şimdilik devre dışıdır.
 ## 13. Kaldırma
 
 ```bash
-# launchd servisi (kurduysan)
-launchctl unload ~/Library/LaunchAgents/com.turkify.daemon.plist
-rm -f ~/Library/LaunchAgents/com.turkify.daemon.plist
+# Çalışan ajan varsa durdur (Ctrl-C ya da süreci sonlandır)
 
-# Hammerspoon: init.lua'daki dofile satırını sil, Reload Config
-
-# Paket ve ortam
+# Paket, ortam ve config
 rm -rf ~/projects/turkify/.venv
-rm -f /tmp/turkify-$(id -u).sock
+rm -rf ~/.config/turkify
 ```

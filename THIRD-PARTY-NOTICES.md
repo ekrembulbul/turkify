@@ -10,6 +10,8 @@ kullandığı üçüncü taraf bileşenleri ve lisanslarını listeler.
 | FrequencyWords — Türkçe frekans listesi (Hermit Dave) | Gömülü veri (Tier 2 frekans) | MIT | `data/tr_frequency.txt` · github.com/hermitdave/FrequencyWords |
 | zeyrek — morfolojik analizci | Opsiyonel çalışma zamanı bağımlılığı (Tier 2) | MIT | PyPI: `zeyrek` (paketlenmez) |
 | nltk, numpy | zeyrek'in dolaylı bağımlılıkları | Apache-2.0 / BSD-3 | PyPI (paketlenmez) |
+| pynput — global kısayol/tuş simülasyonu | Opsiyonel (`turkify agent`) | LGPL-3.0 | PyPI: `pynput` (paketlenmez) |
+| pyperclip — pano okuma/yazma | Opsiyonel (`turkify agent`) | BSD-3 | PyPI: `pyperclip` (paketlenmez) |
 | Ollama + LLM modeli (ör. Qwen) | Opsiyonel çalışma zamanı (Tier 3) | Kendi lisansları | Yerel olarak çalışır; paketlenmez |
 | pytest | Yalnızca geliştirme/test | MIT | PyPI (paketlenmez) |
 
