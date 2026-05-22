@@ -43,6 +43,22 @@ def test_dominant_frequency_resolves_ambiguity_without_llm(monkeypatch):
     assert engine.correct("cis") == "çiş"
 
 
+def test_close_pair_is_not_dominant():
+    # "tür"/"tur" orani ~6.3 (<10) -> yakin -> baskin degil, LLM'e birakilir.
+    assert engine._dominant_by_frequency(["tür", "tur"]) is None
+
+
+def test_overwhelming_pair_is_dominant():
+    # "böyle"/"boyle" orani ~194 -> ezici baskin -> deterministik secilir.
+    # (boyle korpusta ASCII-yazim olarak gecse de oran cok yuksek.)
+    assert engine._dominant_by_frequency(["böyle", "boyle"]) == "böyle"
+
+
+def test_rare_runnerup_is_dominant():
+    # "şana"(0) nadir -> "sana" baskin secilir.
+    assert engine._dominant_by_frequency(["sana", "şana"]) == "sana"
+
+
 def test_dominant_frequency_keeps_common_word_unchanged(monkeypatch):
     # 'sana' >> 'şana' -> 'sana' korunur (frekans baskinligi).
     monkeypatch.setattr(morphology, "available", lambda: True)

@@ -33,8 +33,12 @@ _log = logging.getLogger("turkify")
 _FAZ7_ENABLED = False
 
 # Bir adayın "baskın" sayılması için ikinci adaydan kaç kat daha sık olması
-# gerektiği. Baskınsa frekansla deterministik seçilir; değilse belirsizdir.
-_FREQ_DOMINANCE_FACTOR = 5
+# gerektiği. Oran bunun altındaysa (ör. "tür"/"tur" = 6.3) aday yakın kabul
+# edilir ve karar bağlama (LLM) bırakılır; çok üstündeyse (ör. "böyle"/"boyle"
+# = 194) ezici baskındır ve deterministik seçilir. Mutlak sıklık eşiği yerine
+# oran kullanılır; çünkü korpus ASCII-yazımları da içerdiğinden ("boyle"=1860)
+# mutlak eşik gerçek baskınlığı da yanlışlıkla LLM'e iterdi.
+_FREQ_DOMINANCE_FACTOR = 10
 
 
 @lru_cache(maxsize=1)
