@@ -101,6 +101,27 @@ def test_llm_context_corrects_nonambiguous_keeps_ambiguous_ascii(monkeypatch):
     assert "sis" in captured["sentence"]      # belirsiz olan ASCII kaldi
 
 
+def test_marked_context_numbers_each_ambiguous_occurrence(monkeypatch):
+    # Ayni kelime ("sor") iki kez gecince her geçiş ayri [numara] ile isaretlenir.
+    valid = {"sor", "şor"}
+    monkeypatch.setattr(morphology, "available", lambda: True)
+    monkeypatch.setattr(morphology, "is_valid_word", lambda w: w in valid)
+    monkeypatch.setattr(frequency, "get_frequency", lambda w: 0)
+
+    captured = {}
+
+    def fake_batch(sentence, asks, **kwargs):
+        captured["sentence"] = sentence
+        captured["asks"] = asks
+        return tuple(None for _ in asks)
+
+    monkeypatch.setattr(reranker, "choose_batch", fake_batch)
+    engine.correct("sor ve tekrar sor", use_llm=True)
+    assert "sor[1]" in captured["sentence"]
+    assert "sor[2]" in captured["sentence"]
+    assert len(captured["asks"]) == 2
+
+
 def test_dominant_frequency_resolves_without_llm(monkeypatch):
     # "sana" >> "şana" (gercek frekans) -> baskin frekans deterministik secer.
     monkeypatch.setattr(morphology, "available", lambda: True)

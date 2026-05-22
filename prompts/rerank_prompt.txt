@@ -1,17 +1,21 @@
-Task: For each Turkish word listed below, choose the correct diacritic form
-from its candidates so that the sentence reads naturally and is meaningful in
-Turkish.
+Task: In the Turkish sentence below, some words are marked with a number in
+brackets, like word[1]. For each numbered word, choose the correct diacritic
+form from its candidate list so that the sentence reads naturally and is
+meaningful in Turkish.
 
 Rules:
-- For each word, choose ONLY one of the candidates listed for that word, exactly as written.
-- Use the meaning of the whole sentence to pick the candidate that fits the context.
+- The [number] marks exactly which word and where it is in the sentence; use its
+  position and the sentence meaning to decide. The same word may appear more
+  than once with different numbers — decide each by its own context.
+- For each number, choose ONLY one of the candidates listed for that number,
+  exactly as written.
 - A word may already be correct; if so, choose it.
 - Do not invent words, do not change the word, do not add explanations.
-- Answer EXACTLY in this format, one line per word: "number: choice".
+- Answer EXACTLY one line per number: "number: choice".
 
 Example:
-Sentence: bıçağın ucu keskin ama bu engeli asmak gerek
-Words:
+Sentence: bıçağın ucu[1] keskin ama bu engeli asmak[2] gerek
+Choices:
 1. ucu -> ucu, uçu, üçü
 2. asmak -> asmak, aşmak
 Answer:
@@ -20,6 +24,6 @@ Answer:
 
 Now choose:
 Sentence: {sentence}
-Words:
+Choices:
 {items}
 Answer:

@@ -161,28 +161,32 @@ def _apply_tier3_batch(
     kapalıysa ya da bir kelime için seçim gelmezse o kelime Tier 1 hâlinde kalır.
     """
     if not use_llm:
-        for token, ascii_word, cands in pending:
+        for index, (token, ascii_word, cands) in enumerate(pending, start=1):
             _log.info(
-                "[Tier3] %r: belirsiz adaylar %s, --llm kapali; Tier1 %r korunuyor",
-                ascii_word, list(cands), token.text,
+                "[Tier3] [%d] %r: belirsiz adaylar %s, --llm kapali; Tier1 %r korunuyor",
+                index, ascii_word, list(cands), token.text,
             )
         return
 
     asks = tuple((ascii_word, cands) for _token, ascii_word, cands in pending)
-    _log.info(
-        "[Tier3] %d belirsiz kelime tek istekte LLM'e soruluyor: %s",
-        len(asks), [word for word, _ in asks],
-    )
+    # İşaretli bağlam cümlesini logla; her belirsiz kelime [n] ile gösterilir,
+    # böylece LLM'e tam olarak ne gönderildiği (ve aynı kelimenin farklı geçişleri)
+    # verbose çıktıda görünür.
+    _log.info("[Tier3] baglam: %s", sentence)
+    _log.info("[Tier3] %d belirsiz kelime tek istekte LLM'e soruluyor", len(asks))
     choices = reranker.choose_batch(
         sentence, asks, model=model or reranker.DEFAULT_MODEL
     )
-    for (token, ascii_word, cands), choice in zip(pending, choices):
+    for index, ((token, ascii_word, cands), choice) in enumerate(
+        zip(pending, choices), start=1
+    ):
         if choice is not None and choice in cands:
-            _log.info("[Tier3] %r: LLM secti -> %r", ascii_word, choice)
+            _log.info("[Tier3] [%d] %r: LLM secti -> %r", index, ascii_word, choice)
             result[token.start : token.end] = choice
         else:
             _log.info(
-                "[Tier3] %r: LLM secmedi; Tier1 %r korunuyor", ascii_word, token.text
+                "[Tier3] [%d] %r: LLM secmedi; Tier1 %r korunuyor",
+                index, ascii_word, token.text,
             )
 
 
@@ -219,17 +223,36 @@ def _resolve_words(
             pending.append((token, ascii_word, ambiguous))
 
     if pending:
-        # LLM'e verilecek bağlam: belirsiz OLMAYAN kelimeler düzeltilmiş hâlde
-        # (result), belirsiz kelimeler ise orijinal ASCII hâlinde gösterilir.
-        # Böylece Tier 1'in (bazen yanlış) tahmini LLM'i yanıltmaz; LLM her
-        # belirsiz kelimeyi yalnızca adaylarına bakarak seçer.
-        context = list(result)
-        for token, ascii_word, _cands in pending:
-            context[token.start : token.end] = ascii_word
         _apply_tier3_batch(
-            result, "".join(context), pending, use_llm=use_llm, model=model
+            result,
+            _build_marked_context(result, pending),
+            pending,
+            use_llm=use_llm,
+            model=model,
         )
     return "".join(result)
+
+
+def _build_marked_context(result: list[str], pending: list[tuple]) -> str:
+    """LLM'e verilecek bağlam cümlesini kurar.
+
+    Belirsiz OLMAYAN kelimeler düzeltilmiş hâlde (result) görünür; belirsiz
+    kelimeler orijinal ASCII hâlinde ve yanına ``[sıra]`` işareti konarak
+    gösterilir. Böylece Tier 1'in (bazen yanlış) tahmini LLM'i yanıltmaz ve
+    aynı kelime birden çok kez geçse bile (ör. "sor") LLM her geçişin cümledeki
+    konumunu ve hangi numaraya karşılık geldiğini bilir.
+
+    ``pending`` token sırasına (cümle sırası) göredir; bu yüzden işaret
+    numaraları doğrudan ``asks`` sırasıyla örtüşür.
+    """
+    parts: list[str] = []
+    cursor = 0
+    for index, (token, ascii_word, _cands) in enumerate(pending, start=1):
+        parts.append("".join(result[cursor : token.start]))
+        parts.append(f"{ascii_word}[{index}]")
+        cursor = token.end
+    parts.append("".join(result[cursor:]))
+    return "".join(parts)
 
 
 def correct(
