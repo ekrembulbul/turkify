@@ -40,6 +40,12 @@ _FAZ7_ENABLED = False
 # mutlak eşik gerçek baskınlığı da yanlışlıkla LLM'e iterdi.
 _FREQ_DOMINANCE_FACTOR = 10
 
+# Korpus (altyazı) şapkasız yazımları da içerir; bu yüzden bazı ASCII formlar
+# doğru şapkalı biçimden daha sık görünür (ör. "simdi" > "şimdi"). Diakritiksiz
+# bir adayın baskınlığına ancak şapkalı rakibi korpusta neredeyse yoksa güvenilir.
+_TURKISH_DIACRITICS = frozenset("çğıöşüÇĞİÖŞÜ")
+_FREQ_RARE_RUNNERUP = 50
+
 
 @lru_cache(maxsize=1)
 def _protected_words() -> frozenset[str]:
@@ -60,6 +66,11 @@ def _apply_preference(candidates: list[str], preference: str) -> str | None:
     return None
 
 
+def _has_diacritic(word: str) -> bool:
+    """Kelime en az bir Türkçe diakritik (ç/ğ/ı/ö/ş/ü) içeriyor mu?"""
+    return any(ch in _TURKISH_DIACRITICS for ch in word)
+
+
 def _dominant_by_frequency(valid: list[str]) -> str | None:
     """Adaylar arasında frekansça baskın olanı döner; yoksa ``None``.
 
@@ -68,13 +79,18 @@ def _dominant_by_frequency(valid: list[str]) -> str | None:
     yakın veya tümü bilinmiyor) belirsizdir → ``None``.
     """
     ranked = sorted(valid, key=frequency.get_frequency, reverse=True)
-    top_freq = frequency.get_frequency(ranked[0])
+    top = ranked[0]
+    top_freq = frequency.get_frequency(top)
     if top_freq <= 0:
         return None
     second_freq = frequency.get_frequency(ranked[1]) if len(ranked) > 1 else 0
-    if top_freq >= _FREQ_DOMINANCE_FACTOR * max(second_freq, 1):
-        return ranked[0]
-    return None
+    if top_freq < _FREQ_DOMINANCE_FACTOR * max(second_freq, 1):
+        return None
+    # Baskın aday diakritiksizse (ASCII) korpus kirliliği nedeniyle şüphelidir;
+    # yalnızca şapkalı rakibi korpusta neredeyse yoksa (nadir) güvenilir.
+    if not _has_diacritic(top) and second_freq >= _FREQ_RARE_RUNNERUP:
+        return None
+    return top
 
 
 def _resolve_word_deterministic(

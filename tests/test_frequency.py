@@ -59,6 +59,12 @@ def test_rare_runnerup_is_dominant():
     assert engine._dominant_by_frequency(["sana", "şana"]) == "sana"
 
 
+def test_ascii_dominant_with_real_diacritic_sibling_is_not_trusted():
+    # "simdi"(5121) korpusta "şimdi"(307)'den sik gorunse de (ASCII kirliligi),
+    # sapkali rakip gercek/var oldugu icin baskinligina guvenilmez -> bağlama birak.
+    assert engine._dominant_by_frequency(["simdi", "şimdi"]) is None
+
+
 def test_dominant_frequency_keeps_common_word_unchanged(monkeypatch):
     # 'sana' >> 'şana' -> 'sana' korunur (frekans baskinligi).
     monkeypatch.setattr(morphology, "available", lambda: True)
