@@ -145,12 +145,11 @@ def _post_generate(prompt: str, model: str, timeout: float, *, think: bool | Non
         "model": model,
         "prompt": prompt,
         "stream": False,
-        "options": {
-            "temperature": 0,
-            "num_predict": _NUM_PREDICT,
-            # Cevap bloğundan sonra modelin uydurma ek görevler üretmesini keser.
-            "stop": ["\n\n"],
-        },
+        # num_predict üretimi sınırlar (timeout koruması). 'stop' kullanmıyoruz:
+        # model bazen önce boş şablon ("1:\n2:") yazıp gerçek cevabı blank satır
+        # sonrası veriyor; "\n\n" stop'u bunu keserdi. Bunun yerine _parse_batch
+        # boş satırları yok sayar ve her numaranın ilk DOLU cevabını alır.
+        "options": {"temperature": 0, "num_predict": _NUM_PREDICT},
     }
     if think is not None:
         payload["think"] = think  # düşünen modellerde reasoning'i kapatır

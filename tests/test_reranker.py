@@ -96,6 +96,14 @@ def test_parse_batch_ignores_trailing_hallucination(monkeypatch):
     assert reranker.choose_batch("cumle", asks) == ("turu", "işe")
 
 
+def test_parse_batch_ignores_empty_scaffold(monkeypatch):
+    # Model once bos sablon ("1:\n2:") yazip sonra gercek cevaplari verebilir.
+    response = "1:\n2:\n\n1: doküman\n2: sor"
+    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: response)
+    asks = (("dokuman", ("dokuman", "doküman")), ("sor", ("sor", "şor")))
+    assert reranker.choose_batch("cumle", asks) == ("doküman", "sor")
+
+
 def test_missing_selection_yields_none(monkeypatch):
     # Yanit sadece 1. soruyu cevapliyor; 2. soru None olmali.
     monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "1: ucu")
