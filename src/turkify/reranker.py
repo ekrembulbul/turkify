@@ -81,7 +81,9 @@ def _parse_batch(
     for line in response.splitlines():
         match = _BATCH_LINE_RE.match(line)
         if match:
-            chosen[int(match.group(1)) - 1] = match.group(2)
+            # İlk cevabı koru: model bazen yanıttan sonra uydurma ek görevler
+            # üretip aynı numaraları tekrar yazıyor; bunlar gerçek cevabı ezmesin.
+            chosen.setdefault(int(match.group(1)) - 1, match.group(2))
     return tuple(
         _match_candidate(chosen[i], cands) if i in chosen else None
         for i, (_word, cands) in enumerate(asks)
@@ -143,7 +145,12 @@ def _post_generate(prompt: str, model: str, timeout: float, *, think: bool | Non
         "model": model,
         "prompt": prompt,
         "stream": False,
-        "options": {"temperature": 0, "num_predict": _NUM_PREDICT},
+        "options": {
+            "temperature": 0,
+            "num_predict": _NUM_PREDICT,
+            # Cevap bloğundan sonra modelin uydurma ek görevler üretmesini keser.
+            "stop": ["\n\n"],
+        },
     }
     if think is not None:
         payload["think"] = think  # düşünen modellerde reasoning'i kapatır

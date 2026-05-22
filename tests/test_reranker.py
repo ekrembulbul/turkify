@@ -88,6 +88,14 @@ def test_choose_batch_handles_various_separators(monkeypatch):
     assert reranker.choose_batch("cumle", asks) == ("ucu", "aşmak")
 
 
+def test_parse_batch_ignores_trailing_hallucination(monkeypatch):
+    # Model cevaptan sonra uydurma ek gorevler uretirse, ilk cevaplar korunmali.
+    response = "1: turu\n2: işe\n\nHere is the task:\n1: adamı\n2: bulmak"
+    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: response)
+    asks = (("turu", ("turu", "türü")), ("ise", ("ise", "işe")))
+    assert reranker.choose_batch("cumle", asks) == ("turu", "işe")
+
+
 def test_missing_selection_yields_none(monkeypatch):
     # Yanit sadece 1. soruyu cevapliyor; 2. soru None olmali.
     monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "1: ucu")
