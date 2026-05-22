@@ -12,6 +12,9 @@ from turkify import engine, frequency, morphology, reranker
 # "sis" adaylari arasinda "şiş" ve "sış" gecerli sayilir; frekans notr -> belirsiz.
 _VALID = {"şiş", "sış"}
 
+# Model zorunlu oldugundan, Tier 3'un calismasi icin testlerde bir model verilir.
+_MODEL = "test:1b"
+
 
 @pytest.fixture
 def ambiguous_morphology(monkeypatch):
@@ -22,7 +25,7 @@ def ambiguous_morphology(monkeypatch):
 
 def test_llm_resolves_ambiguous_word_when_enabled(ambiguous_morphology, monkeypatch):
     monkeypatch.setattr(reranker, "choose_batch", lambda sentence, asks, **k: ("şiş",))
-    assert engine.correct("sis", use_llm=True) == "şiş"
+    assert engine.correct("sis", use_llm=True, model=_MODEL) == "şiş"
 
 
 def test_ambiguous_word_keeps_tier1_when_llm_disabled(ambiguous_morphology, monkeypatch):
@@ -30,12 +33,22 @@ def test_ambiguous_word_keeps_tier1_when_llm_disabled(ambiguous_morphology, monk
         raise AssertionError("use_llm=False iken LLM cagrilmamali")
 
     monkeypatch.setattr(reranker, "choose_batch", fail)
-    assert engine.correct("sis", use_llm=False) == "sis"
+    assert engine.correct("sis", use_llm=False, model=_MODEL) == "sis"
 
 
 def test_ambiguous_word_keeps_tier1_when_llm_returns_none(ambiguous_morphology, monkeypatch):
     monkeypatch.setattr(reranker, "choose_batch", lambda sentence, asks, **k: (None,))
-    assert engine.correct("sis", use_llm=True) == "sis"
+    assert engine.correct("sis", use_llm=True, model=_MODEL) == "sis"
+
+
+def test_missing_model_skips_tier3(ambiguous_morphology, monkeypatch):
+    # Model verilmezse (config'te yok) use_llm=True olsa bile Tier 3 calismaz.
+    def fail(*a, **k):
+        raise AssertionError("model yokken LLM cagrilmamali")
+
+    monkeypatch.setattr(reranker, "choose_batch", fail)
+    monkeypatch.setattr(reranker, "DEFAULT_MODEL", None)
+    assert engine.correct("sis", use_llm=True, model=None) == "sis"
 
 
 def test_model_is_forwarded_to_reranker(ambiguous_morphology, monkeypatch):
@@ -55,7 +68,7 @@ def test_tier3_call_is_logged(ambiguous_morphology, monkeypatch, caplog):
 
     monkeypatch.setattr(reranker, "choose_batch", lambda sentence, asks, **k: ("şiş",))
     with caplog.at_level(logging.INFO, logger="turkify"):
-        engine.correct("sis", use_llm=True)
+        engine.correct("sis", use_llm=True, model=_MODEL)
     messages = " ".join(record.getMessage() for record in caplog.records)
     assert "[Tier3]" in messages and "LLM secti" in messages
 
@@ -76,7 +89,7 @@ def test_batch_resolves_multiple_words_in_one_call(monkeypatch):
         return tuple(choice_map.get(word) for word, _cands in asks)
 
     monkeypatch.setattr(reranker, "choose_batch", fake_batch)
-    out = engine.correct("sis asmak", use_llm=True)
+    out = engine.correct("sis asmak", use_llm=True, model=_MODEL)
     assert out == "şiş aşmak"
     assert calls["count"] == 1  # tek istek
 
@@ -96,7 +109,7 @@ def test_llm_context_corrects_nonambiguous_keeps_ambiguous_ascii(monkeypatch):
         return tuple(None for _ in asks)
 
     monkeypatch.setattr(reranker, "choose_batch", fake_batch)
-    engine.correct("citcit sis", use_llm=True)
+    engine.correct("citcit sis", use_llm=True, model=_MODEL)
     assert "çıtçıt" in captured["sentence"]  # belirsiz olmayan duzeltildi
     assert "sis" in captured["sentence"]      # belirsiz olan ASCII kaldi
 
@@ -116,7 +129,7 @@ def test_marked_context_numbers_each_ambiguous_occurrence(monkeypatch):
         return tuple(None for _ in asks)
 
     monkeypatch.setattr(reranker, "choose_batch", fake_batch)
-    engine.correct("sor ve tekrar sor", use_llm=True)
+    engine.correct("sor ve tekrar sor", use_llm=True, model=_MODEL)
     assert "sor[1]" in captured["sentence"]
     assert "sor[2]" in captured["sentence"]
     assert len(captured["asks"]) == 2

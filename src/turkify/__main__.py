@@ -1,29 +1,28 @@
 """CLI giriş noktası ve komut dağıtımı.
 
 Komutlar:
-    python -m turkify [DOSYA] [--no-daemon] [--llm] [--verbose|-v] [--model AD]
-        Metni düzeltir. DOSYA verilmezse stdin okunur. Varsayılan olarak
-        çalışan daemon'a bağlanmayı dener (hızlı); yoksa in-process düzeltir.
-        --verbose: hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü
-        stderr'e yazar; stdout temiz kalır. Loglar in-process üretildiği için
-        --verbose, daemon yerine in-process düzeltmeyi zorlar.
-        --model AD: Tier 3 için Ollama modeli (ör. qwen2.5:32b). TURKIFY_MODEL
-        ortam değişkeniyle de ayarlanabilir. --model in-process düzeltmeyi zorlar.
-    python -m turkify serve [--llm] [--verbose|-v] [--model AD]
-        Kalıcı süreci (daemon) başlatır.
+    python -m turkify [DOSYA] [--llm] [--verbose|-v] [--model AD]
+        Metni düzeltir (in-process). DOSYA verilmezse stdin okunur.
+        Ayarlar config'ten okunur; bayraklar/env onları geçersiz kılar.
+        Öncelik: CLI bayrağı > TURKIFY_* env > config > varsayılan.
+        --verbose: hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü stderr'e
+        yazar; stdout temiz kalır.
+        --model AD: Tier 3 modeli (config'teki modeli geçersiz kılar).
+    python -m turkify agent [--verbose|-v]
+        Çok-platform kısayol ajanını başlatır: config'teki kısayolu dinler,
+        seçili metni kopyala→düzelt→yapıştır yapar (pynput + pyperclip gerekir).
 
 NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
-şimdilik DEVRE DIŞIDIR; ilgili fonksiyonlar aşağıda korunmuştur ama dağıtıma
-(``_COMMANDS``) bağlı değildir.
+şimdilik DEVRE DIŞIDIR; fonksiyonlar korunur ama ``_COMMANDS``'a bağlı değildir.
 
-Çıktı sonuna yeni satır eklenmez; girdi yapısı birebir korunur. Hafif komutlar
-(daemon istemcisi) ağır motor modüllerini yüklemez.
+Çıktı sonuna yeni satır eklenmez; girdi yapısı birebir korunur.
 """
 
 import logging
+import os
 import sys
 
-from turkify import server
+from turkify import config
 
 
 def _read_input(path: str | None) -> str:
@@ -58,40 +57,39 @@ def _enable_verbose() -> None:
 
 
 def _cmd_correct(args: list[str]) -> int:
-    model, args = _extract_opt(args, "--model")
-    use_llm = "--llm" in args
-    no_daemon = "--no-daemon" in args
-    verbose = _is_verbose(args)
-    if verbose:
+    model_flag, args = _extract_opt(args, "--model")
+    use_llm_flag = "--llm" in args
+    if _is_verbose(args):
         _enable_verbose()
+
+    cfg = config.load()
+    config.apply(cfg)
+    # Öncelik: bayrak > env > config.
+    model = model_flag or os.environ.get("TURKIFY_MODEL") or cfg["model"]
+    use_llm = use_llm_flag or cfg["use_llm"]
+    use_morphology = cfg["use_morphology"]
 
     positionals = [a for a in args if not a.startswith("-")]
     text = _read_input(positionals[0] if positionals else None)
 
-    result = None
-    # LLM/--verbose/--model istenirse daemon'u atla: basit protokol bunları
-    # taşımaz ve karar günlükleri yalnızca in-process süreçte üretilir.
-    if not no_daemon and not use_llm and not verbose and model is None:
-        result = server.correct_via_daemon(text)
-    if result is None:
-        from turkify.engine import correct
+    from turkify.engine import correct
 
-        result = correct(text, use_llm=use_llm, model=model)
-
-    sys.stdout.write(result)
+    sys.stdout.write(
+        correct(text, use_llm=use_llm, use_morphology=use_morphology, model=model)
+    )
     return 0
 
 
-def _cmd_serve(args: list[str]) -> int:
-    model, args = _extract_opt(args, "--model")
+def _cmd_agent(args: list[str]) -> int:
     if _is_verbose(args):
         _enable_verbose()
-    server.serve(use_llm="--llm" in args, model=model)
+    from turkify import agent
+
+    agent.run()
     return 0
 
 
-# Faz 7 devre dışı: _cmd_learn ve _cmd_forget korunur ama _COMMANDS'a kayıtlı
-# değildir. Yeniden etkinleştirmek için aşağıdaki _COMMANDS girdilerini aç.
+# Faz 7 devre dışı: _cmd_learn ve _cmd_forget korunur ama _COMMANDS'a kayıtlı değildir.
 def _cmd_learn(args: list[str]) -> int:
     if len(args) < 2:
         sys.stderr.write("Kullanım: turkify learn ASCII_KELIME DOGRU_BICIM\n")
@@ -113,7 +111,7 @@ def _cmd_forget(args: list[str]) -> int:
 
 
 _COMMANDS = {
-    "serve": _cmd_serve,
+    "agent": _cmd_agent,
     # Faz 7 devre dışı — yeniden açmak için yorumu kaldır:
     # "learn": _cmd_learn,
     # "forget": _cmd_forget,

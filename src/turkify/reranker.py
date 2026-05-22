@@ -31,9 +31,10 @@ _log = logging.getLogger("turkify")
 _WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
 
 OLLAMA_HOST = "http://localhost:11434"
-# Varsayılan model TURKIFY_MODEL ortam değişkeniyle değiştirilebilir; CLI'deki
-# --model bayrağı bunu da geçersiz kılar (bkz. __main__).
-DEFAULT_MODEL = os.environ.get("TURKIFY_MODEL", "qwen3.5:9b")
+# Model zorunludur ve yapılandırmadan gelir (config "model" / CLI --model /
+# TURKIFY_MODEL env). Hiçbiri verilmezse model None'dur ve Tier 3 (LLM) çalışmaz;
+# otomatik model tespiti yapılmaz. Yerleşik bir varsayılan model YOKTUR.
+DEFAULT_MODEL = os.environ.get("TURKIFY_MODEL")
 # Büyük modeller ilk çağrıda belleğe yüklenirken (cold start) yavaş olabilir;
 # bu yüzden cömert bir varsayılan. Ollama kapalıysa bağlantı zaten anında
 # reddedilir, bu süre yalnızca "açık ama yavaş" durumunda beklenir.
@@ -215,8 +216,8 @@ def choose_batch(
     sentence: str,
     asks: tuple[tuple[str, tuple[str, ...]], ...],
     *,
-    model: str = DEFAULT_MODEL,
-    timeout: float = DEFAULT_TIMEOUT,
+    model: str | None = None,
+    timeout: float | None = None,
 ) -> tuple[str | None, ...]:
     """Bir cümledeki tüm belirsiz kelimeleri TEK LLM isteğinde seçtirir.
 
@@ -235,7 +236,12 @@ def choose_batch(
     """
     if not asks:
         return ()
-    response = _query_ollama(_build_batch_prompt(sentence, asks), model, timeout)
+    # timeout/model çağrı anında çözülür; böylece config ile güncellenen
+    # modül varsayılanları (DEFAULT_TIMEOUT) etki eder.
+    effective_timeout = timeout if timeout is not None else DEFAULT_TIMEOUT
+    response = _query_ollama(
+        _build_batch_prompt(sentence, asks), model or DEFAULT_MODEL, effective_timeout
+    )
     if response is None:
         return tuple(None for _ in asks)
     return _parse_batch(response, asks)

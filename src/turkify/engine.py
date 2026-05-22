@@ -168,15 +168,23 @@ def _apply_tier3_batch(
             )
         return
 
+    # Model zorunludur; belirtilmemişse (config'te yok) Tier 3 çalışmaz.
+    effective_model = model or reranker.DEFAULT_MODEL
+    if not effective_model:
+        for index, (token, ascii_word, cands) in enumerate(pending, start=1):
+            _log.info(
+                "[Tier3] [%d] %r: model belirtilmedi; Tier 3 atlandi, Tier1 %r korunuyor",
+                index, ascii_word, token.text,
+            )
+        return
+
     asks = tuple((ascii_word, cands) for _token, ascii_word, cands in pending)
     # İşaretli bağlam cümlesini logla; her belirsiz kelime [n] ile gösterilir,
     # böylece LLM'e tam olarak ne gönderildiği (ve aynı kelimenin farklı geçişleri)
     # verbose çıktıda görünür.
     _log.info("[Tier3] baglam: %s", sentence)
     _log.info("[Tier3] %d belirsiz kelime tek istekte LLM'e soruluyor", len(asks))
-    choices = reranker.choose_batch(
-        sentence, asks, model=model or reranker.DEFAULT_MODEL
-    )
+    choices = reranker.choose_batch(sentence, asks, model=effective_model)
     for index, ((token, ascii_word, cands), choice) in enumerate(
         zip(pending, choices), start=1
     ):

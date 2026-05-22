@@ -1,0 +1,8 @@
+{
+  "model": null,
+  "use_llm": false,
+  "use_morphology": true,
+  "timeout": 60,
+  "ollama_host": "http://localhost:11434",
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "t" }
+}
