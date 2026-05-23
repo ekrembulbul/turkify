@@ -343,3 +343,27 @@ mp4
 wav
 avi
 mkv
+
+# --- Uygulama, arayüz & dosya işlemleri ---
+image
+icon
+file
+folder
+link
+click
+scroll
+user
+admin
+config
+status
+import
+export
+input
+output
+print
+mobile
+timeout
+pipeline
+legacy
+uptime
+downtime
