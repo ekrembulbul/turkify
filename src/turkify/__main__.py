@@ -34,6 +34,19 @@ import sys
 from turkify import config
 
 
+def _force_utf8_io() -> None:
+    """stdin/stdout/stderr'i UTF-8'e sabitler.
+
+    Windows'ta akışlar bir konsola değil de boruya/dosyaya yönlendirildiğinde
+    Python yerel ANSI kod sayfasına (ör. cp1254) düşer; bu, Türkçe karakterleri
+    bozar. macOS/Linux'ta zaten UTF-8 olduğundan bu çağrı etkisizdir.
+    """
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
+
+
 def _read_input(path: str | None) -> str:
     if path:
         with open(path, encoding="utf-8") as handle:
@@ -177,6 +190,7 @@ _COMMANDS = {
 
 
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8_io()
     args = sys.argv[1:] if argv is None else argv
     if args and args[0] in _COMMANDS:
         return _COMMANDS[args[0]](args[1:])
