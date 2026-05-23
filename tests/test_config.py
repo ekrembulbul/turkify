@@ -1,6 +1,9 @@
 """Yapılandırma yükleyici testleri."""
 
 import json
+import os
+
+import pytest
 
 from turkify import config
 
@@ -48,9 +51,11 @@ def test_corrupt_file_logs_warning(tmp_path, caplog):
 
 def test_config_path_respects_env(monkeypatch):
     monkeypatch.setenv("TURKIFY_CONFIG", "/tmp/ozel/config.json")
-    assert str(config.config_path()) == "/tmp/ozel/config.json"
+    # POSIX yol biçimini varsayar; Windows'ta str() ters bölü çizgisi verir.
+    assert config.config_path() == config.Path("/tmp/ozel/config.json")
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX-yalniz: Windows'ta PosixPath uretilemez")
 def test_config_path_uses_xdg_on_unix(monkeypatch):
     monkeypatch.delenv("TURKIFY_CONFIG", raising=False)
     monkeypatch.setattr(config.os, "name", "posix")
