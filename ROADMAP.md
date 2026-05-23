@@ -117,12 +117,17 @@ Faz 1'e göre ölçülebilir biçimde artar (altın veri setinde).
 
 ---
 
-## Faz 6 — Native macOS Entegrasyonu
+## Faz 6 — GUI / Native Entegrasyon
 
-**Amaç:** Hammerspoon ötesinde daha akıcı kullanıcı deneyimi.
+**Amaç:** Çok-platform kısayol ajanının üzerine akıcı bir kullanıcı arayüzü.
 
-**Seçenekler:** Raycast extension, menü bar uygulaması, inline preview, keyboard daemon,
-Spotlight/context-menu action.
+**Kapsam (detay: [PORTABILITY.md §7](PORTABILITY.md)):** menü-bar uygulaması,
+izin butonları (Girdi İzleme + Erişilebilirlik, durum göstergeli), model
+combobox'u (kurulu modelleri otomatik listeler), işlem göstergesi (LLM
+beklemesinde dönen simge), config ayar arayüzü. Framework önerisi: Tkinter.
+
+> Not: Hammerspoon/Raycast kaldırıldı; kısayol artık çok-platform `turkify
+> agent` ile yapılıyor (bkz. PORTABILITY.md).
 
 ---
 

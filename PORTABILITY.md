@@ -95,4 +95,41 @@ CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik 
 | **A** | macOS, config-güdümlü + çok-platform ajan | ✅ Uygulandı (macOS doğrulandı) |
 | **B** | Windows doğrulama + Linux/X11 doğrulama | sırada |
 | **C** | Linux/Wayland çözümü, oturum açılışında otomatik başlatma (per-OS) | sonra |
-| **D** | GUI / native arayüz, model combobox'u (ROADMAP Faz 6) | ileride |
+| **D** | GUI fazı — izin butonları, model combobox'u, işlem göstergesi, ayar arayüzü (bkz. [§7](#7-gui-fazı--kapsam-ileride)) | ileride |
+
+---
+
+## 7. GUI fazı — kapsam (ileride)
+
+Aşağıdaki işler, çok-platform bir **GUI** (öneri: menü-bar uygulaması; framework
+olarak **Tkinter** — sıfır bağımlılık, her OS) ile ele alınacaktır. Konuştuğumuz
+ve buraya not ettiğimiz maddeler:
+
+### 7.1 İzin yönetimi (macOS)
+- İki buton: **"Girdi İzleme (Input Monitoring) izni"** ve **"Erişilebilirlik
+  (Accessibility) izni"** — her biri doğrudan ilgili System Settings panelini
+  açar (`x-apple.systempreferences:com.apple.preference.security?...`).
+- Her izin için **canlı durum** göstergesi (✅/❌); izin verilince otomatik güncellenir.
+- macOS'un kendi **izin istemi** butondan tetiklenebilir.
+- Sınır: butonlar paneli açar ve durumu gösterir; **son anahtarı kullanıcı
+  çevirir** (Apple, izni programatik vermeye izin vermez).
+
+### 7.2 Model seçimi (combobox)
+- Ollama'daki **kurulu modeller otomatik listelenip** bir combobox'a getirilir;
+  kullanıcı seçer, seçim `config.json`'daki `model` alanına yazılır.
+- Şu an model config'te elle yazılıyor; GUI bunu seçilebilir/keşfedilebilir yapar.
+
+### 7.3 İşlem geri bildirimi (LLM beklemesi)
+- LLM çalışırken **menü-bar simgesi döner/yanıp söner** (⟳), bitince normale döner.
+- Böylece kısayol sonrası birkaç saniyelik LLM beklemesinde "çalışıyor" geri
+  bildirimi verilir (şu an terminal dışında görünmüyor).
+- Not: harmony + frekans + morfoloji çoğu durumu anlık çözdüğü için LLM beklemesi
+  zaten yalnızca gerçek belirsizliklerde olur.
+
+### 7.4 Ayar arayüzü
+- `config.json` alanları (kısayol, `use_llm`, `use_morphology`, `timeout`,
+  `model`, `ollama_host`) GUI'den düzenlenebilir.
+- Kısayol kaydedici (hotkey recorder), Tier 2/Tier 3 aç-kapa anahtarları.
+
+**Framework önerisi:** Tkinter (stdlib, çok-platform). Menü-bar/tepsi göstergesi
+için platforma özel ince bir katman gerekebilir (macOS: rumps benzeri).
