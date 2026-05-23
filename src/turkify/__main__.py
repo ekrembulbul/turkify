@@ -48,7 +48,10 @@ def _extract_opt(args: list[str], name: str) -> tuple[str | None, list[str]]:
 def _enable_verbose() -> None:
     """``turkify`` karar günlüğünü stderr'e açar (stdout'a dokunmaz)."""
     handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(logging.Formatter("%(message)s"))
+    # Agent loglarıyla tutarlı, saliseli öneksiz zaman damgası: "14:03:21.456 [Tier...] ...".
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s.%(msecs)03d %(message)s", datefmt="%H:%M:%S")
+    )
     logger = logging.getLogger("turkify")
     logger.handlers.clear()
     logger.addHandler(handler)

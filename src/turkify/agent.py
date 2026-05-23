@@ -15,9 +15,18 @@ PORTABILITY.md). macOS'ta Erişilebilirlik (Accessibility) izni gerekir.
 
 import sys
 import time
+from datetime import datetime
+from typing import NamedTuple
 
 from turkify import config as _config
 from turkify.engine import correct
+
+
+class Correction(NamedTuple):
+    """Bir düzeltme işleminin girdisi ve çıktısı — loglama/inceleme için ikisi de tutulur."""
+
+    original: str   # kullanıcının seçtiği (düzeltilmeden önceki) metin
+    corrected: str  # düzeltilmiş metin
 
 # config'teki kısayol adları → pynput modifier adları
 _MOD_ALIASES = {
@@ -46,16 +55,16 @@ def correct_clipboard_selection(
     read_clip,
     write_clip,
     sleep=time.sleep,
-) -> str | None:
+) -> Correction | None:
     """Seçimi kopyala→düzelt→yapıştır akışının çekirdeği (OS-bağımsız, test edilebilir).
 
     Tüm OS/kütüphane çağrıları parametre olarak verilir; böylece pynput/pyperclip
     olmadan mock'lanarak test edilebilir.
 
     Returns:
-        Düzeltilmiş metin; seçim boşsa ``None``.
+        Girdi ve çıktıyı içeren ``Correction``; seçim boşsa ``None``.
     """
-    original = read_clip()
+    original_clipboard = read_clip()
     copy_fn()
     sleep(0.15)  # panonun güncellenmesi için
     selected = read_clip()
@@ -71,9 +80,9 @@ def correct_clipboard_selection(
     sleep(0.05)
     paste_fn()
     sleep(0.2)  # yapıştırma tamamlansın
-    if original is not None:
-        write_clip(original)  # kullanıcının panosunu geri yükle
-    return corrected
+    if original_clipboard is not None:
+        write_clip(original_clipboard)  # kullanıcının panosunu geri yükle
+    return Correction(original=selected, corrected=corrected)
 
 
 def _modifier_key():
@@ -81,6 +90,13 @@ def _modifier_key():
     from pynput.keyboard import Key
 
     return Key.cmd if sys.platform == "darwin" else Key.ctrl
+
+
+def _log(message: str) -> None:
+    """Saliseli zaman damgalı tek satır teşhis logu (stderr) yazar ve hemen boşaltır."""
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]  # mikrosaniyeyi milisaniyeye kıs
+    sys.stderr.write(f"{timestamp} [agent] {message}\n")
+    sys.stderr.flush()
 
 
 def run(settings: dict | None = None) -> None:
@@ -102,9 +118,8 @@ def run(settings: dict | None = None) -> None:
         controller.release(modifier)
 
     def _on_activate() -> None:
-        # Anlık teşhis: kısayolun algılandığını ve sonucu doğrudan göster.
-        sys.stderr.write("[agent] kisayol algilandi\n")
-        sys.stderr.flush()
+        # Anlık teşhis: kısayolun algılandığını, girdiyi ve çıktıyı göster.
+        _log("kisayol algilandi")
         try:
             result = correct_clipboard_selection(
                 cfg,
@@ -114,15 +129,15 @@ def run(settings: dict | None = None) -> None:
                 write_clip=pyperclip.copy,
             )
             if result is None:
-                sys.stderr.write("[agent] secili metin bulunamadi (once metni sec)\n")
+                _log("secili metin bulunamadi (once metni sec)")
+            elif result.original == result.corrected:
+                _log(f"degisiklik yok: {result.original!r}")
             else:
-                sys.stderr.write(f"[agent] duzeltildi -> {result!r}\n")
+                _log(f"duzeltildi: {result.original!r} -> {result.corrected!r}")
         except Exception as exc:  # ajan tek bir hatayla çökmesin
-            sys.stderr.write(f"[agent] hata: {exc}\n")
-        sys.stderr.flush()
+            _log(f"hata: {exc}")
 
     hotkey = to_pynput_hotkey(cfg["hotkey"])
-    sys.stderr.write(f"[agent] hazir. Kisayol: {hotkey}. Cikmak icin Ctrl-C.\n")
-    sys.stderr.flush()
+    _log(f"hazir. Kisayol: {hotkey}. Cikmak icin Ctrl-C.")
     with keyboard.GlobalHotKeys({hotkey: _on_activate}) as listener:
         listener.join()

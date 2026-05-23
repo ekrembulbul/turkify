@@ -38,7 +38,8 @@ def test_clipboard_flow_corrects_and_restores(monkeypatch):
         write_clip=write_clip,
         sleep=lambda _s: None,
     )
-    assert out == "bugun görüşme"
+    assert out.original == "bugun gorusme"   # girdi de loglama icin doner
+    assert out.corrected == "bugun görüşme"
     assert pasted == ["bugun görüşme"]   # düzeltilmiş metin yapıştırıldı
     assert clip["value"] == "ESKI_PANO"  # pano eski haline döndü
 
