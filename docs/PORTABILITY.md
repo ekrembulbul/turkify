@@ -53,7 +53,7 @@ CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik 
   "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // Hyper+A
 }
 ```
-Örnek: [`config/config.example.json`](config/config.example.json).
+Örnek: [`config/config.example.json`](../config/config.example.json).
 
 ---
 
