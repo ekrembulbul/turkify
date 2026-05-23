@@ -102,18 +102,27 @@ def run(settings: dict | None = None) -> None:
         controller.release(modifier)
 
     def _on_activate() -> None:
+        # Anlık teşhis: kısayolun algılandığını ve sonucu doğrudan göster.
+        sys.stderr.write("[agent] kisayol algilandi\n")
+        sys.stderr.flush()
         try:
-            correct_clipboard_selection(
+            result = correct_clipboard_selection(
                 cfg,
                 copy_fn=lambda: _combo("c"),
                 paste_fn=lambda: _combo("v"),
                 read_clip=pyperclip.paste,
                 write_clip=pyperclip.copy,
             )
+            if result is None:
+                sys.stderr.write("[agent] secili metin bulunamadi (once metni sec)\n")
+            else:
+                sys.stderr.write(f"[agent] duzeltildi -> {result!r}\n")
         except Exception as exc:  # ajan tek bir hatayla çökmesin
             sys.stderr.write(f"[agent] hata: {exc}\n")
+        sys.stderr.flush()
 
     hotkey = to_pynput_hotkey(cfg["hotkey"])
     sys.stderr.write(f"[agent] hazir. Kisayol: {hotkey}. Cikmak icin Ctrl-C.\n")
+    sys.stderr.flush()
     with keyboard.GlobalHotKeys({hotkey: _on_activate}) as listener:
         listener.join()
