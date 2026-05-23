@@ -64,6 +64,7 @@ newsletter
 spam
 captcha
 log
+API
 
 # --- Programlama & geliştirme ---
 compiler
@@ -367,3 +368,6 @@ pipeline
 legacy
 uptime
 downtime
+
+# --- Özel İsimler ---
+OpenAI
