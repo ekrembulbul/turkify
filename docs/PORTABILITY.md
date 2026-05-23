@@ -34,9 +34,25 @@
 ```
 CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik varsayılan
 ```
+Bu sıra `config.resolve()` içinde uygulanır: `load()` (config+varsayılan) → env
+katmanı → CLI override. `hotkey` dışındaki her ayar hem env hem CLI bayrağı
+olarak verilebilir.
+
+### Ortam değişkenleri
+Her config alanının bir `TURKIFY_*` karşılığı vardır: `TURKIFY_MODEL`,
+`TURKIFY_USE_LLM`, `TURKIFY_USE_MORPHOLOGY`, `TURKIFY_TIMEOUT`, `TURKIFY_BASE_URL`,
+`TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni). Geçersiz bir env değeri
+(ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır ve uyarı yazılır.
+
+### CLI bayrakları
+`--model`, `--llm`/`--no-llm`, `--morphology`/`--no-morphology`, `--timeout`,
+`--base-url`, `--api-key`, `--llm-options` (JSON), `--verbose`/`-v`. Hem düzeltme
+komutu hem `agent` kabul eder.
 
 ### Format & konum
-- **Format: JSON** (stdlib `json` ile bağımlılıksız okunur).
+- **Format: JSON** (stdlib `json` ile bağımlılıksız okunur). JSON **yorum
+  desteklemez**; `//` içeren bir config geçersiz sayılır, varsayılanlara dönülür
+  ve stderr'e uyarı yazılır.
 - **Konum** (`TURKIFY_CONFIG` ile override):
   - macOS / Linux: `~/.config/turkify/config.json` (`$XDG_CONFIG_HOME` varsa o)
   - Windows: `%APPDATA%\turkify\config.json`

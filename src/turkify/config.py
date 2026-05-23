@@ -10,8 +10,9 @@ Konum (``TURKIFY_CONFIG`` ile override edilebilir):
   * Windows       : ``%APPDATA%\\turkify\\config.json``
 
 Öncelik (yüksekten düşüğe): CLI bayrağı > ortam değişkeni > config > varsayılan.
-Bu modül yalnızca "config + varsayılan" katmanını verir; env/bayrak override'ı
-çağıran taraf (CLI/agent) uygular.
+``load()`` yalnızca "config + varsayılan" katmanını verir; ``resolve()`` bunun
+üstüne ``TURKIFY_*`` env ve CLI override katmanlarını ekleyerek tam önceliği
+uygular. ``apply()`` çözülmüş ayarları reranker modülüne yazar.
 """
 
 import json
@@ -87,6 +88,60 @@ def load(path: Path | str | None = None) -> dict:
         return settings
     if isinstance(data, dict):
         settings.update({key: data[key] for key in data if key in DEFAULTS})
+    return settings
+
+
+_TRUE_STRINGS = {"1", "true", "yes", "on", "evet"}
+_FALSE_STRINGS = {"0", "false", "no", "off", "hayir"}
+
+
+def _to_bool(raw: str) -> bool:
+    low = raw.strip().lower()
+    if low in _TRUE_STRINGS:
+        return True
+    if low in _FALSE_STRINGS:
+        return False
+    raise ValueError(f"bool degeri bekleniyordu, {raw!r} alindi")
+
+
+# config anahtarı -> (TURKIFY_* ortam değişkeni, dönüştürücü). Env katmanı
+# config dosyasını ezer, CLI bayrağı da env'i ezer (bkz. resolve()).
+_ENV_MAP: dict = {
+    "model": ("TURKIFY_MODEL", str),
+    "use_llm": ("TURKIFY_USE_LLM", _to_bool),
+    "use_morphology": ("TURKIFY_USE_MORPHOLOGY", _to_bool),
+    "timeout": ("TURKIFY_TIMEOUT", float),
+    "base_url": ("TURKIFY_BASE_URL", str),
+    "api_key": ("TURKIFY_API_KEY", str),
+    "llm_options": ("TURKIFY_LLM_OPTIONS", json.loads),
+}
+
+
+def resolve(overrides: dict | None = None, path: Path | str | None = None) -> dict:
+    """Ayarları tam öncelik sırasıyla çözer.
+
+    Öncelik (yüksekten düşüğe): CLI override > ``TURKIFY_*`` env > config dosyası
+    > yerleşik varsayılan. ``overrides`` içinde değeri ``None`` olan anahtarlar
+    "verilmedi" sayılır (alt katman korunur).
+
+    Args:
+        overrides: CLI bayraklarından gelen değerler (``None`` = verilmedi).
+        path: Config yolu; ``None`` ise ``config_path()``.
+
+    Returns:
+        Çözülmüş ayar sözlüğü.
+    """
+    settings = load(path)
+    for key, (env_name, convert) in _ENV_MAP.items():
+        raw = os.environ.get(env_name)
+        if not raw:  # ayarlanmamış veya boş → atla
+            continue
+        try:
+            settings[key] = convert(raw)
+        except (ValueError, json.JSONDecodeError) as exc:
+            _log.warning("[config] %s degeri gecersiz (%r), yok sayiliyor: %s", env_name, raw, exc)
+    if overrides:
+        settings.update({key: value for key, value in overrides.items() if value is not None})
     return settings
 
 

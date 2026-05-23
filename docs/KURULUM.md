@@ -187,17 +187,34 @@ Tüm komutlar venv etkinken (`source .venv/bin/activate`) ya da
 |---|---|
 | `echo "metin" \| python -m turkify` | stdin'den okur, düzeltilmişi yazar |
 | `python -m turkify dosya.txt` | Dosyadan okur |
-| `python -m turkify --llm` | Tier 3 LLM'i etkinleştir |
-| `python -m turkify --model AD` | Tier 3 modelini seç (config'i geçersiz kılar) |
-| `python -m turkify --verbose` | Hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü `stderr`'e yazar |
 | `python -m turkify agent` | Çok-platform kısayol ajanını başlatır (bkz. [Bölüm 7](#7-kısayol-ajanı-hypera--çok-platform)) |
+
+**Ayar bayrakları** (her ikisi — düzeltme ve `agent` — kabul eder; hepsi
+config'i geçersiz kılar):
+
+| Bayrak | Açıklama |
+|---|---|
+| `--llm` / `--no-llm` | Tier 3 LLM'i aç / kapat |
+| `--morphology` / `--no-morphology` | Tier 2 morfolojiyi aç / kapat |
+| `--model AD` | Tier 3 modeli |
+| `--timeout SN` | LLM istek zaman aşımı (saniye) |
+| `--base-url URL` | OpenAI-uyumlu sunucu kökü (ör. `http://localhost:1234/v1`) |
+| `--api-key ANAHTAR` | Sunucu API anahtarı |
+| `--llm-options JSON` | İsteğe eklenecek JSON, ör. `'{"max_tokens": 512}'` |
+| `--verbose` / `-v` | Hangi kelimenin hangi katmanda çözüldüğünü `stderr`'e yazar |
+
+Örnek (config'e dokunmadan, tamamen bayrakla):
+```bash
+echo "bu engeli asmak gerek" | python -m turkify \
+  --llm --model qwen3.5-9b-mlx --base-url http://localhost:1234/v1 --verbose
+```
 
 > `learn` / `forget` komutları **Faz 7 ile birlikte şimdilik devre dışıdır**
 > (bkz. [Bölüm 9](#9-öğrenen-sistem-tercihler)).
 
 **Davranış notları:**
 - Çıktının sonuna yeni satır eklenmez; boşluk/noktalama/büyük-küçük harf birebir korunur.
-- Ayarlar config'ten okunur (bkz. [Bölüm 6](#6-yapılandırma-config)); bayrak/env onları geçersiz kılar.
+- Öncelik: **CLI bayrağı > `TURKIFY_*` env > config > varsayılan** (bkz. [Bölüm 6](#6-yapılandırma-config)).
 - URL, e-posta, sayı/kod içeren parçalar ve korumalı kelimeler **dokunulmaz**.
 
 ---
@@ -209,6 +226,9 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
 - **Konum:** macOS/Linux → `~/.config/turkify/config.json`, Windows →
   `%APPDATA%\turkify\config.json` (`TURKIFY_CONFIG` ile değiştirilebilir).
 - **Öncelik:** CLI bayrağı > `TURKIFY_*` env > config > varsayılan.
+- **Ortam değişkenleri** (config alanının karşılığı): `TURKIFY_MODEL`,
+  `TURKIFY_USE_LLM`, `TURKIFY_USE_MORPHOLOGY`, `TURKIFY_TIMEOUT`,
+  `TURKIFY_BASE_URL`, `TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni).
 
 ```jsonc
 {

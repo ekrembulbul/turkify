@@ -1,16 +1,25 @@
 """CLI giriş noktası ve komut dağıtımı.
 
 Komutlar:
-    python -m turkify [DOSYA] [--llm] [--verbose|-v] [--model AD]
+    python -m turkify [DOSYA] [SECENEKLER]
         Metni düzeltir (in-process). DOSYA verilmezse stdin okunur.
-        Ayarlar config'ten okunur; bayraklar/env onları geçersiz kılar.
+        Ayarlar config'ten okunur; env ve bayraklar onları geçersiz kılar.
         Öncelik: CLI bayrağı > TURKIFY_* env > config > varsayılan.
-        --verbose: hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü stderr'e
-        yazar; stdout temiz kalır.
-        --model AD: Tier 3 modeli (config'teki modeli geçersiz kılar).
-    python -m turkify agent [--verbose|-v]
+    python -m turkify agent [SECENEKLER]
         Çok-platform kısayol ajanını başlatır: config'teki kısayolu dinler,
         seçili metni kopyala→düzelt→yapıştır yapar (pynput + pyperclip gerekir).
+
+Tüm config ayarları bayrak olarak verilebilir (hotkey hariç — yapısı bileşik
+olduğundan config'ten okunur):
+    --model AD             Tier 3 modeli
+    --llm / --no-llm       Tier 3'ü aç / kapat
+    --morphology /         Tier 2 morfolojiyi aç / kapat
+      --no-morphology
+    --timeout SN           LLM istek zaman aşımı (saniye)
+    --base-url URL         OpenAI-uyumlu sunucu kökü (ör. http://localhost:1234/v1)
+    --api-key ANAHTAR      Sunucu API anahtarı
+    --llm-options JSON     /chat/completions gövdesine eklenecek JSON (ör. '{"max_tokens":512}')
+    --verbose | -v         Karar günlüğünü (Tier 2/3) stderr'e yazar; stdout temiz kalır
 
 NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
 şimdilik DEVRE DIŞIDIR; fonksiyonlar korunur ama ``_COMMANDS``'a bağlı değildir.
@@ -18,8 +27,8 @@ NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
 Çıktı sonuna yeni satır eklenmez; girdi yapısı birebir korunur.
 """
 
+import json
 import logging
-import os
 import sys
 
 from turkify import config
@@ -45,6 +54,41 @@ def _extract_opt(args: list[str], name: str) -> tuple[str | None, list[str]]:
     return None, args
 
 
+def _flag_tristate(args: list[str], on: str, off: str) -> bool | None:
+    """``--on`` → True, ``--off`` → False, ikisi de yoksa ``None`` (verilmedi)."""
+    if off in args:
+        return False
+    if on in args:
+        return True
+    return None
+
+
+def _parse_settings_args(args: list[str]) -> tuple[dict, list[str]]:
+    """Ortak ayar bayraklarını ``config.resolve`` override sözlüğüne çevirir.
+
+    Değeri ``None`` olanlar "verilmedi" sayılır; alt katman (env/config) korunur.
+    Geçersiz ``--timeout`` / ``--llm-options`` ``ValueError`` yükseltir.
+
+    Returns:
+        ``(overrides, remaining)`` — ``remaining`` değer-opsiyonları çıkarılmış
+        arg listesidir (bool bayraklar ve konumsal argümanlar kalır).
+    """
+    overrides: dict = {}
+    overrides["model"], args = _extract_opt(args, "--model")
+    overrides["base_url"], args = _extract_opt(args, "--base-url")
+    overrides["api_key"], args = _extract_opt(args, "--api-key")
+
+    timeout_raw, args = _extract_opt(args, "--timeout")
+    overrides["timeout"] = float(timeout_raw) if timeout_raw is not None else None
+
+    options_raw, args = _extract_opt(args, "--llm-options")
+    overrides["llm_options"] = json.loads(options_raw) if options_raw is not None else None
+
+    overrides["use_llm"] = _flag_tristate(args, "--llm", "--no-llm")
+    overrides["use_morphology"] = _flag_tristate(args, "--morphology", "--no-morphology")
+    return overrides, args
+
+
 def _enable_verbose() -> None:
     """``turkify`` karar günlüğünü stderr'e açar (stdout'a dokunmaz)."""
     handler = logging.StreamHandler(sys.stderr)
@@ -60,25 +104,29 @@ def _enable_verbose() -> None:
 
 
 def _cmd_correct(args: list[str]) -> int:
-    model_flag, args = _extract_opt(args, "--model")
-    use_llm_flag = "--llm" in args
     if _is_verbose(args):
         _enable_verbose()
+    try:
+        overrides, remaining = _parse_settings_args(args)
+    except (ValueError, json.JSONDecodeError) as exc:
+        sys.stderr.write(f"Gecersiz secenek degeri: {exc}\n")
+        return 2
 
-    cfg = config.load()
-    config.apply(cfg)
-    # Öncelik: bayrak > env > config.
-    model = model_flag or os.environ.get("TURKIFY_MODEL") or cfg["model"]
-    use_llm = use_llm_flag or cfg["use_llm"]
-    use_morphology = cfg["use_morphology"]
+    settings = config.resolve(overrides)  # CLI > env > config > varsayilan
+    config.apply(settings)
 
-    positionals = [a for a in args if not a.startswith("-")]
+    positionals = [a for a in remaining if not a.startswith("-")]
     text = _read_input(positionals[0] if positionals else None)
 
     from turkify.engine import correct
 
     sys.stdout.write(
-        correct(text, use_llm=use_llm, use_morphology=use_morphology, model=model)
+        correct(
+            text,
+            use_llm=settings["use_llm"],
+            use_morphology=settings["use_morphology"],
+            model=settings["model"],
+        )
     )
     return 0
 
@@ -86,9 +134,16 @@ def _cmd_correct(args: list[str]) -> int:
 def _cmd_agent(args: list[str]) -> int:
     if _is_verbose(args):
         _enable_verbose()
+    try:
+        overrides, _remaining = _parse_settings_args(args)
+    except (ValueError, json.JSONDecodeError) as exc:
+        sys.stderr.write(f"Gecersiz secenek degeri: {exc}\n")
+        return 2
+
+    settings = config.resolve(overrides)
     from turkify import agent
 
-    agent.run()
+    agent.run(settings)
     return 0
 
 

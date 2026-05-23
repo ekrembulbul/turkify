@@ -104,7 +104,7 @@ def run(settings: dict | None = None) -> None:
     import pyperclip
     from pynput import keyboard
 
-    cfg = settings or _config.load()
+    cfg = settings if settings is not None else _config.resolve()
     _config.apply(cfg)
     correct("isinma", use_morphology=cfg.get("use_morphology", True))  # motoru ısıt
 
