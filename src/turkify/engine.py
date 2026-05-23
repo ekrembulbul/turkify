@@ -18,7 +18,7 @@ etkinleştirilebilir. Etkinken tercih, tüm katmanların önüne geçer.
 import logging
 from functools import lru_cache
 
-from turkify import frequency, learn, morphology, reranker
+from turkify import frequency, harmony, learn, morphology, reranker
 from turkify.candidates import generate_candidates
 from turkify.deasciifier import deasciify
 from turkify.protect import load_protected_words, protected_spans, tr_lower
@@ -215,20 +215,38 @@ def _resolve_words(
     """
     result = list(corrected)
     pending: list[tuple] = []  # (token, ascii_word, candidates)
+    previous_word: str | None = None  # ses uyumu için önceki (düzeltilmiş) kelime
     for token in tokenize(corrected):
         if not token.is_word:
             continue
         if _overlaps_protected(token.start, token.end, spans):
+            previous_word = token.text  # korunan kelime de bağlam sağlar
             continue
         ascii_word = original[token.start : token.end]
+
+        # Ses uyumu: soru eki klitiklerini (mi/mı/mu/mü) önceki kelimeden
+        # deterministik çöz — frekans/LLM'den önce, dilbilgisi kuralı kesin.
+        harmonized = harmony.resolve_question_particle(ascii_word, previous_word)
+        if harmonized is not None:
+            if harmonized != token.text:
+                _log.info(
+                    "[SesUyumu] %r -> %r (onceki kelime: %r)",
+                    ascii_word, harmonized, previous_word,
+                )
+                result[token.start : token.end] = harmonized
+            previous_word = harmonized
+            continue
+
         resolved, ambiguous = _resolve_word_deterministic(
             ascii_word, token.text, use_morphology=use_morphology
         )
         if ambiguous is None:
             if resolved != token.text:
                 result[token.start : token.end] = resolved
+            previous_word = resolved
         else:
             pending.append((token, ascii_word, ambiguous))
+            previous_word = token.text  # Tier1 biçimi sonraki için bağlam
 
     if pending:
         _apply_tier3_batch(
