@@ -35,7 +35,7 @@ _MOD_ALIASES = {
 def to_pynput_hotkey(hotkey: dict) -> str:
     """``{mods:[...], key:"t"}`` → pynput biçimi ``"<ctrl>+<alt>+<cmd>+t"``."""
     mods = [f"<{_MOD_ALIASES.get(m.lower(), m.lower())}>" for m in hotkey.get("mods", [])]
-    return "+".join([*mods, hotkey.get("key", "t").lower()])
+    return "+".join([*mods, hotkey.get("key", "a").lower()])
 
 
 def correct_clipboard_selection(

@@ -15,7 +15,7 @@ ASCII ile yazılmış Türkçe metni (`bugun gorusme yapacagiz`) doğru diakriti
 4. [Adım adım kurulum](#4-adım-adım-kurulum)
 5. [Komut satırı kullanımı](#5-komut-satırı-kullanımı)
 6. [Yapılandırma (config)](#6-yapılandırma-config)
-7. [Kısayol ajanı (Hyper+T) — çok-platform](#7-kısayol-ajanı-hypert--çok-platform)
+7. [Kısayol ajanı (Hyper+A) — çok-platform](#7-kısayol-ajanı-hypera--çok-platform)
 8. [Diğer platformlar (Windows / Linux)](#8-diğer-platformlar-windows--linux)
 9. [Öğrenen sistem (tercihler)](#9-öğrenen-sistem-tercihler)
 10. [Yapılandırma](#10-yapılandırma)
@@ -167,7 +167,7 @@ Tüm komutlar venv etkinken (`source .venv/bin/activate`) ya da
 | `python -m turkify --llm` | Tier 3 LLM'i etkinleştir |
 | `python -m turkify --model AD` | Tier 3 modelini seç (config'i geçersiz kılar) |
 | `python -m turkify --verbose` | Hangi kelimenin hangi katmanda (Tier 2/3) çözüldüğünü `stderr`'e yazar |
-| `python -m turkify agent` | Çok-platform kısayol ajanını başlatır (bkz. [Bölüm 7](#7-kısayol-ajanı-hypert--çok-platform)) |
+| `python -m turkify agent` | Çok-platform kısayol ajanını başlatır (bkz. [Bölüm 7](#7-kısayol-ajanı-hypera--çok-platform)) |
 
 > `learn` / `forget` komutları **Faz 7 ile birlikte şimdilik devre dışıdır**
 > (bkz. [Bölüm 9](#9-öğrenen-sistem-tercihler)).
@@ -194,7 +194,7 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
   "use_morphology": true,
   "timeout": 120,
   "ollama_host": "http://localhost:11434",
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "t" }
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }
 }
 ```
 
@@ -208,7 +208,7 @@ cp config/config.example.json ~/.config/turkify/config.json
 
 ---
 
-## 7. Kısayol ajanı (Hyper+T) — çok-platform
+## 7. Kısayol ajanı (Hyper+A) — çok-platform
 
 Herhangi bir uygulamada **seçili metni** kısayolla yerinde düzeltir (kopyala →
 düzelt → yapıştır; panonu geri yükler). Hammerspoon/Raycast yerine **kendi
@@ -216,7 +216,7 @@ düzelt → yapıştır; panonu geri yükler). Hammerspoon/Raycast yerine **kend
 
 ```bash
 pip install -e ".[agent]"     # pynput + pyperclip
-python -m turkify agent        # config'teki kısayolu dinler (varsayılan Hyper+T)
+python -m turkify agent        # config'teki kısayolu dinler (varsayılan Hyper+A)
 ```
 
 - Kısayolu değiştirmek için `config.json`'daki `hotkey` alanını düzenle, ajanı
@@ -272,7 +272,7 @@ tasarlanmıştır.
 | Ana ayarlar | `~/.config/turkify/config.json` | model, use_llm, timeout, hotkey (bkz. [§6](#6-yapılandırma-config)) |
 | LLM modeli | config `model` / `--model` / `TURKIFY_MODEL` | Önerilen `qwen3.5:9b-mlx`. |
 | LLM zaman aşımı | config `timeout` / `TURKIFY_TIMEOUT` | Saniye; varsayılan 60. |
-| Kısayol (hotkey) | config `hotkey` | Varsayılan Hyper+T; ajan okur. |
+| Kısayol (hotkey) | config `hotkey` | Varsayılan Hyper+A; ajan okur. |
 | Rerank prompt'u | `prompts/rerank_prompt.txt` | LLM'e verilen şablon. |
 
 ---

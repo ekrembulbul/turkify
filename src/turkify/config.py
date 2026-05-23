@@ -26,7 +26,7 @@ DEFAULTS: dict = {
     "use_morphology": True,
     "timeout": 60.0,
     "ollama_host": "http://localhost:11434",
-    "hotkey": {"mods": ["ctrl", "alt", "cmd"], "key": "t"},
+    "hotkey": {"mods": ["ctrl", "alt", "cmd"], "key": "a"},
 }
 
 

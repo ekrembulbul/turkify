@@ -50,7 +50,7 @@ CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik 
   "use_morphology": true,
   "timeout": 60,
   "ollama_host": "http://localhost:11434",
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "t" }   // Hyper+T
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // Hyper+A
 }
 ```
 Örnek: [`config/config.example.json`](config/config.example.json).
