@@ -41,13 +41,13 @@ olarak verilebilir.
 ### Ortam değişkenleri
 Her config alanının bir `TURKIFY_*` karşılığı vardır: `TURKIFY_MODEL`,
 `TURKIFY_USE_LLM`, `TURKIFY_USE_MORPHOLOGY`, `TURKIFY_TIMEOUT`, `TURKIFY_BASE_URL`,
-`TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni). Geçersiz bir env değeri
-(ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır ve uyarı yazılır.
+`TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni), `TURKIFY_ASSISTANT_PREFILL`.
+Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır ve uyarı yazılır.
 
 ### CLI bayrakları
 `--model`, `--llm`/`--no-llm`, `--morphology`/`--no-morphology`, `--timeout`,
-`--base-url`, `--api-key`, `--llm-options` (JSON), `--verbose`/`-v`. Hem düzeltme
-komutu hem `agent` kabul eder.
+`--base-url`, `--api-key`, `--llm-options` (JSON), `--assistant-prefill`,
+`--verbose`/`-v`. Hem düzeltme komutu hem `agent` kabul eder.
 
 ### Format & konum
 - **Format: JSON** (stdlib `json` ile bağımlılıksız okunur). JSON **yorum
@@ -67,7 +67,8 @@ komutu hem `agent` kabul eder.
   "timeout": 60,
   "base_url": "http://localhost:11434/v1",  // OpenAI-uyumlu sunucu (LM Studio: .../1234/v1)
   "api_key": null,                  // sunucu isterse (yerelde genelde gerekmez)
-  "llm_options": {},                // /chat/completions isteğine eklenecek ekstra alanlar
+  "llm_options": {},                // /chat/completions gövdesine eklenecek ekstra ALANLAR
+  "assistant_prefill": null,        // isteğe eklenecek asistan MESAJI (ör. "<think>\n\n</think>\n\n")
   "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // Hyper+A
 }
 ```
@@ -90,11 +91,30 @@ komutu hem `agent` kabul eder.
   `http://localhost:11434/v1`); `TURKIFY_BASE_URL` env'i ile de geçilebilir.
 - Sunucu API anahtarı isterse `api_key` (veya `TURKIFY_API_KEY`) kullanılır;
   yerel sunucular genelde istemez.
-- `llm_options` (dict) `/chat/completions` gövdesine olduğu gibi eklenir; böylece
-  sunucu/model-özel ayarlar (ör. reasoning'i kapatma: `chat_template_kwargs`,
-  `reasoning_effort`) Turkify'a hardcode edilmeden kullanıcı tarafından yönetilir.
-  `temperature`/`max_tokens` de buradan ezilebilir; `model`/`messages`/`stream`
-  korunur (doğruluğa etkili oldukları için).
+- `llm_options` (dict) `/chat/completions` gövdesine ekstra **alan** olarak eklenir;
+  böylece sunucu/model-özel ayarlar (ör. `chat_template_kwargs`, `reasoning_effort`)
+  Turkify'a hardcode edilmeden yönetilir. `temperature`/`max_tokens` buradan
+  ezilebilir; `model`/`messages`/`stream` korunur (doğruluğa etkili oldukları için).
+- `assistant_prefill` (str) isteğin sonuna bir asistan **mesajı** ekler. Başlıca
+  kullanım: düşünen modellerde reasoning'i atlatmak — `"<think>\n\n</think>\n\n"`
+  verilince model doğrudan cevaba geçer. `llm_options`'tan farkı: o **alan** ekler,
+  bu **mesaj** ekler.
+
+### Düşünme (reasoning) modu — motor farkı
+"Düşünen" modeller (Qwen3.5/3.6) cevaptan önce uzun reasoning üretir: daha doğru
+ama yavaş. Kapatma yöntemi **çalıştırma motoruna** bağlıdır:
+
+| Yöntem | LM Studio (MLX) | Ollama / GGUF / llama.cpp / vLLM |
+|---|---|---|
+| `llm_options: {chat_template_kwargs:{enable_thinking:false}}` | ❌ yok sayılır | ✅ çalışır |
+| `assistant_prefill: "<think>\n\n</think>\n\n"` | ✅ çalışır | ✅ çalışır |
+
+- **MLX** motoru `chat_template_kwargs`'ı template'e geçirmez → o yöntem MLX'te
+  etkisiz; `assistant_prefill` gerekir. **GGUF/llama.cpp** ikisini de işler (bazı
+  GGUF build'leri düşünmeyi varsayılan kapalı getirir).
+- ⚠️ Düşünmeyi kapatmak hızlandırır ama **doğruluğu düşürebilir** — hem de tam Tier 3'ün
+  devreye girdiği belirsiz vakalarda. Varsayılan: düşünme açık. (Ayrıntı:
+  [KURULUM.md → Düşünme modunu kapatma](KURULUM.md#düşünme-reasoning-modunu-kapatma).)
 
 ---
 

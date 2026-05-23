@@ -57,6 +57,13 @@ API_KEY = os.environ.get("TURKIFY_API_KEY")
 # yazar (ör. {"chat_template_kwargs": {"enable_thinking": false}}). temperature/
 # max_tokens da buradan ezilebilir; model/messages/stream korunur.
 LLM_OPTIONS: dict = {}
+# İstek mesajlarının sonuna eklenecek bir asistan "prefill"i (config
+# "assistant_prefill"). Boş/None ise eklenmez. Başlıca kullanım: "düşünen"
+# modellerde reasoning'i atlatmak — değer ``<think>\n\n</think>\n\n`` verilirse
+# model "zaten düşündüm (boş)" sayıp doğrudan cevaba geçer (Qwen'in kendi
+# non-thinking mekanizması). Reasoning'i istek parametresiyle (chat_template_kwargs)
+# kapatamayan motorlarda (ör. LM Studio MLX) çalışan, runtime-bağımsız yöntem.
+ASSISTANT_PREFILL: str | None = None
 
 _PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "rerank_prompt.txt"
 
@@ -188,7 +195,12 @@ def _chat_completion(prompt: str, model: str, timeout: float) -> str | None:
     payload = {"temperature": 0}
     payload.update(LLM_OPTIONS)
     payload["model"] = model
-    payload["messages"] = [{"role": "user", "content": prompt}]
+    messages = [{"role": "user", "content": prompt}]
+    # Opsiyonel asistan prefill'i (ör. düşünmeyi atlatmak için boş <think> bloğu).
+    # Son mesaj olarak eklenir; sunucu bunu sürdürür (continuation).
+    if ASSISTANT_PREFILL:
+        messages.append({"role": "assistant", "content": ASSISTANT_PREFILL})
+    payload["messages"] = messages
     payload["stream"] = False
     request = urllib.request.Request(
         _endpoint("chat/completions"),

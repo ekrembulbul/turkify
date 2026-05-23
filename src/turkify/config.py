@@ -40,6 +40,9 @@ DEFAULTS: dict = {
     # /chat/completions isteğine eklenecek sunucu/model-özel seçenekler. Ör.
     # düşünmeyi kapatmak: {"chat_template_kwargs": {"enable_thinking": false}}.
     "llm_options": {},
+    # İstek sonuna eklenecek asistan prefill'i. "düşünen" modellerde reasoning'i
+    # atlatmak için "<think>\n\n</think>\n\n" verilebilir (bkz. reranker).
+    "assistant_prefill": None,
     "hotkey": {"mods": ["ctrl", "alt", "cmd"], "key": "a"},
 }
 
@@ -114,6 +117,7 @@ _ENV_MAP: dict = {
     "base_url": ("TURKIFY_BASE_URL", str),
     "api_key": ("TURKIFY_API_KEY", str),
     "llm_options": ("TURKIFY_LLM_OPTIONS", json.loads),
+    "assistant_prefill": ("TURKIFY_ASSISTANT_PREFILL", str),
 }
 
 
@@ -161,4 +165,6 @@ def apply(settings: dict) -> None:
         reranker.API_KEY = settings["api_key"]
     if settings.get("llm_options"):
         reranker.LLM_OPTIONS = settings["llm_options"]
+    if settings.get("assistant_prefill"):
+        reranker.ASSISTANT_PREFILL = settings["assistant_prefill"]
 

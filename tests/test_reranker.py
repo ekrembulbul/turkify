@@ -205,6 +205,35 @@ def test_llm_options_cannot_clobber_messages(monkeypatch):
     assert captured["body"]["stream"] is False      # stream zorla False
 
 
+def test_assistant_prefill_appended_when_set(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse(_openai_payload("1: aşk"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(reranker, "ASSISTANT_PREFILL", "<think>\n\n</think>\n\n")
+    reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
+    messages = captured["body"]["messages"]
+    assert messages[0]["role"] == "user"
+    assert messages[-1] == {"role": "assistant", "content": "<think>\n\n</think>\n\n"}
+
+
+def test_no_assistant_prefill_by_default(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse(_openai_payload("1: aşk"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(reranker, "ASSISTANT_PREFILL", None)
+    reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
+    roles = [m["role"] for m in captured["body"]["messages"]]
+    assert roles == ["user"]  # prefill yok
+
+
 def test_api_key_adds_authorization_header(monkeypatch):
     captured = {}
 
