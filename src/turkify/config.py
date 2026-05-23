@@ -15,8 +15,13 @@ Bu modül yalnızca "config + varsayılan" katmanını verir; env/bayrak overrid
 """
 
 import json
+import logging
 import os
 from pathlib import Path
+
+# Config sorunları "turkify" günlüğüne WARNING olarak yazılır; --verbose olmasa
+# bile (Python'un last-resort handler'ı sayesinde) stderr'de görünür.
+_log = logging.getLogger("turkify")
 
 # Yerleşik varsayılanlar. ``model`` bilinçli olarak None: model config'te
 # belirtilmezse Tier 3 (LLM) çalışmaz (otomatik model tespiti yapılmaz).
@@ -25,7 +30,15 @@ DEFAULTS: dict = {
     "use_llm": False,
     "use_morphology": True,
     "timeout": 60.0,
-    "ollama_host": "http://localhost:11434",
+    # OpenAI-uyumlu LLM sunucusunun kök adresi (sona /chat/completions eklenir).
+    # Varsayılan Ollama'nın yerel OpenAI-uyumlu ucu; LM Studio için ör.
+    # "http://localhost:1234/v1".
+    "base_url": "http://localhost:11434/v1",
+    # Yerel sunucular genelde anahtar istemez; gerekiyorsa buraya yazılır.
+    "api_key": None,
+    # /chat/completions isteğine eklenecek sunucu/model-özel seçenekler. Ör.
+    # düşünmeyi kapatmak: {"chat_template_kwargs": {"enable_thinking": false}}.
+    "llm_options": {},
     "hotkey": {"mods": ["ctrl", "alt", "cmd"], "key": "a"},
 }
 
@@ -59,7 +72,18 @@ def load(path: Path | str | None = None) -> dict:
         return settings
     try:
         data = json.loads(file_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError as exc:
+        # Sık tuzak: dosyaya // yorum eklemek (JSON yorum desteklemez). Sessizce
+        # varsayılana düşmek yerine uyar; aksi hâlde config görünüşte "duruyor"
+        # ama hiç uygulanmıyormuş gibi şaşırtıcı davranış olur.
+        _log.warning(
+            "[config] %s gecersiz JSON (yorum/virgul hatasi olabilir; JSON yorum "
+            "desteklemez) -> varsayilanlar kullaniliyor: %s",
+            file_path, exc,
+        )
+        return settings
+    except OSError as exc:
+        _log.warning("[config] %s okunamadi -> varsayilanlar kullaniliyor: %s", file_path, exc)
         return settings
     if isinstance(data, dict):
         settings.update({key: data[key] for key in data if key in DEFAULTS})
@@ -67,7 +91,7 @@ def load(path: Path | str | None = None) -> dict:
 
 
 def apply(settings: dict) -> None:
-    """Config'teki Tier 3 ayarlarını (timeout, ollama_host) reranker'a uygular.
+    """Config'teki Tier 3 ayarlarını (timeout, base_url, api_key, llm_options) reranker'a uygular.
 
     Model açıkça ``correct(model=...)`` ile geçirilir; burada yalnızca modül
     düzeyindeki diğer çalışma zamanı varsayılanları güncellenir.
@@ -76,6 +100,10 @@ def apply(settings: dict) -> None:
 
     if settings.get("timeout") is not None:
         reranker.DEFAULT_TIMEOUT = float(settings["timeout"])
-    if settings.get("ollama_host"):
-        reranker.OLLAMA_HOST = settings["ollama_host"]
+    if settings.get("base_url"):
+        reranker.BASE_URL = settings["base_url"]
+    if settings.get("api_key"):
+        reranker.API_KEY = settings["api_key"]
+    if settings.get("llm_options"):
+        reranker.LLM_OPTIONS = settings["llm_options"]
 

@@ -95,7 +95,7 @@ Clipboard değiştirilir → metin yapıştırılır
 | Deasciifier | Pattern/n-gram tabanlı (Yüret tarzı) | 1 | Deterministik çekirdek |
 | Frekans sözlüğü | Türkçe korpus frekans listesi | 1 | Aday sıralama |
 | Morfoloji | Zemberek | 2 | Aday doğrulama/eleme |
-| LLM runtime | Ollama | 3 | Opsiyonel, belirsiz kelimeler |
+| LLM runtime | OpenAI-uyumlu sunucu (Ollama, LM Studio, …) | 3 | Opsiyonel, belirsiz kelimeler |
 | Lokal model | Qwen2.5 (örn. 7B) | 3 | Yalnızca rerank |
 | Ana dil | Python (venv) | — | Orkestrasyon |
 
@@ -253,9 +253,9 @@ source ~/venvs/turkify-env/bin/activate
 
 # macOS bağımlılıkları
 brew install --cask hammerspoon
-brew install ollama         # yalnızca Tier 3 için gerekli
+brew install ollama         # yalnızca Tier 3 için (OpenAI-uyumlu sunucu örneği)
 
-# Ollama modeli (yalnızca Tier 3)
+# Tier 3 modeli (OpenAI-uyumlu herhangi bir sunucu kullanılabilir; ör. Ollama)
 ollama pull qwen2.5:7b
 ollama serve
 ```

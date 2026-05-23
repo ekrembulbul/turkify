@@ -14,7 +14,7 @@
 
 | Katman | Sorumluluk | Bağımlılık | OS |
 |---|---|---|---|
-| **Çekirdek motor** | Tier 1/2/3 düzeltme | yok (zeyrek/Ollama opsiyonel) | her platform |
+| **Çekirdek motor** | Tier 1/2/3 düzeltme | yok (zeyrek/LLM sunucusu opsiyonel) | her platform |
 | **CLI** (`turkify`) | stdin/dosya → düzeltilmiş metin (in-process) | — | her platform |
 | **Ajan** (`turkify agent`) | Global kısayol → kopyala→düzelt→yapıştır | `pynput`, `pyperclip` | macOS ✅ / Win / Linux* |
 | **Config** (`config.py`) | Tüm ayarları tek JSON'da topla | — | her platform |
@@ -49,7 +49,9 @@ CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik 
   "use_llm": false,
   "use_morphology": true,
   "timeout": 60,
-  "ollama_host": "http://localhost:11434",
+  "base_url": "http://localhost:11434/v1",  // OpenAI-uyumlu sunucu (LM Studio: .../1234/v1)
+  "api_key": null,                  // sunucu isterse (yerelde genelde gerekmez)
+  "llm_options": {},                // /chat/completions isteğine eklenecek ekstra alanlar
   "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // Hyper+A
 }
 ```
@@ -63,6 +65,20 @@ CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik 
   Tier 3 (LLM) **çalışmaz** — otomatik model tespiti yapılmaz.
 - Önceliğe göre `--model` / `TURKIFY_MODEL` config'i geçersiz kılar.
 - İleride GUI'de kurulu modeller bir combobox'a getirilip kullanıcıya seçtirilecek.
+
+### LLM sunucusu (Tier 3)
+- Turkify, **OpenAI-uyumlu** `/v1/chat/completions` ucunu konuşur; bu protokolü
+  Ollama, LM Studio, llama.cpp (server), Jan, GPT4All, vLLM, MLX gibi araçların
+  hepsi sunar. Böylece tek istemci geniş bir ekosistemi kapsar.
+- Sunucu adresi `base_url` ile seçilir (varsayılan Ollama'nın yerel ucu
+  `http://localhost:11434/v1`); `TURKIFY_BASE_URL` env'i ile de geçilebilir.
+- Sunucu API anahtarı isterse `api_key` (veya `TURKIFY_API_KEY`) kullanılır;
+  yerel sunucular genelde istemez.
+- `llm_options` (dict) `/chat/completions` gövdesine olduğu gibi eklenir; böylece
+  sunucu/model-özel ayarlar (ör. reasoning'i kapatma: `chat_template_kwargs`,
+  `reasoning_effort`) Turkify'a hardcode edilmeden kullanıcı tarafından yönetilir.
+  `temperature`/`max_tokens` de buradan ezilebilir; `model`/`messages`/`stream`
+  korunur (doğruluğa etkili oldukları için).
 
 ---
 
@@ -115,8 +131,9 @@ ve buraya not ettiğimiz maddeler:
   çevirir** (Apple, izni programatik vermeye izin vermez).
 
 ### 7.2 Model seçimi (combobox)
-- Ollama'daki **kurulu modeller otomatik listelenip** bir combobox'a getirilir;
-  kullanıcı seçer, seçim `config.json`'daki `model` alanına yazılır.
+- Sunucudaki **kurulu modeller otomatik listelenip** (OpenAI-uyumlu `/v1/models`)
+  bir combobox'a getirilir; kullanıcı seçer, seçim `config.json`'daki `model`
+  alanına yazılır.
 - Şu an model config'te elle yazılıyor; GUI bunu seçilebilir/keşfedilebilir yapar.
 
 ### 7.3 İşlem geri bildirimi (LLM beklemesi)
@@ -128,7 +145,7 @@ ve buraya not ettiğimiz maddeler:
 
 ### 7.4 Ayar arayüzü
 - `config.json` alanları (kısayol, `use_llm`, `use_morphology`, `timeout`,
-  `model`, `ollama_host`) GUI'den düzenlenebilir.
+  `model`, `base_url`, `api_key`, `llm_options`) GUI'den düzenlenebilir.
 - Kısayol kaydedici (hotkey recorder), Tier 2/Tier 3 aç-kapa anahtarları.
 
 **Framework önerisi:** Tkinter (stdlib, çok-platform). Menü-bar/tepsi göstergesi

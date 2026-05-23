@@ -12,7 +12,7 @@ kullandığı üçüncü taraf bileşenleri ve lisanslarını listeler.
 | nltk, numpy | zeyrek'in dolaylı bağımlılıkları | Apache-2.0 / BSD-3 | PyPI (paketlenmez) |
 | pynput — global kısayol/tuş simülasyonu | Opsiyonel (`turkify agent`) | LGPL-3.0 | PyPI: `pynput` (paketlenmez) |
 | pyperclip — pano okuma/yazma | Opsiyonel (`turkify agent`) | BSD-3 | PyPI: `pyperclip` (paketlenmez) |
-| Ollama + LLM modeli (ör. Qwen) | Opsiyonel çalışma zamanı (Tier 3) | Kendi lisansları | Yerel olarak çalışır; paketlenmez |
+| OpenAI-uyumlu yerel LLM sunucusu (ör. Ollama, LM Studio) + model (ör. Qwen) | Opsiyonel çalışma zamanı (Tier 3) | Kendi lisansları | Yerel olarak çalışır; paketlenmez |
 | pytest | Yalnızca geliştirme/test | MIT | PyPI (paketlenmez) |
 
 > "Paketlenmez": pip ile kurulan/dışarıda çalışan bileşenlerdir; bu repoda

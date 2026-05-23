@@ -7,7 +7,7 @@ Kademeli/hibrit akış:
 
 Her katman opsiyoneldir ve graceful biçimde atlanır:
   * Tier 2 yalnızca ``zeyrek`` kuruluysa ve ``use_morphology=True`` iken,
-  * Tier 3 yalnızca ``use_llm=True`` ve Ollama erişilebilirken çalışır.
+  * Tier 3 yalnızca ``use_llm=True`` ve OpenAI-uyumlu LLM sunucusu erişilebilirken çalışır.
 Hiçbiri yoksa sistem Faz 1 deterministik davranışını korur.
 
 NOT: Faz 7 (öğrenen sistem / kullanıcı tercihi) şimdilik DEVRE DIŞIDIR
@@ -296,13 +296,13 @@ def correct(
 
     Args:
         text: ASCII (şapkasız) Türkçe metin.
-        use_llm: Tier 3 LLM rerank'i (Ollama) etkinleştirir. Yalnızca birden
-            fazla geçerli aday bağlam gerektirdiğinde ve Ollama erişilebilirken
-            kullanılır; aksi hâlde deterministik karar korunur.
+        use_llm: Tier 3 LLM rerank'i etkinleştirir. Yalnızca birden fazla geçerli
+            aday bağlam gerektirdiğinde ve OpenAI-uyumlu LLM sunucusu
+            erişilebilirken kullanılır; aksi hâlde deterministik karar korunur.
         use_morphology: Tier 2 morfolojik doğrulamayı etkinleştirir. ``zeyrek``
             kurulu değilse otomatik atlanır.
-        model: Tier 3 için kullanılacak Ollama modeli. ``None`` ise
-            ``reranker.DEFAULT_MODEL`` (TURKIFY_MODEL env veya yerleşik varsayılan).
+        model: Tier 3 için kullanılacak model adı (OpenAI-uyumlu sunucudaki).
+            ``None`` ise ``reranker.DEFAULT_MODEL`` (TURKIFY_MODEL env).
 
     Returns:
         Diakritikleri restore edilmiş metin.

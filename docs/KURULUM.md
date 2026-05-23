@@ -53,7 +53,7 @@ Sistem kademelidir; her katman opsiyoneldir ve kurulu değilse sessizce atlanır
 |---|---|---|---|
 | **Tier 1** | Deterministik şapka restorasyonu | Yok (sadece Python) | — (her zaman çalışır) |
 | **Tier 2** | Morfolojik doğrulama + frekans (geçersiz/belirsiz kelimeleri çözer) | `zeyrek` paketi (frekans verisi gömülü) | Tier 1 ile devam eder |
-| **Tier 3** | Bağlamsal belirsizlik için LLM | Ollama + model (config'te) | LLM atlanır, deterministik kalır |
+| **Tier 3** | Bağlamsal belirsizlik için LLM | OpenAI-uyumlu yerel sunucu (Ollama, LM Studio, …) + model | LLM atlanır, deterministik kalır |
 | **Kısayol ajanı** | Sistem geneli kısayol (seç → düzelt → yapıştır) | `pynput` + `pyperclip` | CLI'den elle çalıştırırsın |
 
 **Öneri:** Tier 1 + Tier 2 + Ajan kombinasyonu çoğu kullanıcı için en iyi denge
@@ -66,7 +66,7 @@ uğraşıyorsan, config'e bir model yazarak ekle.
 
 - **macOS** (öncelikli; çekirdek motor ve ajan kodu çok-platform — bkz. [Bölüm 8](#8-diğer-platformlar-windows--linux)).
 - **Python 3.10+** — kontrol: `python3 --version`
-- (Tier 3 için) **Ollama** — `brew install ollama`
+- (Tier 3 için) **OpenAI-uyumlu bir yerel LLM sunucusu** — ör. Ollama (`brew install ollama`), LM Studio, llama.cpp, Jan, MLX
 - (Kısayol için) **ajan bağımlılıkları** — `pip install -e ".[agent]"` (pynput + pyperclip)
 
 ---
@@ -109,7 +109,13 @@ Tier 3 **tamamen opsiyoneldir**; kurmasan da sistem Tier 1 + morfoloji + frekans
 ile çalışır. LLM yalnızca **frekansın bile karar veremediği** gerçek bağlamsal
 belirsizliklerde (`asmak`/`aşmak`, `ucu`/`üçü` gibi) ve `--llm` ile devreye girer.
 
+Turkify, **OpenAI-uyumlu** (`/v1/chat/completions`) herhangi bir yerel LLM
+sunucusuyla konuşur. Bu protokolü **Ollama, LM Studio, llama.cpp (server), Jan,
+GPT4All, vLLM, MLX** gibi araçların hepsi destekler; sunucunun adresini
+config'teki `base_url` ile seçersin.
+
 ```bash
+# Örnek: Ollama (OpenAI-uyumlu ucu localhost:11434/v1)
 brew install ollama
 ollama serve                 # ayrı bir terminalde açık kalmalı
 ollama pull qwen3.5:9b       # önerilen model (aşağıya bakın)
@@ -117,9 +123,26 @@ ollama pull qwen3.5:9b       # önerilen model (aşağıya bakın)
 echo "bu zorlugu birlikte asmak zorundayiz" | python -m turkify --llm
 ```
 
+> **Başka sunucu kullanmak için** `base_url`'ü değiştir (varsayılan Ollama'nın
+> ucu). Örn. LM Studio için `http://localhost:1234/v1`. Sunucu API anahtarı
+> istiyorsa config'teki `api_key` (ya da `TURKIFY_API_KEY`) alanını doldur;
+> yerel sunucular genelde istemez.
+
 > Tier 3 için config'te (ya da `--model` ile) bir model belirtilmelidir; model
 > yoksa Tier 3 atlanır. İlk çağrıda model belleğe yüklenir (yavaş); ajan
 > kullanıldığında motor sıcak kaldığı için sonraki çağrılar hızlıdır.
+
+> ⚠️ **Düşünen (reasoning) modeller:** OpenAI-uyumlu protokolde reasoning'i
+> kapatan standart bir alan yoktur. Qwen3 gibi "düşünen" modeller yanıttan önce
+> uzun bir akıl yürütme üretip yavaşlayabilir (Turkify gelen `<think>` bloğunu
+> temizler ama süre uzar). İki çözüm: **(1)** instruct / non-reasoning bir model
+> seçmek (en sağlamı), **(2)** sunucunun beklediği alanı config'teki
+> `llm_options`'a yazmak — ör. Qwen3/vLLM için:
+> ```jsonc
+> "llm_options": { "chat_template_kwargs": { "enable_thinking": false } }
+> ```
+> `llm_options` içeriği `/chat/completions` isteğine olduğu gibi eklenir; bu
+> yüzden alan adı tamamen **senin sunucuna** bağlıdır (Turkify yorumlamaz).
 
 #### Hangi modeli kullanmalı?
 
@@ -193,10 +216,18 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
   "use_llm": true,
   "use_morphology": true,
   "timeout": 120,
-  "ollama_host": "http://localhost:11434",
+  "base_url": "http://localhost:11434/v1",  // OpenAI-uyumlu sunucu (LM Studio: .../1234/v1)
+  "api_key": null,                  // yerel sunucular genelde istemez
+  "llm_options": {},                // istege eklenecek sunucu/model-ozel alanlar
   "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }
 }
 ```
+
+> ⚠️ **Yukarıdaki `//` açıklamalar yalnızca anlatım içindir.** Gerçek
+> `config.json` **saf JSON** olmalı — JSON yorum (`//`) desteklemez. Yorumlu bir
+> dosya geçersiz sayılır ve config sessizce **yok sayılıp** varsayılanlara
+> dönülür (artık bu durumda stderr'e bir uyarı yazılır). En temizi:
+> `config/config.example.json`'u (yorumsuz) kopyalamak.
 
 Başlamak için örneği kopyalayıp düzenle:
 
@@ -302,9 +333,9 @@ venv etkin değil ya da paket kurulu değil. `source .venv/bin/activate` ve
 `python -c "from turkify import morphology; print(morphology.available())"` → `True` olmalı.
 
 **`--llm` etkisiz / Tier 3 atlanıyor**
-Config'te bir `model` var mı? Model yoksa Tier 3 çalışmaz. Ollama açık mı
-(`ollama serve`) ve o model kurulu mu (`ollama list`)? Kontrol:
-`curl -s http://localhost:11434/api/tags`. `--verbose` ile sebebi görebilirsin.
+Config'te bir `model` var mı? Model yoksa Tier 3 çalışmaz. LLM sunucusu açık mı
+(ör. Ollama için `ollama serve`) ve o model kurulu mu? Kontrol (OpenAI-uyumlu uç):
+`curl -s http://localhost:11434/v1/models`. `--verbose` ile sebebi görebilirsin.
 
 **Kısayol ajanı tepki vermiyor**
 `pip install -e ".[agent]"` yapıldı mı? **macOS'ta Erişilebilirlik izni**

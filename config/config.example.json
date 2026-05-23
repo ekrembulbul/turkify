@@ -3,6 +3,8 @@
   "use_llm": false,
   "use_morphology": true,
   "timeout": 60,
-  "ollama_host": "http://localhost:11434",
+  "base_url": "http://localhost:11434/v1",
+  "api_key": null,
+  "llm_options": {},
   "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }
 }

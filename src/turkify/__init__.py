@@ -3,7 +3,7 @@
 Kademeli (hibrit) mimari:
   Tier 1  deterministik deasciifier  (Faz 1)
   Tier 2  morfolojik doğrulama       (Faz 2, opsiyonel zeyrek)
-  Tier 3  LLM rerank                 (Faz 3, opsiyonel Ollama)
+  Tier 3  LLM rerank                 (Faz 3, opsiyonel OpenAI-uyumlu sunucu)
   + Faz 7 lokal öğrenen tercih katmanı
 
 ``correct`` tembel içe aktarılır (PEP 562); böylece yalnızca soket istemcisi

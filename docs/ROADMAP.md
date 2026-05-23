@@ -80,7 +80,7 @@ Faz 1'e göre ölçülebilir biçimde artar (altın veri setinde).
 **Amaç:** Yalnızca bağlam gerektiren belirsizlikleri çözmek (`ask` → `ask`/`aşk`).
 
 **Çıktılar:**
-- **Tier 3 reranker:** Ollama + Qwen2.5; sadece seçim yapar, metin üretmez.
+- **Tier 3 reranker:** OpenAI-uyumlu yerel sunucu (Ollama, LM Studio, …) + model; sadece seçim yapar, metin üretmez.
 - `use_llm=True` ile etkinleşir; kapalıyken sistem tam offline kalır.
 - Belirsiz kelimeler için cache.
 

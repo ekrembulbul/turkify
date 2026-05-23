@@ -8,10 +8,13 @@ Bir cümledeki tüm belirsiz kelimeler ``choose_batch`` ile TEK istekte
 çözülür (kelime başına ayrı çağrı yerine); böylece çok belirsizli cümlelerde
 gecikme düşer.
 
-Ollama'nın yerel HTTP API'sini standart kütüphane (``urllib``) ile kullanır;
-ekstra çalışma zamanı bağımlılığı eklemez. Ollama erişilemezse veya yanıt
-adaylardan biri değilse ``None`` döner ve çağıran taraf güvenli tarafta
-(deterministik karar) kalır.
+**OpenAI-uyumlu** yerel bir LLM sunucusunun ``/v1/chat/completions`` ucunu
+standart kütüphane (``urllib``) ile kullanır; ekstra çalışma zamanı bağımlılığı
+eklemez. Bu protokolü Ollama, LM Studio, llama.cpp (server), Jan, GPT4All, vLLM,
+MLX (``mlx_lm.server``) gibi araçların hepsi konuştuğu için tek bir istemci
+hepsini kapsar. Adres ``base_url`` ile seçilir (varsayılan: Ollama'nın yerel
+OpenAI-uyumlu ucu). Sunucuya erişilemezse veya yanıt adaylardan biri değilse
+``None`` döner ve çağıran taraf güvenli tarafta (deterministik karar) kalır.
 """
 
 import json
@@ -30,16 +33,30 @@ _log = logging.getLogger("turkify")
 
 _WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
 
-OLLAMA_HOST = "http://localhost:11434"
+# OpenAI-uyumlu API kök adresi. Sonuna "/chat/completions" ve "/models" eklenir.
+# Varsayılan, Ollama'nın yerel OpenAI-uyumlu ucudur; LM Studio için ör.
+# "http://localhost:1234/v1". TURKIFY_BASE_URL ile veya config (base_url) ile
+# değiştirilir.
+BASE_URL = os.environ.get("TURKIFY_BASE_URL", "http://localhost:11434/v1")
 # Model zorunludur ve yapılandırmadan gelir (config "model" / CLI --model /
 # TURKIFY_MODEL env). Hiçbiri verilmezse model None'dur ve Tier 3 (LLM) çalışmaz;
 # otomatik model tespiti yapılmaz. Yerleşik bir varsayılan model YOKTUR.
 DEFAULT_MODEL = os.environ.get("TURKIFY_MODEL")
 # Büyük modeller ilk çağrıda belleğe yüklenirken (cold start) yavaş olabilir;
-# bu yüzden cömert bir varsayılan. Ollama kapalıysa bağlantı zaten anında
+# bu yüzden cömert bir varsayılan. Sunucu kapalıysa bağlantı zaten anında
 # reddedilir, bu süre yalnızca "açık ama yavaş" durumunda beklenir.
 # TURKIFY_TIMEOUT ortam değişkeniyle ayarlanabilir.
 DEFAULT_TIMEOUT = float(os.environ.get("TURKIFY_TIMEOUT", "60"))
+# Yerel sunucular genelde anahtar istemez; bazıları (ör. vLLM) isteyebilir.
+# Verilirse "Authorization: Bearer ..." başlığı eklenir. TURKIFY_API_KEY env'i
+# veya config (api_key) ile ayarlanır.
+API_KEY = os.environ.get("TURKIFY_API_KEY")
+# /chat/completions gövdesine eklenecek sunucu/model-özel istek seçenekleri
+# (config "llm_options"). OpenAI-uyumlu protokolde reasoning'i kapatma gibi
+# ayarlar standart değildir; kullanıcı kendi sunucusunun beklediği alanı buraya
+# yazar (ör. {"chat_template_kwargs": {"enable_thinking": false}}). temperature/
+# max_tokens da buradan ezilebilir; model/messages/stream korunur.
+LLM_OPTIONS: dict = {}
 
 _PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "rerank_prompt.txt"
 
@@ -49,10 +66,23 @@ def _prompt_template() -> str:
     return _PROMPT_PATH.read_text(encoding="utf-8")
 
 
+def _endpoint(path: str) -> str:
+    """``base_url`` ile uç yolunu birleştirir (tek/çift eğik çizgiye dayanıklı)."""
+    return f"{BASE_URL.rstrip('/')}/{path.lstrip('/')}"
+
+
+def _headers() -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if API_KEY:
+        headers["Authorization"] = f"Bearer {API_KEY}"
+    return headers
+
+
 def available(*, timeout: float = 2.0) -> bool:
-    """Ollama yerel sunucusu erişilebilir mi?"""
+    """OpenAI-uyumlu sunucu erişilebilir mi? (GET ``/models``)"""
     try:
-        with urllib.request.urlopen(f"{OLLAMA_HOST}/api/tags", timeout=timeout) as resp:
+        request = urllib.request.Request(_endpoint("models"), headers=_headers())
+        with urllib.request.urlopen(request, timeout=timeout) as resp:
             return resp.status == 200
     except (urllib.error.URLError, TimeoutError, OSError):
         return False
@@ -110,26 +140,25 @@ def _match_candidate(answer: str, candidates: tuple[str, ...]) -> str | None:
 
 
 def _http_detail(exc: urllib.error.HTTPError) -> str:
-    """HTTP hata gövdesinden Ollama'nın 'error' mesajını çıkarır."""
+    """HTTP hata gövdesinden sunucunun 'error' mesajını çıkarır."""
     try:
         body = exc.read().decode("utf-8")
-        return json.loads(body).get("error", body)
+        parsed = json.loads(body)
+        # OpenAI biçimi {"error": {"message": ...}}; Ollama {"error": "..."}.
+        error = parsed.get("error", body)
+        if isinstance(error, dict):
+            return error.get("message", json.dumps(error))
+        return error
     except Exception:
         return str(exc)
 
 
-# Qwen3 vb. "düşünen" modellerin ürettiği reasoning bloğunu ve şablon özel
-# tokenlarını yanıttan ayıklamak için desenler.
+# Bazı "düşünen" modeller reasoning'i yanıt metnine <think>...</think> olarak
+# gömer; bunları ve şablon özel tokenlarını ayıklarız. (Bazı sunucular reasoning'i
+# ayrı bir "reasoning_content" alanına koyar; onu zaten okumuyoruz.)
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 _OPEN_THINK_RE = re.compile(r"<think>.*", re.DOTALL | re.IGNORECASE)
 _SPECIAL_TOKEN_RE = re.compile(r"<\|[^|]*\|>")
-
-# 'think' parametresini desteklemeyen modeller için yeniden-deneme işareti.
-_THINK_UNSUPPORTED = object()
-
-# Çıktı uzunluğu sınırı: yalnızca "1: secim" gibi kısa yanıt gerekir. Reasoning
-# sızsa bile üretimi keserek timeout'a takılmayı önler.
-_NUM_PREDICT = 256
 
 
 def _strip_thinking(text: str) -> str:
@@ -140,75 +169,75 @@ def _strip_thinking(text: str) -> str:
     return text.strip()
 
 
-def _post_generate(prompt: str, model: str, timeout: float, *, think: bool | None):
-    """Tek bir /api/generate isteği. ``think`` desteklenmiyorsa sentinel döner."""
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "stream": False,
-        # num_predict üretimi sınırlar (timeout koruması). 'stop' kullanmıyoruz:
-        # model bazen önce boş şablon ("1:\n2:") yazıp gerçek cevabı blank satır
-        # sonrası veriyor; "\n\n" stop'u bunu keserdi. Bunun yerine _parse_batch
-        # boş satırları yok sayar ve her numaranın ilk DOLU cevabını alır.
-        "options": {"temperature": 0, "num_predict": _NUM_PREDICT},
-    }
-    if think is not None:
-        payload["think"] = think  # düşünen modellerde reasoning'i kapatır
+def _extract_content(data: dict) -> str | None:
+    """OpenAI-uyumlu yanıttan asistan mesajının metnini çıkarır."""
+    try:
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        return None
 
+
+def _chat_completion(prompt: str, model: str, timeout: float) -> str | None:
+    """Tek bir ``/chat/completions`` isteği. Yanıt metnini döner, hata olursa ``None``."""
+    # Belirleyicilik için temperature=0. max_tokens'i bilerek GÖNDERMİYORUZ:
+    # "düşünen" modeller cevaptan önce uzun bir reasoning üretir; düşük bir tavan
+    # cevabı (content) hiç oluşmadan keser. Üretim süresi zaten DEFAULT_TIMEOUT
+    # ile sınırlıdır (asıl güvenlik ağı). İsteyen llm_options'a "max_tokens"
+    # ekleyebilir. temperature de LLM_OPTIONS ile ezilebilir; model/messages/
+    # stream sonradan zorla ayarlanır (doğruluğa etkili, kullanıcı bozmasın).
+    payload = {"temperature": 0}
+    payload.update(LLM_OPTIONS)
+    payload["model"] = model
+    payload["messages"] = [{"role": "user", "content": prompt}]
+    payload["stream"] = False
     request = urllib.request.Request(
-        f"{OLLAMA_HOST}/api/generate",
+        _endpoint("chat/completions"),
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=_headers(),
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = _http_detail(exc)
-        if think is not None and "think" in str(detail).lower():
-            return _THINK_UNSUPPORTED  # model 'think' parametresini bilmiyor
         if exc.code == 404:
             _log.warning(
-                "[Tier3] Ollama: model %r bulunamadi (once: ollama pull %s)",
-                model, model,
+                "[Tier3] Model %r bulunamadi (sunucuda yuklu mu?): %s", model, detail
+            )
+        elif exc.code in (401, 403):
+            _log.warning(
+                "[Tier3] Yetkilendirme hatasi (TURKIFY_API_KEY / api_key gerekebilir): %s",
+                detail,
             )
         else:
-            _log.warning("[Tier3] Ollama HTTP %s hatasi: %s", exc.code, detail)
+            _log.warning("[Tier3] HTTP %s hatasi: %s", exc.code, detail)
         return None
     except TimeoutError:
         # TimeoutError, OSError'in alt sinifidir; aşağıdaki bloktan ÖNCE yakalanmalı.
         _log.warning(
-            "[Tier3] Ollama zaman asimi (%.0f sn). Model yukleniyor olabilir; "
-            "tekrar deneyin veya TURKIFY_TIMEOUT'u artirin.",
+            "[Tier3] LLM istegi zaman asimina ugradi (%.0f sn). Model yukleniyor "
+            "olabilir; tekrar deneyin veya TURKIFY_TIMEOUT'u artirin.",
             timeout,
         )
         return None
     except (urllib.error.URLError, OSError) as exc:
         _log.warning(
-            "[Tier3] Ollama'ya erisilemedi (calisiyor mu? 'ollama serve'): %s", exc
+            "[Tier3] LLM sunucusuna erisilemedi (calisiyor mu? base_url dogru mu?): %s",
+            exc,
         )
         return None
     except json.JSONDecodeError:
-        _log.warning("[Tier3] Ollama yaniti cozulemedi (gecersiz JSON)")
+        _log.warning("[Tier3] Sunucu yaniti cozulemedi (gecersiz JSON)")
         return None
 
     if data.get("error"):
-        if think is not None and "think" in str(data["error"]).lower():
-            return _THINK_UNSUPPORTED
-        _log.warning("[Tier3] Ollama hatasi: %s", data["error"])
+        _log.warning("[Tier3] Sunucu hatasi: %s", data["error"])
         return None
-    return data.get("response")
-
-
-def _query_ollama(prompt: str, model: str, timeout: float) -> str | None:
-    # Önce reasoning kapalı dene ("düşünen" modellerde 60 sn takılmayı önler).
-    result = _post_generate(prompt, model, timeout, think=False)
-    if result is _THINK_UNSUPPORTED:
-        # Model 'think' parametresini desteklemiyor → parametresiz tekrar dene.
-        result = _post_generate(prompt, model, timeout, think=None)
-    if isinstance(result, str):
-        return _strip_thinking(result)
-    return None
+    content = _extract_content(data)
+    if content is None:
+        _log.warning("[Tier3] Yanitta icerik yok (beklenmeyen yanit bicimi)")
+        return None
+    return _strip_thinking(content)
 
 
 @lru_cache(maxsize=512)
@@ -228,7 +257,7 @@ def choose_batch(
     Args:
         sentence: Üzerinde çalışılan (Tier 1/2 uygulanmış) cümle.
         asks: ``(kelime, adaylar)`` ikilileri (hashlenebilir olması için tuple).
-        model: Ollama model adı.
+        model: OpenAI-uyumlu model adı.
         timeout: İstek zaman aşımı (sn).
 
     Returns:
@@ -239,7 +268,7 @@ def choose_batch(
     # timeout/model çağrı anında çözülür; böylece config ile güncellenen
     # modül varsayılanları (DEFAULT_TIMEOUT) etki eder.
     effective_timeout = timeout if timeout is not None else DEFAULT_TIMEOUT
-    response = _query_ollama(
+    response = _chat_completion(
         _build_batch_prompt(sentence, asks), model or DEFAULT_MODEL, effective_timeout
     )
     if response is None:

@@ -34,6 +34,18 @@ def test_corrupt_file_falls_back_to_defaults(tmp_path):
     assert config.load(path) == config.DEFAULTS
 
 
+def test_corrupt_file_logs_warning(tmp_path, caplog):
+    import logging
+
+    # // yorumlu JSON gecersizdir; sessizce yutulmamali, uyari verilmeli.
+    path = tmp_path / "config.json"
+    path.write_text('{\n  "model": "x"  // yorum\n}', encoding="utf-8")
+    with caplog.at_level(logging.WARNING, logger="turkify"):
+        cfg = config.load(path)
+    assert cfg == config.DEFAULTS
+    assert any("gecersiz JSON" in r.getMessage() for r in caplog.records)
+
+
 def test_config_path_respects_env(monkeypatch):
     monkeypatch.setenv("TURKIFY_CONFIG", "/tmp/ozel/config.json")
     assert str(config.config_path()) == "/tmp/ozel/config.json"

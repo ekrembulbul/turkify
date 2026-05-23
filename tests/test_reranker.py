@@ -1,4 +1,4 @@
-"""Tier 3 batch LLM rerank testleri — Ollama HTTP çağrısı mock'lanır."""
+"""Tier 3 batch LLM rerank testleri — OpenAI-uyumlu HTTP çağrısı mock'lanır."""
 
 import io
 import json
@@ -27,6 +27,11 @@ class _FakeResponse:
 
     def read(self):
         return self._body
+
+
+def _openai_payload(content: str) -> dict:
+    """OpenAI-uyumlu /chat/completions başarı yanıtı (asistan içeriği)."""
+    return {"choices": [{"message": {"role": "assistant", "content": content}}]}
 
 
 @pytest.fixture(autouse=True)
@@ -66,24 +71,24 @@ def test_empty_asks_returns_empty(monkeypatch):
     def fail(*a, **k):
         raise AssertionError("bos asks'te sorgu yapilmamali")
 
-    monkeypatch.setattr(reranker, "_query_ollama", fail)
+    monkeypatch.setattr(reranker, "_chat_completion", fail)
     assert reranker.choose_batch("cumle", ()) == ()
 
 
 def test_choose_batch_parses_single_selection(monkeypatch):
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "1: aşk")
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: "1: aşk")
     result = reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
     assert result == ("aşk",)
 
 
 def test_choose_batch_parses_multiple_selections(monkeypatch):
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "1: ucu\n2: aşmak")
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: "1: ucu\n2: aşmak")
     asks = (("ucu", ("ucu", "uçu", "üçü")), ("asmak", ("asmak", "aşmak")))
     assert reranker.choose_batch("cumle", asks) == ("ucu", "aşmak")
 
 
 def test_choose_batch_handles_various_separators(monkeypatch):
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "1) ucu\n2. aşmak")
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: "1) ucu\n2. aşmak")
     asks = (("ucu", ("ucu", "üçü")), ("asmak", ("asmak", "aşmak")))
     assert reranker.choose_batch("cumle", asks) == ("ucu", "aşmak")
 
@@ -91,7 +96,7 @@ def test_choose_batch_handles_various_separators(monkeypatch):
 def test_parse_batch_ignores_trailing_hallucination(monkeypatch):
     # Model cevaptan sonra uydurma ek gorevler uretirse, ilk cevaplar korunmali.
     response = "1: turu\n2: işe\n\nHere is the task:\n1: adamı\n2: bulmak"
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: response)
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: response)
     asks = (("turu", ("turu", "türü")), ("ise", ("ise", "işe")))
     assert reranker.choose_batch("cumle", asks) == ("turu", "işe")
 
@@ -99,25 +104,25 @@ def test_parse_batch_ignores_trailing_hallucination(monkeypatch):
 def test_parse_batch_ignores_empty_scaffold(monkeypatch):
     # Model once bos sablon ("1:\n2:") yazip sonra gercek cevaplari verebilir.
     response = "1:\n2:\n\n1: doküman\n2: sor"
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: response)
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: response)
     asks = (("dokuman", ("dokuman", "doküman")), ("sor", ("sor", "şor")))
     assert reranker.choose_batch("cumle", asks) == ("doküman", "sor")
 
 
 def test_missing_selection_yields_none(monkeypatch):
     # Yanit sadece 1. soruyu cevapliyor; 2. soru None olmali.
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "1: ucu")
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: "1: ucu")
     asks = (("ucu", ("ucu", "üçü")), ("asmak", ("asmak", "aşmak")))
     assert reranker.choose_batch("cumle", asks) == ("ucu", None)
 
 
 def test_invalid_selection_yields_none(monkeypatch):
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: "1: bambaska")
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: "1: bambaska")
     assert reranker.choose_batch("cumle", _ask_one()) == (None,)
 
 
 def test_returns_all_none_when_ollama_unavailable(monkeypatch):
-    monkeypatch.setattr(reranker, "_query_ollama", lambda *a, **k: None)
+    monkeypatch.setattr(reranker, "_chat_completion", lambda *a, **k: None)
     asks = (("ucu", ("ucu", "üçü")), ("asmak", ("asmak", "aşmak")))
     assert reranker.choose_batch("cumle", asks) == (None, None)
 
@@ -137,43 +142,104 @@ def test_strip_thinking_removes_unclosed_block():
 
 
 def test_choose_batch_strips_thinking_before_parsing(monkeypatch):
-    payload = {"response": "<think>cok uzun reasoning</think>\n1: aşk"}
+    payload = _openai_payload("<think>cok uzun reasoning</think>\n1: aşk")
     monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: _FakeResponse(payload))
     result = reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
     assert result == ("aşk",)
 
 
-def test_unsupported_think_param_falls_back(monkeypatch):
-    # Ilk istek (think=False) "think" hatasi verir; parametresiz tekrar denenir.
-    calls = []
+# --- OpenAI-uyumlu transport (gercek urlopen mock'lanir) ---
+
+
+def test_request_hits_chat_completions_with_messages(monkeypatch):
+    captured = {}
 
     def fake_urlopen(request, timeout=None):
-        body = json.loads(request.data.decode("utf-8"))
-        calls.append("think" in body)
-        if "think" in body:
-            raise urllib.error.HTTPError(
-                request.full_url, 400, "Bad Request", {},
-                io.BytesIO(b'{"error":"this model does not support think"}'),
-            )
-        return _FakeResponse({"response": "1: aşk"})
+        captured["url"] = request.full_url
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["headers"] = request.headers
+        return _FakeResponse(_openai_payload("1: aşk"))
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    result = reranker.choose_batch("cumle", (("ask", ("ask", "aşk")),))
+    result = reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
     assert result == ("aşk",)
-    assert calls == [True, False]  # once think'li, sonra think'siz
+    assert captured["url"].endswith("/chat/completions")
+    assert captured["body"]["messages"][0]["role"] == "user"
+    assert captured["body"]["temperature"] == 0
 
 
-# --- Ollama hata tanilari ---
+def test_llm_options_merged_into_payload(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse(_openai_payload("1: aşk"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        reranker,
+        "LLM_OPTIONS",
+        {"chat_template_kwargs": {"enable_thinking": False}, "temperature": 0.5},
+    )
+    reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
+    body = captured["body"]
+    # Kullanici alani eklenir; temperature ezilebilir.
+    assert body["chat_template_kwargs"] == {"enable_thinking": False}
+    assert body["temperature"] == 0.5
+    # Cekirdek alanlar (model/messages/stream) kullanici tarafindan bozulamaz.
+    assert body["messages"][0]["content"]
+    assert body["stream"] is False
+
+
+def test_llm_options_cannot_clobber_messages(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse(_openai_payload("1: aşk"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(reranker, "LLM_OPTIONS", {"messages": [], "stream": True})
+    reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
+    assert captured["body"]["messages"] != []      # bizim prompt korunur
+    assert captured["body"]["stream"] is False      # stream zorla False
+
+
+def test_api_key_adds_authorization_header(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["headers"] = {k.lower(): v for k, v in request.headers.items()}
+        return _FakeResponse(_openai_payload("1: aşk"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(reranker, "API_KEY", "gizli-anahtar")
+    reranker.choose_batch("kalbimde ask var", (("ask", ("ask", "aşk")),))
+    assert captured["headers"].get("authorization") == "Bearer gizli-anahtar"
+
+
+def test_unexpected_response_shape_yields_none(monkeypatch, caplog):
+    # "choices" yoksa (beklenmeyen bicim) icerik cikarilamaz -> None.
+    monkeypatch.setattr(
+        urllib.request, "urlopen", lambda *a, **k: _FakeResponse({"unexpected": True})
+    )
+    with caplog.at_level(logging.WARNING, logger="turkify"):
+        result = reranker.choose_batch("cumle", _ask_one())
+    assert result == (None,)
+    assert any("icerik yok" in r.getMessage() for r in caplog.records)
+
+
+# --- Hata tanilari ---
 
 
 def test_missing_model_logs_clear_warning(monkeypatch, caplog):
     def raise_404(*args, **kwargs):
         raise urllib.error.HTTPError(
-            "http://localhost:11434/api/generate",
+            "http://localhost:11434/v1/chat/completions",
             404,
             "Not Found",
             {},
-            io.BytesIO(b'{"error":"model not found"}'),
+            io.BytesIO(b'{"error":{"message":"model not found"}}'),
         )
 
     monkeypatch.setattr(urllib.request, "urlopen", raise_404)
@@ -183,7 +249,24 @@ def test_missing_model_logs_clear_warning(monkeypatch, caplog):
     assert any("bulunamadi" in r.getMessage() for r in caplog.records)
 
 
-def test_ollama_unreachable_logs_warning(monkeypatch, caplog):
+def test_auth_error_logs_warning(monkeypatch, caplog):
+    def raise_401(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            "http://localhost:11434/v1/chat/completions",
+            401,
+            "Unauthorized",
+            {},
+            io.BytesIO(b'{"error":{"message":"invalid api key"}}'),
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", raise_401)
+    with caplog.at_level(logging.WARNING, logger="turkify"):
+        result = reranker.choose_batch("cumle", _ask_one())
+    assert result == (None,)
+    assert any("Yetkilendirme" in r.getMessage() for r in caplog.records)
+
+
+def test_server_unreachable_logs_warning(monkeypatch, caplog):
     def raise_conn(*args, **kwargs):
         raise urllib.error.URLError("connection refused")
 

@@ -25,7 +25,7 @@ Pahalı LLM varsayılan yol değildir. Ucuz ve **deterministik** katmanlar önce
 | **Ses uyumu** | Soru eki (`mi/mı/mu/mü`) bağlama göre deterministik çözülür | yok |
 | **Tier 1** | Yüret deasciifier — pattern tabanlı dönüşüm | yok |
 | **Tier 2** | Frekans + zeyrek morfolojik doğrulama | opsiyonel (`zeyrek`) |
-| **Tier 3** | Ollama LLM rerank — sadece seçer, metin üretmez | opsiyonel (Ollama) |
+| **Tier 3** | LLM rerank — sadece seçer, metin üretmez | opsiyonel (OpenAI-uyumlu sunucu: Ollama, LM Studio, …) |
 
 Tier 3 kapalıyken (varsayılan) sistem tam offline çalışır.
 
