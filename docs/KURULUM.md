@@ -132,17 +132,9 @@ echo "bu zorlugu birlikte asmak zorundayiz" | python -m turkify --llm
 > yoksa Tier 3 atlanır. İlk çağrıda model belleğe yüklenir (yavaş); ajan
 > kullanıldığında motor sıcak kaldığı için sonraki çağrılar hızlıdır.
 
-> ⚠️ **Düşünen (reasoning) modeller:** OpenAI-uyumlu protokolde reasoning'i
-> kapatan standart bir alan yoktur. Qwen3 gibi "düşünen" modeller yanıttan önce
-> uzun bir akıl yürütme üretip yavaşlayabilir (Turkify gelen `<think>` bloğunu
-> temizler ama süre uzar). İki çözüm: **(1)** instruct / non-reasoning bir model
-> seçmek (en sağlamı), **(2)** sunucunun beklediği alanı config'teki
-> `llm_options`'a yazmak — ör. Qwen3/vLLM için:
-> ```jsonc
-> "llm_options": { "chat_template_kwargs": { "enable_thinking": false } }
-> ```
-> `llm_options` içeriği `/chat/completions` isteğine olduğu gibi eklenir; bu
-> yüzden alan adı tamamen **senin sunucuna** bağlıdır (Turkify yorumlamaz).
+> ⚠️ **Düşünen (reasoning) modeller** (Qwen3.5/3.6 gibi) yanıttan önce uzun bir
+> akıl yürütme üretip yavaşlayabilir. Kapatma yöntemleri ve ödünleşimi için
+> aşağıdaki [Düşünme modunu kapatma](#düşünme-reasoning-modunu-kapatma) bölümüne bak.
 
 #### Hangi modeli kullanmalı?
 
@@ -176,6 +168,58 @@ export TURKIFY_TIMEOUT=120
 > "model bulunamadi (once: ollama pull ...)" uyarısını görür, sistem
 > deterministik sonuçla devam eder.
 
+#### Düşünme (reasoning) modunu kapatma
+
+**"Düşünen" modeller** (Qwen3.5/3.6 gibi) cevaptan önce uzun bir akıl yürütme
+(reasoning) üretir. Bu **doğruluğu artırır** ama yavaşlatır (tek belirsiz kelime
+için ~15–20 sn). Tier 3 zaten yalnızca gerçek belirsizliklerde çalıştığı ve ajan
+motoru sıcak tuttuğu için günlük kullanımda bu bekleme seyrektir.
+
+> ⚠️ **Ödünleşim:** Düşünmeyi kapatmak hızlandırır **ama doğruluğu düşürebilir** —
+> hem de tam olarak Tier 3'ün devreye girdiği zor/belirsiz vakalarda. Ölçtük:
+> *"bu engeli birlikte asmak"* → düşününce doğru **aşmak** (~16 sn), düşünmeyince
+> yanlış **asmak** (~1 sn). Bu yüzden **varsayılan: düşünme açık.**
+
+Yine de kapatmak istersen iki kaldıraç var; hangisinin işe yaradığı modelin
+**çalıştırma motoruna** bağlıdır:
+
+**MLX vs normal (GGUF) modeller**
+- **MLX** (Apple Silicon'da hızlı; LM Studio'da adı `...-mlx`): MLX motoru
+  `chat_template_kwargs`'ı template'e **geçirmez**, o yüzden o yöntem MLX'te etkisizdir.
+- **GGUF / llama.cpp tabanlı** (Ollama, LM Studio GGUF, llama.cpp server):
+  `chat_template_kwargs`'ı düzgün işler. Hatta bazı GGUF build'leri (ör. Unsloth
+  Qwen3.5 küçük modeller) düşünmeyi **varsayılan kapalı** getirir.
+
+**Yöntem 1 — `llm_options` → `chat_template_kwargs`** (template-bilinçli motorlar):
+```jsonc
+"llm_options": { "chat_template_kwargs": { "enable_thinking": false } }
+```
+`llm_options` içeriği `/chat/completions` gövdesine **olduğu gibi** eklenir (Turkify
+yorumlamaz). vLLM, SGLang, llama.cpp ve GGUF modellerde çalışır; **LM Studio MLX'te
+yok sayılır.**
+
+**Yöntem 2 — `assistant_prefill`** (motor `chat_template_kwargs`'ı yok sayıyorsa):
+```jsonc
+"assistant_prefill": "<think>\n\n</think>\n\n"
+```
+İsteğin sonuna boş bir `<think></think>` bloğu içeren bir asistan mesajı ekler; model
+"zaten düşündüm (boş)" sayıp doğrudan cevaba geçer (Qwen'in kendi non-thinking
+mekanizması). **Her motorda çalışır** — MLX dahil.
+
+| Yöntem | LM Studio (MLX) | Ollama / GGUF / llama.cpp / vLLM |
+|---|---|---|
+| `llm_options.chat_template_kwargs` | ❌ yok sayılır | ✅ çalışır (en temiz) |
+| `assistant_prefill` (`<think></think>`) | ✅ çalışır | ✅ çalışır |
+
+> 💡 **En sağlam hız çözümü:** düşünmeyen bir **instruct** model seçmek (ör.
+> Qwen2.5-Instruct veya Unsloth'un non-thinking GGUF'u). O zaman hiçbir ayara gerek
+> kalmaz; ama yukarıdaki doğruluk ödünleşimini hatırla.
+
+> ℹ️ **`llm_options` ile `assistant_prefill` farkı:** `llm_options` isteğin
+> **gövdesine alan** ekler (parametre); `assistant_prefill` ise isteğe bir **mesaj**
+> ekler. Düşünmeyi kapatmak bir mesaj (boş `<think>`) gerektirdiğinden, MLX gibi
+> motorlarda yalnızca `assistant_prefill` işe yarar.
+
 ---
 
 ## 5. Komut satırı kullanımı
@@ -200,7 +244,8 @@ config'i geçersiz kılar):
 | `--timeout SN` | LLM istek zaman aşımı (saniye) |
 | `--base-url URL` | OpenAI-uyumlu sunucu kökü (ör. `http://localhost:1234/v1`) |
 | `--api-key ANAHTAR` | Sunucu API anahtarı |
-| `--llm-options JSON` | İsteğe eklenecek JSON, ör. `'{"max_tokens": 512}'` |
+| `--llm-options JSON` | İsteğe eklenecek JSON gövdesi alanları, ör. `'{"chat_template_kwargs":{"enable_thinking":false}}'` |
+| `--assistant-prefill S` | İsteğe asistan prefill'i ekler; düşünmeyi atlatmak için `$'<think>\n\n</think>\n\n'` |
 | `--verbose` / `-v` | Hangi kelimenin hangi katmanda çözüldüğünü `stderr`'e yazar |
 
 Örnek (config'e dokunmadan, tamamen bayrakla):
@@ -228,7 +273,8 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
 - **Öncelik:** CLI bayrağı > `TURKIFY_*` env > config > varsayılan.
 - **Ortam değişkenleri** (config alanının karşılığı): `TURKIFY_MODEL`,
   `TURKIFY_USE_LLM`, `TURKIFY_USE_MORPHOLOGY`, `TURKIFY_TIMEOUT`,
-  `TURKIFY_BASE_URL`, `TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni).
+  `TURKIFY_BASE_URL`, `TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni),
+  `TURKIFY_ASSISTANT_PREFILL`.
 
 ```jsonc
 {
@@ -238,7 +284,8 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
   "timeout": 120,
   "base_url": "http://localhost:11434/v1",  // OpenAI-uyumlu sunucu (LM Studio: .../1234/v1)
   "api_key": null,                  // yerel sunucular genelde istemez
-  "llm_options": {},                // istege eklenecek sunucu/model-ozel alanlar
+  "llm_options": {},                // istek govdesine eklenecek alanlar ( or. chat_template_kwargs)
+  "assistant_prefill": null,        // ust asistan prefill'i; dusunmeyi kapatmak icin "<think>\n\n</think>\n\n"
   "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }
 }
 ```

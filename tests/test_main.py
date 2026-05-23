@@ -38,6 +38,14 @@ def test_llm_options_parsed_as_json():
     assert overrides["llm_options"] == {"max_tokens": 512}
 
 
+def test_assistant_prefill_parsed():
+    overrides, remaining = cli._parse_settings_args(
+        ["--assistant-prefill", "<think>\n\n</think>\n\n", "dosya.txt"]
+    )
+    assert overrides["assistant_prefill"] == "<think>\n\n</think>\n\n"
+    assert remaining == ["dosya.txt"]
+
+
 def test_invalid_timeout_raises():
     with pytest.raises(ValueError):
         cli._parse_settings_args(["--timeout", "abc"])

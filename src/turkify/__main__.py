@@ -19,6 +19,8 @@ olduğundan config'ten okunur):
     --base-url URL         OpenAI-uyumlu sunucu kökü (ör. http://localhost:1234/v1)
     --api-key ANAHTAR      Sunucu API anahtarı
     --llm-options JSON     /chat/completions gövdesine eklenecek JSON (ör. '{"max_tokens":512}')
+    --assistant-prefill S  İstek sonuna eklenecek asistan prefill'i; düşünen modellerde
+                           reasoning'i atlatmak için $'<think>\\n\\n</think>\\n\\n'
     --verbose | -v         Karar günlüğünü (Tier 2/3) stderr'e yazar; stdout temiz kalır
 
 NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
@@ -77,6 +79,7 @@ def _parse_settings_args(args: list[str]) -> tuple[dict, list[str]]:
     overrides["model"], args = _extract_opt(args, "--model")
     overrides["base_url"], args = _extract_opt(args, "--base-url")
     overrides["api_key"], args = _extract_opt(args, "--api-key")
+    overrides["assistant_prefill"], args = _extract_opt(args, "--assistant-prefill")
 
     timeout_raw, args = _extract_opt(args, "--timeout")
     overrides["timeout"] = float(timeout_raw) if timeout_raw is not None else None
