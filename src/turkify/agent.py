@@ -192,6 +192,23 @@ def run(settings: dict | None = None) -> None:
             _log(f"hata: {exc}")
 
     hotkey = to_pynput_hotkey(cfg["hotkey"])
+
+    # pynput'un GlobalHotKeys'i enjekte edilmiş (sentetik) tuş olaylarını BİLEREK
+    # yok sayar (kaynak: _on_press içinde "if not injected"). Ancak CapsLock'u
+    # Hyper'a eşleyen AutoHotkey gibi araçlar modifier'ları sentetik (injected)
+    # gönderir; o durumda GlobalHotKeys kısayolu hiç algılayamaz. Bu yüzden
+    # eşleştirmeyi, injected ayrımı yapmayan Listener + HotKey ile kendimiz
+    # yaparız (pynput'un dokümante ettiği kalıp). Fiziksel tuşlar da aynı yoldan
+    # işlendiği için bu, tüm platformlarda çalışır.
+    hot = keyboard.HotKey(keyboard.HotKey.parse(hotkey), _on_activate)
+
+    def _for_canonical(handler):
+        return lambda key: handler(listener.canonical(key))
+
+    listener = keyboard.Listener(
+        on_press=_for_canonical(hot.press),
+        on_release=_for_canonical(hot.release),
+    )
     _log(f"hazir. Kisayol: {to_display_hotkey(cfg['hotkey'])}. Cikmak icin Ctrl-C.")
-    with keyboard.GlobalHotKeys({hotkey: _on_activate}) as listener:
+    with listener:
         listener.join()
