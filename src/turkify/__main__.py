@@ -36,23 +36,36 @@ import sys
 from turkify import config
 
 
+def _reconfigure_utf8(stream) -> None:
+    """Bir akışı (varsa) UTF-8'e sabitler; ``reconfigure`` yoksa sessizce atlar."""
+    reconfigure = getattr(stream, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8")
+
+
 def _force_utf8_io() -> None:
-    """stdin/stdout/stderr'i UTF-8'e sabitler.
+    """stdout/stderr'i UTF-8'e sabitler.
 
     Windows'ta akışlar bir konsola değil de boruya/dosyaya yönlendirildiğinde
     Python yerel ANSI kod sayfasına (ör. cp1254) düşer; bu, Türkçe karakterleri
     bozar. macOS/Linux'ta zaten UTF-8 olduğundan bu çağrı etkisizdir.
+
+    NOT: ``sys.stdin`` BİLEREK hariç. Windows'ta stdin'i reconfigure etmek,
+    ``agent`` komutunda pynput'un global klavye hook'unu bozuyor (ajan tuş
+    olaylarını almıyor). stdin yalnızca CLI metin okurken gerekir; orada
+    ``_read_input`` ayrıca UTF-8'e geçer.
     """
-    for stream in (sys.stdin, sys.stdout, sys.stderr):
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is not None:
-            reconfigure(encoding="utf-8")
+    _reconfigure_utf8(sys.stdout)
+    _reconfigure_utf8(sys.stderr)
 
 
 def _read_input(path: str | None) -> str:
     if path:
         with open(path, encoding="utf-8") as handle:
             return handle.read()
+    # stdin UTF-8'e burada (yalnızca okumadan hemen önce) geçilir; _force_utf8_io
+    # stdin'e dokunmaz çünkü bu, ajanın klavye hook'unu bozuyor (bkz. _force_utf8_io).
+    _reconfigure_utf8(sys.stdin)
     return sys.stdin.read()
 
 
