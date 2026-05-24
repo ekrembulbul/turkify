@@ -232,6 +232,7 @@ Tüm komutlar venv etkinken (`source .venv/bin/activate`) ya da
 | `echo "metin" \| python -m turkify` | stdin'den okur, düzeltilmişi yazar |
 | `python -m turkify dosya.txt` | Dosyadan okur |
 | `python -m turkify agent` | Çok-platform kısayol ajanını başlatır (bkz. [Bölüm 7](#7-kısayol-ajanı-hypera--çok-platform)) |
+| `python -m turkify serve [--stdio\|--socket YOL]` | Sıcak motoru JSON protokolüyle sunar (native frontend'ler/Linux servisi için) |
 
 **Ayar bayrakları** (her ikisi — düzeltme ve `agent` — kabul eder; hepsi
 config'i geçersiz kılar):

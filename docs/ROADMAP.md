@@ -90,12 +90,14 @@ yetersiz kalırsa gerekçelendirilir.
 Rol dağılımı: native taraf **menü-bar/tray + global kısayol + pano + izinler**;
 Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzeltilmiş metin".
 
-### 6.0 — Refactor: motor servisi (`turkify serve`)
-**Önce bu yapılır; tüm frontend'lerin ortak sözleşmesidir.**
+### 6.0 — Refactor: motor servisi (`turkify serve`) ✅
+**Tüm frontend'lerin ortak sözleşmesi — tamamlandı.**
 - ➕ `turkify serve` komutu: satır-bazlı JSON protokolü (bkz. [ADR 0004](adr/0004-motor-sinir-protokolu.md)).
   İki taşıma: `--stdio` (GUI sahipli) ve `--socket PATH` (Linux servis). Mesaj formatı aynı.
   - `{"text": …}` → `{"corrected": …}` / `{"error": …}`; `{"cmd":"ping"|"reload"}`.
   - `engine.correct` aynen kullanılır; `serve` ince bir döngü/sarmalayıcıdır.
+  - ✅ `src/turkify/serve.py` (`EngineService.handle` + `serve_stdio` + `serve_socket`),
+    `turkify serve [--stdio|--socket YOL]`, testler. İki taşıma da uçtan uca doğrulandı.
 - 🔄 `agent.py` (pynput/pyperclip) **geçici statüye** alınır: kısayol+pano native'e
   devredildikçe emekliye ayrılır. Henüz native frontend'i olmayan OS'lar için durur.
 - 🔒 **CLI dokunulmaz:** `turkify` CLI birinci-sınıf ve birincil senaryodur; `serve`

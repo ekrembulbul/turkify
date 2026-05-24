@@ -8,6 +8,9 @@ Komutlar:
     python -m turkify agent [SECENEKLER]
         Çok-platform kısayol ajanını başlatır: config'teki kısayolu dinler,
         seçili metni kopyala→düzelt→yapıştır yapar (pynput + pyperclip gerekir).
+    python -m turkify serve [--stdio | --socket YOL] [SECENEKLER]
+        Sıcak motoru JSON protokolüyle sunar (native frontend'ler/Linux servisi
+        için). --stdio (varsayılan): stdin/stdout; --socket: Unix soketi.
 
 Tüm config ayarları bayrak olarak verilebilir (hotkey hariç — yapısı bileşik
 olduğundan config'ten okunur):
@@ -160,6 +163,30 @@ def _cmd_correct(args: list[str]) -> int:
     return 0
 
 
+def _cmd_serve(args: list[str]) -> int:
+    if _is_verbose(args):
+        _enable_verbose()
+    socket_path, args = _extract_opt(args, "--socket")
+    args = [a for a in args if a != "--stdio"]  # varsayılan; bayrak kabul edilir ama yok sayılır
+    try:
+        overrides, _remaining = _parse_settings_args(args)
+    except (ValueError, json.JSONDecodeError) as exc:
+        sys.stderr.write(f"Gecersiz secenek degeri: {exc}\n")
+        return 2
+
+    from turkify import serve
+
+    service = serve.EngineService(overrides)
+    try:
+        if socket_path:
+            serve.serve_socket(service, socket_path)
+        else:
+            serve.serve_stdio(service)
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def _cmd_agent(args: list[str]) -> int:
     if _is_verbose(args):
         _enable_verbose()
@@ -199,6 +226,7 @@ def _cmd_forget(args: list[str]) -> int:
 
 _COMMANDS = {
     "agent": _cmd_agent,
+    "serve": _cmd_serve,
     # Faz 7 devre dışı — yeniden açmak için yorumu kaldır:
     # "learn": _cmd_learn,
     # "forget": _cmd_forget,
