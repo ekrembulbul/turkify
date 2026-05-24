@@ -38,10 +38,6 @@ _META_ALIASES_BY_PLATFORM = {
 }
 _META_ALIASES = _META_ALIASES_BY_PLATFORM.get(sys.platform, {"super": "cmd"})
 
-# Meta tuşunun bu OS'taki gösterim adı (kullanıcıya/log'a). pynput tokenı her
-# yerde "cmd" olsa da kullanıcı kendi OS'unun adını görmeli.
-_META_DISPLAY = {"darwin": "cmd", "win32": "win"}.get(sys.platform, "super")
-
 # config'teki kısayol adları → pynput modifier adları. ctrl/alt/shift her
 # platformda aynı; meta tuşu OS'a göre (_META_ALIASES) eklenir.
 # Alt/Option aynı fiziksel tuştur: macOS'ta **Option** (kısaca "opt"), PC'de
@@ -69,18 +65,14 @@ def to_pynput_hotkey(hotkey: dict) -> str:
 
 
 def to_display_hotkey(hotkey: dict) -> str:
-    """Kısayolu kullanıcıya/log'a göstermek için OS-yerel adlarla biçimler.
+    """Kısayolu, ayardaki haliyle (verbatim) gösterir — log/kullanıcı için.
 
-    ``to_pynput_hotkey`` pynput'un iç ``<cmd>`` tokenını üretir; gösterimde ise
-    meta tuşu OS'un yerel adıyla (macOS "cmd", Windows "win", Linux "super")
-    yazılır. Ör. Windows'ta ``ctrl+alt+win+a``.
+    ``mods`` ve ``key`` hiçbir dönüşüm yapılmadan birleştirilir; böylece "hazir"
+    logundaki kısayol, kullanıcının ayarladığı (config/env/CLI'den çözülen)
+    değerle birebir aynı görünür (ör. config'te ``opt`` yazılmışsa ``opt``
+    görünür, ``alt``'a normalize edilmez).
     """
-    parts = []
-    for mod in hotkey.get("mods", []):
-        canonical = _MOD_ALIASES.get(mod.lower(), mod.lower())
-        parts.append(_META_DISPLAY if canonical == "cmd" else canonical)
-    parts.append(hotkey.get("key", "a").lower())
-    return "+".join(parts)
+    return "+".join([*hotkey.get("mods", []), hotkey.get("key", "a")])
 
 
 def correct_clipboard_selection(

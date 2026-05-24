@@ -26,10 +26,11 @@ def test_to_pynput_hotkey_case_and_universal_aliases():
     assert result == "<ctrl>+<alt>+k"
 
 
-def test_to_display_hotkey_uses_os_native_meta_name():
-    # Gosterimde meta tusu OS'un yerel adiyla yazilir (pynput <cmd> degil).
-    result = agent.to_display_hotkey({"mods": ["ctrl", "alt", _META], "key": "a"})
-    assert result == f"ctrl+alt+{_META}+a"
+def test_to_display_hotkey_shows_setting_verbatim():
+    # "hazir" logu kisayolu ayardaki haliyle gosterir; adlar normalize EDILMEZ.
+    assert agent.to_display_hotkey({"mods": ["ctrl", "opt", "win"], "key": "a"}) == "ctrl+opt+win+a"
+    assert agent.to_display_hotkey({"mods": ["command"], "key": "K"}) == "command+K"
+    assert agent.to_display_hotkey({"mods": ["ctrl", "alt", _META], "key": "a"}) == f"ctrl+alt+{_META}+a"
 
 
 def test_alt_option_opt_all_map_to_alt():
