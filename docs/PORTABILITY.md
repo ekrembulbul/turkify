@@ -1,12 +1,16 @@
 # Turkify — Taşınabilirlik ve Yapılandırma
 
-> Turkify **macOS öncelikli** olmak üzere çok-platformlu (Windows, Linux) olacak
-> şekilde tasarlanmıştır. Tüm çalışma zamanı ayarları bir **config dosyasında**
-> toplanır. Kısayol/pano işi, OS'a özel araçlar (Hammerspoon/Raycast) yerine
-> **kendi çok-platform ajanımızla** (`turkify agent`) yapılır.
+> Turkify **macOS öncelikli** olmak üzere çok-platformludur (Windows, Linux). Tüm
+> çalışma zamanı ayarları bir **config dosyasında** toplanır.
 >
-> Durum: **Faz A uygulandı** (macOS doğrulandı). Windows/Linux için kod yazıldı
-> ama yalnızca macOS test edildi; diğerleri peyderpey doğrulanacaktır.
+> **Mimari yön (Faz 6):** Her OS kendi **native** frontend'ini kullanır; paylaşımlı
+> Python motoru bir **düzeltme servisi** (`turkify serve`) olarak sunulur. Kararlar:
+> [ADR 0003](adr/0003-native-per-os-gui.md) (native-per-OS),
+> [ADR 0004](adr/0004-motor-sinir-protokolu.md) (serve protokolü),
+> [ADR 0005](adr/0005-linux-terminal-servis.md) (Linux).
+>
+> Durum: Çekirdek + CLI + (geçici) `turkify agent` macOS'ta çalışıyor. Native
+> frontend'ler ve `serve` **sıradaki** iştir (bkz. [ROADMAP Faz 6](ROADMAP.md)).
 
 ---
 
@@ -14,17 +18,53 @@
 
 | Katman | Sorumluluk | Bağımlılık | OS |
 |---|---|---|---|
-| **Çekirdek motor** | Tier 1/2/3 düzeltme | yok (zeyrek/LLM sunucusu opsiyonel) | her platform |
-| **CLI** (`turkify`) | stdin/dosya → düzeltilmiş metin (in-process) | — | her platform |
-| **Ajan** (`turkify agent`) | Global kısayol → kopyala→düzelt→yapıştır | `pynput`, `pyperclip` | macOS ✅ / Win / Linux* |
-| **Config** (`config.py`) | Tüm ayarları tek JSON'da topla | — | her platform |
+| **Çekirdek motor** | Tier 1/2/3 düzeltme (`correct()`) | yok (zeyrek/LLM sunucusu opsiyonel) | her platform |
+| **CLI** (`turkify`) — *birincil, kalıcı* | stdin/dosya → düzeltilmiş metin (in-process) | — | her platform |
+| **Motor servisi** (`turkify serve`) | Sıcak motoru JSON protokolüyle sunar (stdio/soket) | — | her platform |
+| **Native frontend** | menü-bar/tray + kısayol + pano + izinler → servise konuşur | OS'a özel (bkz. aşağı) | OS başına |
+| **Ajan** (`turkify agent`) — *geçici* | Global kısayol → kopyala→düzelt→yapıştır | `pynput`, `pyperclip` | macOS ✅ / Win / Linux* |
+| **Config** (`config.py`) | Tüm ayarları tek JSON'da topla + öncelik çöz | — | her platform |
+
+Native frontend'ler (Faz 6):
+
+| OS | Dil / UI | Motor erişimi |
+|---|---|---|
+| macOS | Swift / SwiftUI menü-bar | `serve --stdio` (GUI sıcak süreç sahibi) |
+| Windows | C#/.NET / WPF tray | `serve --stdio` (GUI sıcak süreç sahibi) |
+| Linux | Python / terminal + `systemd --user` | `serve --socket` (servis sıcak) |
 
 \* Linux/Wayland'da global kısayol/enjeksiyon OS kısıtları nedeniyle sınırlıdır
-(bkz. [§5](#5-bilinen-kısıtlar)).
+(bkz. [§5](#5-bilinen-kısıtlar)); Linux'ta tetikleme masaüstü ortamının kısayoluyla yapılır.
 
-> **Not:** Eski **daemon** (Unix soketi) ve **Hammerspoon/Raycast/launchd**
-> (yalnızca macOS) **kaldırıldı.** Ajan, motoru bellekte sıcak tuttuğu için ayrı
-> daemon'a gerek kalmaz ve tek bir çok-platform çözüm sağlar.
+> **CLI kalıcıdır, `agent` geçicidir.** `turkify` CLI birinci-sınıf ve **birincil
+> kullanım senaryosudur** — in-process çalışır, `serve`/native frontend'e bağımlı
+> değildir, her zaman kullanılabilir kalır ([ADR 0006](adr/0006-cli-birinci-sinif-kalici.md)).
+> Buna karşılık `agent` (kısayol+pano) geçicidir; native frontend'lere devredildikçe
+> emekliye ayrılacak. `serve`/native katmanlar CLI'ın **üstüne** eklenir, yerine geçmez.
+>
+> **`serve` ve daemon:** Eskiden bir "daemon" vardı, kaldırılmıştı (ajan motoru sıcak
+> tuttuğu için). Frontend'ler artık farklı dillerde (Swift/C#) olduğundan motoru o
+> dilden sıcak tutmak için `serve` geri getirildi — bu sefer **gerekçeli ve tek JSON
+> protokolüyle** (bkz. [ADR 0004](adr/0004-motor-sinir-protokolu.md)). Eski
+> **Hammerspoon/Raycast/launchd** (yalnızca macOS) kaldırılmış durumda.
+
+### Motor servisi sözleşmesi (`turkify serve`)
+Tek bir **satır-bazlı JSON** protokolü; iki taşıma, aynı mesaj formatı
+([ADR 0004](adr/0004-motor-sinir-protokolu.md)):
+
+```
+istek :  {"id": 1, "text": "bugun gorusme"}
+yanıt :  {"id": 1, "corrected": "bugün görüşme"}
+hata  :  {"id": 1, "error": "..."}
+kontrol: {"cmd": "ping"} → {"ok": true}
+         {"cmd": "reload"}   (config.json değişince motor ayarları yeniden okur)
+```
+
+- `serve --stdio`: GUI sahipli (macOS/Windows). GUI motoru çocuk süreç olarak
+  başlatır, sıcak tutar; GUI kapanınca stdin EOF → motor temiz çıkar.
+- `serve --socket PATH`: bağımsız servis (Linux `systemd --user`).
+- Motor başlangıçta `config.resolve()` ile ayarları okur; `reload` ile tazeler.
+- `engine.correct` aynen kullanılır; `serve` yalnızca ince bir taşıma sarmalayıcısıdır.
 
 ---
 
@@ -160,20 +200,30 @@ Windows `["ctrl", "alt", "win"]`, Linux `["ctrl", "alt", "super"]`.
 
 ## 6. Yol haritası
 
-| Faz | Kapsam | Durum |
+Taşınabilirlik artık **Faz 6 (Native Arayüzler + Motor Servisi)** altında ilerliyor;
+tam plan: [ROADMAP.md → Faz 6](ROADMAP.md). Özet sıra:
+
+| Aşama | Kapsam | Durum |
 |---|---|---|
-| **A** | macOS, config-güdümlü + çok-platform ajan | ✅ Uygulandı (macOS doğrulandı) |
-| **B** | Windows doğrulama + Linux/X11 doğrulama | sırada |
-| **C** | Linux/Wayland çözümü, oturum açılışında otomatik başlatma (per-OS) | sonra |
-| **D** | GUI fazı — izin butonları, model combobox'u, işlem göstergesi, ayar arayüzü (bkz. [§7](#7-gui-fazı--kapsam-ileride)) | ileride |
+| **6.0** | `turkify serve` (stdio + soket JSON protokolü); `agent`'i geçici statüye al | sırada |
+| **6.1** | macOS native app (Swift / SwiftUI menü-bar) — MVP | sonra |
+| **6.2** | Windows native app (C#/.NET / WPF tray) | sonra |
+| **6.3** | Linux (Python, terminal + `systemd --user` servisi) | sonra |
+| **6.4** | Paketleme & dağıtım (Python gömme, imzalama, repo/Flatpak) | en son |
 
 ---
 
-## 7. GUI fazı — kapsam (ileride)
+## 7. GUI fazı — kapsam (Faz 6)
 
-Aşağıdaki işler, çok-platform bir **GUI** (öneri: menü-bar uygulaması; framework
-olarak **Tkinter** — sıfır bağımlılık, her OS) ile ele alınacaktır. Konuştuğumuz
-ve buraya not ettiğimiz maddeler:
+Aşağıdaki işler **native frontend**'lerle ele alınır (tek çok-platform framework
+**değil** — bkz. [ADR 0003](adr/0003-native-per-os-gui.md)):
+
+- **macOS:** Swift / SwiftUI menü-bar (`MenuBarExtra`).
+- **Windows:** C#/.NET / WPF tray.
+- **Linux:** native GUI yok; terminal + `systemd --user` servisi ([ADR 0005](adr/0005-linux-terminal-servis.md)).
+
+Her frontend motora `turkify serve` (JSON protokolü) üzerinden konuşur. Aşağıdaki
+maddeler özellikle **macOS/Windows GUI** için geçerlidir (Linux'ta config + log ile):
 
 ### 7.1 İzin yönetimi (macOS)
 - İki buton: **"Girdi İzleme (Input Monitoring) izni"** ve **"Erişilebilirlik
@@ -199,8 +249,10 @@ ve buraya not ettiğimiz maddeler:
 
 ### 7.4 Ayar arayüzü
 - `config.json` alanları (kısayol, `use_llm`, `use_morphology`, `timeout`,
-  `model`, `base_url`, `api_key`, `llm_options`) GUI'den düzenlenebilir.
+  `model`, `base_url`, `api_key`, `llm_options`, `assistant_prefill`) düzenlenebilir.
 - Kısayol kaydedici (hotkey recorder), Tier 2/Tier 3 aç-kapa anahtarları.
+- GUI ayarı değiştirince `config.json`'a yazar ve servise `{"cmd":"reload"}` gönderir.
 
-**Framework önerisi:** Tkinter (stdlib, çok-platform). Menü-bar/tepsi göstergesi
-için platforma özel ince bir katman gerekebilir (macOS: rumps benzeri).
+**Teknoloji:** native-per-OS (macOS Swift, Windows C#/WPF, Linux config+terminal).
+Tek çapraz-platform framework (Tkinter vb.) **terk edildi** — gerekçe: macOS izin
+yönetimi native API gerektiriyor ve native kalite hedefleniyor ([ADR 0003](adr/0003-native-per-os-gui.md)).

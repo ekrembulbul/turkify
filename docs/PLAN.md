@@ -11,6 +11,16 @@ Girdi:  bugun gorusme yapacagiz
 Bu doküman **mimariyi ve tasarım kararlarını** tanımlar. Fazlara bölünmüş uygulama
 takvimi için bkz. [ROADMAP.md](ROADMAP.md).
 
+> ⚠️ **Güncellik notu:** Bu belge özgün tasarım gerekçesini tutar; **kademeli (Tier
+> 1/2/3) çekirdek mimari hâlâ geçerlidir.** Ancak bazı teslimat detayları sonradan
+> değişti — güncel kararlar için [ADR](adr/README.md):
+> - Kısayol/GUI: Hammerspoon **kaldırıldı**; her OS için **native frontend** + `turkify
+>   serve` ([ADR 0003](adr/0003-native-per-os-gui.md), [0004](adr/0004-motor-sinir-protokolu.md), [0005](adr/0005-linux-terminal-servis.md)).
+> - Tier 3: **OpenAI-uyumlu** API ([ADR 0002](adr/0002-openai-uyumlu-llm-api.md)).
+>
+> Aşağıdaki Hammerspoon/dizin/araç ayrıntıları **tarihseldir**; güncel yapı için
+> [PORTABILITY.md](PORTABILITY.md) ve [ROADMAP.md](ROADMAP.md)'e bakın.
+
 ---
 
 ## 1. Amaç ve Hedefler
@@ -91,7 +101,7 @@ Clipboard değiştirilir → metin yapıştırılır
 
 | Katman | Teknoloji | Faz | Not |
 |---|---|---|---|
-| Hotkey | Hammerspoon | 1 | macOS otomasyon |
+| Kısayol/arayüz | Native frontend (Swift/C#) + `serve`; (eski: Hammerspoon) | 1 / 6 | bkz. ADR 0003/0004 |
 | Deasciifier | Pattern/n-gram tabanlı (Yüret tarzı) | 1 | Deterministik çekirdek |
 | Frekans sözlüğü | Türkçe korpus frekans listesi | 1 | Aday sıralama |
 | Morfoloji | Zemberek | 2 | Aday doğrulama/eleme |

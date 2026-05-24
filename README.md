@@ -43,9 +43,13 @@ echo "bugun gorusme yapacagiz" | python -m turkify
 # Hangi katmanın çözdüğünü gör
 echo "bugun gorusme" | python -m turkify --verbose
 
-# Global kısayol ajanı (Hyper+A): metni seç → kısayola bas → düzeltilir
+# Global kısayol ajanı (Hyper+A): metni seç → kısayola bas → düzeltilir (geçici)
 python -m turkify agent
 ```
+
+> **CLI birincil arayüzdür** ve her zaman kullanılabilir kalır — script'lenebilir,
+> pipe'lanabilir, otomasyona uygundur ([ADR 0006](docs/adr/0006-cli-birinci-sinif-kalici.md)).
+> Native masaüstü arayüzleri (Faz 6) CLI'ın *üstüne* eklenir, yerine geçmez.
 
 Ayrıntılı kurulum, yapılandırma ve sorun giderme için **[docs/KURULUM.md](docs/KURULUM.md)**.
 
