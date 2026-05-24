@@ -1,16 +1,35 @@
 """Kısayol ajanı testleri — OS/kütüphane çağrıları mock'lanır (pynput/pyperclip gerekmez)."""
 
+import sys
+
 from turkify import agent
+
+# Meta tuşunun calisilan OS'taki yerel adi (testler her platformda gecsin).
+_META = {"darwin": "cmd", "win32": "win"}.get(sys.platform, "super")
 
 
 def test_to_pynput_hotkey_default():
-    result = agent.to_pynput_hotkey({"mods": ["ctrl", "alt", "cmd"], "key": "t"})
+    result = agent.to_pynput_hotkey({"mods": ["ctrl", "alt", _META], "key": "t"})
     assert result == "<ctrl>+<alt>+<cmd>+t"
 
 
-def test_to_pynput_hotkey_aliases_and_case():
-    result = agent.to_pynput_hotkey({"mods": ["command", "option"], "key": "K"})
-    assert result == "<cmd>+<alt>+k"
+def test_to_pynput_hotkey_meta_is_os_native():
+    # Calisilan OS'un yerel meta adi <cmd> tokenina cevrilir.
+    assert agent.to_pynput_hotkey({"mods": [_META], "key": "a"}) == "<cmd>+a"
+    # Baska OS'un meta adi bu OS'ta meta sayilmaz (literal kalir, pynput tanimaz).
+    other = "win" if _META != "win" else "super"
+    assert agent.to_pynput_hotkey({"mods": [other], "key": "a"}) == f"<{other}>+a"
+
+
+def test_to_pynput_hotkey_case_and_universal_aliases():
+    result = agent.to_pynput_hotkey({"mods": ["Control", "Option"], "key": "K"})
+    assert result == "<ctrl>+<alt>+k"
+
+
+def test_to_display_hotkey_uses_os_native_meta_name():
+    # Gosterimde meta tusu OS'un yerel adiyla yazilir (pynput <cmd> degil).
+    result = agent.to_display_hotkey({"mods": ["ctrl", "alt", _META], "key": "a"})
+    assert result == f"ctrl+alt+{_META}+a"
 
 
 def test_clipboard_flow_corrects_and_restores(monkeypatch):

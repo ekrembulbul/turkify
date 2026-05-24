@@ -28,23 +28,56 @@ class Correction(NamedTuple):
     original: str   # kullanıcının seçtiği (düzeltilmeden önceki) metin
     corrected: str  # düzeltilmiş metin
 
-# config'teki kısayol adları → pynput modifier adları
+# Meta/süper tuşu her OS'ta kendi yerel adıyla yazılır; pynput tokenı ise her
+# platformda ``<cmd>`` olduğundan (pynput bunu OS'a göre Command/Win/Super'e
+# çözer) yerel ad ``cmd``'ye eşlenir. Yalnızca çalışılan OS'un yerel adı kabul
+# edilir: macOS→"cmd", Windows→"win", Linux/diğer→"super".
+_META_ALIASES_BY_PLATFORM = {
+    "darwin": {"cmd": "cmd", "command": "cmd"},
+    "win32": {"win": "cmd", "windows": "cmd"},
+}
+_META_ALIASES = _META_ALIASES_BY_PLATFORM.get(sys.platform, {"super": "cmd"})
+
+# Meta tuşunun bu OS'taki gösterim adı (kullanıcıya/log'a). pynput tokenı her
+# yerde "cmd" olsa da kullanıcı kendi OS'unun adını görmeli.
+_META_DISPLAY = {"darwin": "cmd", "win32": "win"}.get(sys.platform, "super")
+
+# config'teki kısayol adları → pynput modifier adları. ctrl/alt/shift her
+# platformda aynı; meta tuşu OS'a göre (_META_ALIASES) eklenir.
 _MOD_ALIASES = {
-    "cmd": "cmd",
-    "command": "cmd",
     "ctrl": "ctrl",
     "control": "ctrl",
     "alt": "alt",
     "option": "alt",
     "opt": "alt",
     "shift": "shift",
+    **_META_ALIASES,
 }
 
 
 def to_pynput_hotkey(hotkey: dict) -> str:
-    """``{mods:[...], key:"t"}`` → pynput biçimi ``"<ctrl>+<alt>+<cmd>+t"``."""
+    """``{mods:[...], key:"t"}`` → pynput biçimi ``"<ctrl>+<alt>+<cmd>+t"``.
+
+    Meta tuşu OS'un yerel adıyla yazılır (macOS "cmd", Windows "win", Linux
+    "super"); hepsi pynput'un platforma-uyarlı ``<cmd>`` tokenına çevrilir.
+    """
     mods = [f"<{_MOD_ALIASES.get(m.lower(), m.lower())}>" for m in hotkey.get("mods", [])]
     return "+".join([*mods, hotkey.get("key", "a").lower()])
+
+
+def to_display_hotkey(hotkey: dict) -> str:
+    """Kısayolu kullanıcıya/log'a göstermek için OS-yerel adlarla biçimler.
+
+    ``to_pynput_hotkey`` pynput'un iç ``<cmd>`` tokenını üretir; gösterimde ise
+    meta tuşu OS'un yerel adıyla (macOS "cmd", Windows "win", Linux "super")
+    yazılır. Ör. Windows'ta ``ctrl+alt+win+a``.
+    """
+    parts = []
+    for mod in hotkey.get("mods", []):
+        canonical = _MOD_ALIASES.get(mod.lower(), mod.lower())
+        parts.append(_META_DISPLAY if canonical == "cmd" else canonical)
+    parts.append(hotkey.get("key", "a").lower())
+    return "+".join(parts)
 
 
 def correct_clipboard_selection(
@@ -138,6 +171,6 @@ def run(settings: dict | None = None) -> None:
             _log(f"hata: {exc}")
 
     hotkey = to_pynput_hotkey(cfg["hotkey"])
-    _log(f"hazir. Kisayol: {hotkey}. Cikmak icin Ctrl-C.")
+    _log(f"hazir. Kisayol: {to_display_hotkey(cfg['hotkey'])}. Cikmak icin Ctrl-C.")
     with keyboard.GlobalHotKeys({hotkey: _on_activate}) as listener:
         listener.join()
