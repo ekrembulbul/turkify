@@ -44,6 +44,9 @@ _META_DISPLAY = {"darwin": "cmd", "win32": "win"}.get(sys.platform, "super")
 
 # config'teki kısayol adları → pynput modifier adları. ctrl/alt/shift her
 # platformda aynı; meta tuşu OS'a göre (_META_ALIASES) eklenir.
+# Alt/Option aynı fiziksel tuştur: macOS'ta **Option** (kısaca "opt"), PC'de
+# "alt". Üç ad da (alt/opt/option) kabul edilir; macOS klavyesinde "alt" etiketi
+# olmadığından kullanıcı "opt"/"option" yazabilir.
 _MOD_ALIASES = {
     "ctrl": "ctrl",
     "control": "ctrl",

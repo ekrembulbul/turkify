@@ -69,10 +69,14 @@ Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır v
   "api_key": null,                  // sunucu isterse (yerelde genelde gerekmez)
   "llm_options": {},                // /chat/completions gövdesine eklenecek ekstra ALANLAR
   "assistant_prefill": null,        // isteğe eklenecek asistan MESAJI (ör. "<think>\n\n</think>\n\n")
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // Hyper+A
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // Hyper+A (meta=OS'a göre, bkz. §4)
 }
 ```
 Örnek: [`config/config.example.json`](../config/config.example.json).
+
+> **Not:** `mods` içindeki **meta tuşu OS'a göre yazılır** — macOS `cmd`, Windows
+> `win`, Linux `super`. Yukarıdaki örnek macOS içindir; Windows'ta
+> `["ctrl", "alt", "win"]`, Linux'ta `["ctrl", "alt", "super"]` kullanın. Ayrıntı: [§4](#4-kısayol-ajanı-turkify-agent).
 
 ---
 
@@ -126,6 +130,20 @@ ama yavaş. Kapatma yöntemi **çalıştırma motoruna** bağlıdır:
 - Kısayol config'ten gelir; değiştirmek için config'i düzenle ve ajanı yeniden başlat.
 - Çekirdek akış (`agent.correct_clipboard_selection`) OS-bağımsız ve test edilebilir;
   pynput/pyperclip yalnızca `agent.run()` içinde kullanılır.
+
+### Modifier adları (`mods`)
+`hotkey.mods` içindeki adlar OS'a göre yazılır; hepsi pynput'un platforma-uyarlı
+karşılığına çevrilir (büyük/küçük harf önemsiz):
+
+| Tuş | macOS | Windows | Linux | Not |
+|---|---|---|---|---|
+| **Meta** | `cmd` / `command` | `win` / `windows` | `super` | Yalnızca çalışılan OS'un adı geçerlidir (pynput `<cmd>` = OS'un meta tuşu: Command/Win/Super). |
+| **Alt/Option** | `opt` / `option` / `alt` | `alt` / `opt` / `option` | `alt` / `opt` / `option` | Aynı fiziksel tuş; macOS'ta **Option**. Üç ad da her yerde kabul edilir (macOS klavyesinde "alt" etiketi yoktur, `opt` yazılabilir). |
+| **Ctrl** | `ctrl` / `control` | `ctrl` / `control` | `ctrl` / `control` | |
+| **Shift** | `shift` | `shift` | `shift` | |
+
+Örnek (Hyper+A): macOS `["ctrl", "alt", "cmd"]` (ya da `["ctrl", "opt", "cmd"]`),
+Windows `["ctrl", "alt", "win"]`, Linux `["ctrl", "alt", "super"]`.
 
 ---
 

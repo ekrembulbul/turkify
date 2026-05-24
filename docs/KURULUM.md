@@ -286,7 +286,7 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
   "api_key": null,                  // yerel sunucular genelde istemez
   "llm_options": {},                // istek govdesine eklenecek alanlar ( or. chat_template_kwargs)
   "assistant_prefill": null,        // ust asistan prefill'i; dusunmeyi kapatmak icin "<think>\n\n</think>\n\n"
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // meta=OS'a göre: macOS cmd / Windows win / Linux super
 }
 ```
 
@@ -319,6 +319,10 @@ python -m turkify agent        # config'teki kısayolu dinler (varsayılan Hyper
 
 - Kısayolu değiştirmek için `config.json`'daki `hotkey` alanını düzenle, ajanı
   yeniden başlat.
+- **Modifier adları OS'a göre:** meta tuşu macOS `cmd`, Windows `win`, Linux
+  `super`. Alt/Option her yerde `alt`/`opt`/`option` olarak yazılabilir (macOS'ta
+  bu tuş **Option**'dır, "alt" etiketi yoktur). `ctrl`/`shift` her platformda aynı.
+  Tam tablo: [PORTABILITY.md §4](PORTABILITY.md#4-kısayol-ajanı-turkify-agent).
 - **macOS:** ilk çalıştırmada **Erişilebilirlik (Accessibility) izni** gerekir
   (Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik). Pano/tuş
   simülasyonu için zorunludur.

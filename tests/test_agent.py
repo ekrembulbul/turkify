@@ -32,6 +32,12 @@ def test_to_display_hotkey_uses_os_native_meta_name():
     assert result == f"ctrl+alt+{_META}+a"
 
 
+def test_alt_option_opt_all_map_to_alt():
+    # macOS'ta tus "Option"; alt/opt/option uc ad da <alt>'e eslenir (her platformda).
+    for name in ("alt", "opt", "option", "Opt", "OPTION"):
+        assert agent.to_pynput_hotkey({"mods": [name], "key": "a"}) == "<alt>+a"
+
+
 def test_clipboard_flow_corrects_and_restores(monkeypatch):
     monkeypatch.setattr(agent, "correct", lambda text, **k: text.replace("gorusme", "görüşme"))
     clip = {"value": "ESKI_PANO"}
