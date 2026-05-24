@@ -143,8 +143,29 @@ def run(settings: dict | None = None) -> None:
 
     controller = keyboard.Controller()
     modifier = _modifier_key()
+    Key = keyboard.Key
+
+    # Kullanıcının kısayolu hâlâ basılı olabilir (ör. CapsLock'u Hyper=Ctrl+Alt+Win
+    # yapan AHK scripti, CapsLock bırakılana kadar bu tuşları basılı tutar). O
+    # durumda simüle ettiğimiz Ctrl+C aslında Ctrl+Alt+Win+C olur ve kopyalama
+    # başarısız olur. Bu yüzden kombinasyondan önce olası basılı modifier'ları
+    # bırakırız; basılı değillerse bırakma zararsızdır.
+    _HELD_MODS = (
+        Key.alt, Key.alt_l, Key.alt_r,
+        Key.cmd, Key.cmd_l, Key.cmd_r,
+        Key.shift, Key.shift_l, Key.shift_r,
+        Key.ctrl, Key.ctrl_l, Key.ctrl_r,
+    )
+
+    def _release_held_mods() -> None:
+        for key in _HELD_MODS:
+            try:
+                controller.release(key)
+            except Exception:
+                pass
 
     def _combo(letter: str) -> None:
+        _release_held_mods()  # basılı Hyper'i (ör. Alt+Win) temizle ki Ctrl+C/V bozulmasın
         controller.press(modifier)
         controller.press(letter)
         controller.release(letter)
