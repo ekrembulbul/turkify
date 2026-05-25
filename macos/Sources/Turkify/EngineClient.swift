@@ -35,6 +35,10 @@ final class EngineClient {
         let launch = AppSettings.engineExecutable()
         proc.executableURL = URL(fileURLWithPath: launch.executable)
         proc.arguments = launch.prefixArgs + settings.serveArguments()
+        Log.info("motor komutu: \(launch.executable) \((launch.prefixArgs + settings.serveArguments()).joined(separator: " "))")
+        proc.terminationHandler = { p in
+            Log.info("motor sonlandi (kod \(p.terminationStatus))")
+        }
 
         let stdin = Pipe()
         let stdout = Pipe()

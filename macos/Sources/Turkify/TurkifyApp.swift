@@ -105,16 +105,23 @@ final class AppState: ObservableObject {
     }
 
     func correctSelection() async {
-        guard !busy else { return }
+        guard !busy else { Log.info("correctSelection: zaten mesgul, atlandi"); return }
         busy = true
         defer { busy = false }
+        Log.info("correctSelection: basladi; accessibility=\(accessibilityGranted) inputMonitoring=\(inputMonitoringGranted) engineRunning=\(engine.isRunning)")
+        if !accessibilityGranted {
+            Log.info("correctSelection: UYARI Accessibility izni YOK -> Cmd+C/Cmd+V calismaz")
+        }
         do {
             let result = try await corrector.run()
             lastStatus = "Duzeltildi: " + String(result.prefix(40))
+            Log.info("correctSelection: OK -> \(result.prefix(40))")
         } catch Corrector.CorrectorError.emptySelection {
             lastStatus = "Secili metin bulunamadi"
+            Log.info("correctSelection: secim bos")
         } catch {
             lastStatus = "Hata: \(error)"
+            Log.info("correctSelection: HATA \(error)")
         }
     }
 }
