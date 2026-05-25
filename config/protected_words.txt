@@ -65,6 +65,8 @@ spam
 captcha
 log
 API
+dto
+populate
 
 # --- Programlama & geliştirme ---
 compiler
