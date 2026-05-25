@@ -243,10 +243,12 @@ Her frontend motora `turkify serve` (JSON protokolü) üzerinden konuşur. Aşa�
 maddeler özellikle **macOS/Windows GUI** için geçerlidir (Linux'ta config + log ile):
 
 ### 7.1 İzin yönetimi (macOS)
-- İki buton: **"Girdi İzleme (Input Monitoring) izni"** ve **"Erişilebilirlik
-  (Accessibility) izni"** — her biri doğrudan ilgili System Settings panelini
-  açar (`x-apple.systempreferences:com.apple.preference.security?...`).
-- Her izin için **canlı durum** göstergesi (✅/❌); izin verilince otomatik güncellenir.
+- Tek izin gerekir: **"Erişilebilirlik (Accessibility)"** — buton doğrudan ilgili
+  System Settings panelini açar (`x-apple.systempreferences:com.apple.preference.security?...`).
+  CGEvent ile Cmd+C/Cmd+V göndermek için zorunludur. Global kısayol Carbon
+  `RegisterEventHotKey` ile, kayıt UI'ı yerel `NSEvent` monitörüyle çalışır;
+  ikisi de **Input Monitoring gerektirmez**, bu yüzden o izin istenmez.
+- İzin için **canlı durum** göstergesi (✅/❌); izin verilince otomatik güncellenir.
 - macOS'un kendi **izin istemi** butondan tetiklenebilir.
 - Sınır: butonlar paneli açar ve durumu gösterir; **son anahtarı kullanıcı
   çevirir** (Apple, izni programatik vermeye izin vermez).

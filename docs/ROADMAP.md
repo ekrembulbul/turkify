@@ -111,8 +111,8 @@ Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzelti
 - Global kısayol (Carbon `RegisterEventHotKey`) + pano (NSPasteboard) + tuş
   simülasyonu (CGEvent) → seç, motora gönder, yapıştır.
 - Python motor köprüsü: sıcak `serve --stdio` süreci, stdio JSON.
-- **İzinler:** Accessibility + Input Monitoring canlı durum (✅/❌) + ilgili System
-  Settings panelini açan butonlar. İmzalı `.app` → temiz TCC.
+- **İzin:** Accessibility canlı durum (✅/❌) + ilgili System Settings panelini açan
+  buton. İmzalı `.app` → temiz TCC. (Input Monitoring gerekmez: kısayol Carbon ile.)
 - İşlem göstergesi: LLM çalışırken ikon döner.
 - Model seçimi (`/v1/models`) + temel ayarlar (`config.json`'a yazar).
 - ✅ `macos/` Swift Package iskeleti yazıldı (EngineClient, Corrector, Permissions,

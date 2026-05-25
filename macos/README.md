@@ -15,7 +15,7 @@ macos/Turkify/
     ├── TurkifyApp.swift          # @main App + AppDelegate + AppState + menü/Ayarlar UI
     ├── EngineClient.swift        # turkify serve köprüsü (stdio JSON, restart)
     ├── Corrector.swift           # kopyala→düzelt→yapıştır + pano
-    ├── Permissions.swift         # Accessibility + Input Monitoring
+    ├── Permissions.swift         # Accessibility (Erisilebilirlik) izni
     ├── HotKey.swift              # Carbon global kısayol
     ├── AppSettings.swift         # ayarlar (UserDefaults) + serve bayraklari
     ├── Log.swift                 # stderr teshis logu
@@ -45,8 +45,9 @@ bir satır JSON yanıt vermeli.
      assistant_prefill. **Kaydet** → **UserDefaults**'a yazar + motoru yeni
      ayarlarla yeniden başlatır. macOS'ta `config.json` **kullanılmaz**
      ([ADR 0007](../docs/adr/0007-ayar-saklama-gui-native.md)).
-   - **İzinler:** "Erisilebilirlik" / "Girdi Izleme" → **Ac** → System Settings →
-     izni aç → **Izinleri yenile**.
+   - **İzin:** "Erisilebilirlik" → **Ac** → System Settings → izni aç →
+     **Izinleri yenile**. (Tek gereken izin budur; kısayol Carbon ile dinlenir,
+     Girdi Izleme gerekmez.)
 5. Gerçek kullanım: başka uygulamada metin seçin → global kısayol (varsayılan Hyper+A).
    İşlem uzun sürerse (LLM) **iptal kısayolu** (varsayılan Hyper+Q) ya da menü-bar
    menüsündeki "İşlemi iptal et" ile durdurabilirsiniz.
@@ -62,7 +63,7 @@ Bu proje şu ayarlarla kurulmuştur; klonlayıp farklı makinede açarken gereke
 
 ## Bilinen iterasyon / dikkat noktaları
 - **HotKey.swift (Carbon):** en düşük seviye parça; tuş kodları US-ANSI varsayar.
-- **İzin API'leri:** `IOHIDCheckAccess`/`IOHIDRequestAccess`, `AXIsProcessTrusted`.
+- **İzin API'si:** `AXIsProcessTrusted` (Erisilebilirlik; CGEvent ile tus gonderimi icin).
 - **Kısayol kaydedici:** Diğer Ayarlar → Kısayollar → "Değiştir" ile yeni kombinasyon
   yakalanır (yerel NSEvent monitörü; Girdi İzleme izni gerekmez). Varsayılan: düzeltme
   Hyper+A, iptal Hyper+Q. Tuş kodları US-ANSI harf/rakamla sınırlıdır (HotKey.swift).

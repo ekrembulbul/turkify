@@ -52,7 +52,6 @@ final class AppState: ObservableObject {
 
     @Published var busy = false
     @Published var accessibilityGranted = false
-    @Published var inputMonitoringGranted = false
     @Published var engineRunning = false
     @Published var lastStatus = "Hazır"
     @Published var settings = AppSettings.load()
@@ -168,7 +167,6 @@ final class AppState: ObservableObject {
 
     func refreshPermissions() {
         accessibilityGranted = Permissions.accessibilityGranted()
-        inputMonitoringGranted = Permissions.inputMonitoringGranted()
     }
 
     /// Motoru mevcut ayarlarla (yeniden) başlatır.
@@ -300,7 +298,7 @@ final class AppState: ObservableObject {
         busy = true
         startSpinner()
         defer { busy = false; stopSpinner(); correctionTask = nil }
-        Log.info("correctSelection: basladi; accessibility=\(accessibilityGranted) inputMonitoring=\(inputMonitoringGranted) engineRunning=\(engine.isRunning)")
+        Log.info("correctSelection: basladi; accessibility=\(accessibilityGranted) engineRunning=\(engine.isRunning)")
         if !accessibilityGranted {
             Log.info("correctSelection: UYARI Accessibility izni YOK -> Cmd+C/Cmd+V calismaz")
         }
@@ -584,14 +582,6 @@ struct OtherSettingsView: View {
                 ) {
                     Permissions.promptAccessibility()
                     Permissions.openAccessibilitySettings()
-                }
-                permissionRow(
-                    "Girdi İzleme (Input Monitoring)",
-                    explanation: "Genelde gerekmez. Global kısayol Carbon ile dinlenir ve bu izni istemez; bazı kurulumlarda kısayol algılanmazsa yedek olarak açılabilir.",
-                    granted: state.inputMonitoringGranted
-                ) {
-                    Permissions.requestInputMonitoring()
-                    Permissions.openInputMonitoringSettings()
                 }
                 Button("İzinleri yenile") { state.refreshPermissions() }
             } header: {

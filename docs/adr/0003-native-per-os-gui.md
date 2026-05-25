@@ -5,8 +5,8 @@
 ## Bağlam
 GUI fazı için önce tek bir çok-platform framework (Tkinter, ya da rumps+pystray)
 düşünülmüştü. Ancak:
-- macOS izin yönetimi (Input Monitoring + Accessibility / TCC) **zorunlu olarak
-  native API** (PyObjC) gerektiriyor — hiçbir çapraz-platform kütüphane düzgün çözmüyor.
+- macOS izin yönetimi (Accessibility / TCC) **zorunlu olarak native API** (PyObjC)
+  gerektiriyor — hiçbir çapraz-platform kütüphane düzgün çözmüyor.
 - Menü-bar/tray davranışı OS'lar arası çok farklı (macOS menü-bar ≠ Windows tray ≠
   Linux/Wayland).
 - `rumps`, SwiftUI'nin native kalitesini vermiyor.
