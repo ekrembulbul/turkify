@@ -8,16 +8,17 @@ struct TurkifyApp: App {
     @ObservedObject private var state = AppState.shared
 
     var body: some Scene {
-        // Menü-bar: yalnızca durum + Ayarlar + Çıkış. Gerisi Ayarlar penceresinde.
+        // Menü-bar: yalnızca durum + pencere + Çıkış. Asıl arayüz ana penceredir.
         MenuBarExtra {
             MenuContent(state: state)
         } label: {
-            Image(systemName: state.menuBarSymbol)
+            MenuBarLabel(state: state)
         }
         .menuBarExtraStyle(.menu)
 
-        Window("Turkify Ayarlar", id: AppState.settingsWindowID) {
-            SettingsView(state: state)
+        // Ana pencere: başlık "Turkify", sekmeli (ilk sekme Ayarlar).
+        Window("Turkify", id: AppState.mainWindowID) {
+            MainView(state: state)
         }
         .windowResizability(.contentSize)
     }
@@ -31,13 +32,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         AppState.shared.shutdown()
     }
+
+    /// Dock ikonuna tıklanınca (görünür pencere yoksa) ana pencereyi aç.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { AppState.shared.presentMainWindow?() }
+        return true
+    }
 }
 
 /// Uygulama durumunu ve bileşenleri (motor, kısayol, izinler, config) bir arada tutar.
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
-    static let settingsWindowID = "turkify-settings"
+    static let mainWindowID = "turkify-main"
+
+    /// Ana pencereyi açan kapanış; menü-bar label'ı (her zaman canlı) tarafından
+    /// `openWindow` yakalanıp buraya yazılır. AppDelegate Dock-tık'ta bunu çağırır.
+    var presentMainWindow: (() -> Void)?
 
     @Published var busy = false
     @Published var accessibilityGranted = false
@@ -49,7 +60,7 @@ final class AppState: ObservableObject {
     private let engine = EngineClient()
     private var hotKey: HotKey?
     private lazy var corrector = Corrector(engine: engine)
-    private var settingsWindowOpen = false
+    private var windowOpen = false
 
     var menuBarSymbol: String {
         if busy { return "hourglass" }
@@ -68,19 +79,19 @@ final class AppState: ObservableObject {
     /// menü-bar-only (.accessory, Dock'ta yok).
     func applyActivationPolicy() {
         let policy: NSApplication.ActivationPolicy =
-            (settingsWindowOpen || settings.showInDock) ? .regular : .accessory
+            (windowOpen || settings.showInDock) ? .regular : .accessory
         NSApp.setActivationPolicy(policy)
     }
 
-    func settingsWindowAppeared() {
-        settingsWindowOpen = true
+    func windowAppeared() {
+        windowOpen = true
         applyActivationPolicy()
         NSApp.activate(ignoringOtherApps: true)  // pencereyi öne getir
         refreshPermissions()
     }
 
-    func settingsWindowDisappeared() {
-        settingsWindowOpen = false
+    func windowDisappeared() {
+        windowOpen = false
         applyActivationPolicy()
     }
 
@@ -167,8 +178,8 @@ struct MenuContent: View {
 
         Divider()
 
-        Button("Ayarlar") {
-            openWindow(id: AppState.settingsWindowID)
+        Button("Turkify'ı aç") {
+            openWindow(id: AppState.mainWindowID)
             NSApp.activate(ignoringOtherApps: true)
         }
         .keyboardShortcut(",", modifiers: .command)
@@ -183,7 +194,42 @@ struct MenuContent: View {
     }
 }
 
-// MARK: - Ayarlar penceresi (config düzenleme + izinler + test)
+// MARK: - Menü-bar simgesi (her zaman canlı → openWindow'u yakalar)
+
+struct MenuBarLabel: View {
+    @ObservedObject var state: AppState
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Image(systemName: state.menuBarSymbol)
+            .onAppear {
+                // Dock-tık (AppDelegate) ana pencereyi bu kapanışla açar.
+                state.presentMainWindow = {
+                    openWindow(id: AppState.mainWindowID)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            }
+    }
+}
+
+// MARK: - Ana pencere (sekmeli; ileride sekme eklenebilir)
+
+struct MainView: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        TabView {
+            SettingsView(state: state)
+                .tabItem { Label("Ayarlar", systemImage: "gearshape") }
+            // İleride buraya yeni sekmeler eklenebilir (ör. Geçmiş, Hakkında).
+        }
+        .frame(width: 460, height: 620)
+        .onAppear { state.windowAppeared() }
+        .onDisappear { state.windowDisappeared() }
+    }
+}
+
+// MARK: - Ayarlar sekmesi (config düzenleme + izinler + test)
 
 struct SettingsView: View {
     @ObservedObject var state: AppState
@@ -243,9 +289,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 600)
-        .onAppear { state.settingsWindowAppeared() }
-        .onDisappear { state.settingsWindowDisappeared() }
     }
 
     @ViewBuilder
