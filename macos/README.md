@@ -40,11 +40,16 @@ bir satır JSON yanıt vermeli.
 3. **Run (⌘R).** Menü-bar'da simge belirir (Dock ikonu yok — accessory app).
    Menü sade: **durum**, **İşlemi iptal et** (işlem sürerken etkin; Hyper+Q),
    **Turkify'ı aç**, **Çıkış**.
-4. **Ayarlar…** penceresi:
-   - **Ayar düzenleme:** LLM/morfoloji, model, base_url, API anahtarı, timeout,
+4. **Ana pencere** (sekmeli):
+   - **Motor Ayarları:** LLM/morfoloji, model, base_url, API anahtarı, timeout,
      assistant_prefill. **Kaydet** → **UserDefaults**'a yazar + motoru yeni
      ayarlarla yeniden başlatır. macOS'ta `config.json` **kullanılmaz**
      ([ADR 0007](../docs/adr/0007-ayar-saklama-gui-native.md)).
+   - **Korumalı Kelimeler:** düzeltilmeyecek kelimeler (her satıra bir);
+     `~/.config/turkify/protected_words.txt`'e yazar (yalnızca bu dosya korunur)
+     ve motora `reload` gönderir ([ADR 0008](../docs/adr/0008-korumali-kelimeler-paylasilan-dosya.md)).
+   - **Diğer Ayarlar:** izinler, görünüm (Dock), kısayollar (düzeltme/iptal kaydedici).
+   - **Log:** canlı sistem + motor günlüğü.
    - **İzin:** "Erisilebilirlik" → **Ac** → System Settings → izni aç →
      **Izinleri yenile**. (Tek gereken izin budur; kısayol Carbon ile dinlenir,
      Girdi Izleme gerekmez.)

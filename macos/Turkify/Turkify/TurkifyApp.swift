@@ -190,6 +190,45 @@ final class AppState: ObservableObject {
         if engineRunning { lastStatus = "Ayarlar kaydedildi" }
     }
 
+    // MARK: - Korumalı kelimeler (paylaşılan dosya — ADR 0008)
+
+    /// Kullanıcı korumalı-kelime dosyasının yolu. Motorun okuduğu standart konumla
+    /// AYNI olmalı: `$XDG_CONFIG_HOME`/turkify ya da `~/.config/turkify`. Motor bu
+    /// yolu `config.protected_words_path` ile aynı mantıkla çözer (bkz. ADR 0008).
+    static func protectedWordsFileURL() -> URL {
+        let env = ProcessInfo.processInfo.environment
+        let base: URL
+        if let xdg = env["XDG_CONFIG_HOME"], !xdg.isEmpty {
+            base = URL(fileURLWithPath: xdg, isDirectory: true)
+        } else {
+            base = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".config", isDirectory: true)
+        }
+        return base.appendingPathComponent("turkify", isDirectory: true)
+            .appendingPathComponent("protected_words.txt")
+    }
+
+    /// Dosyadaki korumalı kelimeleri okur (yoksa boş döner).
+    func loadProtectedWords() -> String {
+        (try? String(contentsOf: Self.protectedWordsFileURL(), encoding: .utf8)) ?? ""
+    }
+
+    /// Korumalı kelimeleri standart paylaşılan dosyaya yazar ve motora reload
+    /// gönderir. Yalnızca bu dosyadaki kelimeler korunur (motor sıcak kalır; ADR 0008).
+    func saveProtectedWords(_ text: String) {
+        let url = Self.protectedWordsFileURL()
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            engine.reload()
+            lastStatus = "Korumalı kelimeler kaydedildi"
+        } catch {
+            lastStatus = "Korumalı kelimeler kaydedilemedi: \(error.localizedDescription)"
+        }
+    }
+
     private func registerHotKey() {
         // Eskileri bırak (deinit unregister eder).
         hotKey = nil
@@ -426,6 +465,8 @@ struct MainView: View {
         TabView {
             SettingsView(state: state)
                 .tabItem { Label("Motor Ayarları", systemImage: "cpu") }
+            ProtectedWordsView(state: state)
+                .tabItem { Label("Korumalı Kelimeler", systemImage: "shield") }
             OtherSettingsView(state: state)
                 .tabItem { Label("Diğer Ayarlar", systemImage: "slider.horizontal.3") }
             LogView(state: state)
@@ -658,6 +699,43 @@ struct OtherSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+// MARK: - Korumalı Kelimeler sekmesi (paylaşılan dosya — ADR 0008)
+
+struct ProtectedWordsView: View {
+    @ObservedObject var state: AppState
+    @State private var text: String = ""
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Bu kelimeler düzeltilmez (her satıra bir kelime). Yalnızca buradaki kelimeler korunur.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Kaydet") {
+                    state.saveProtectedWords(text)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+
+            Divider()
+
+            TextEditor(text: $text)
+                .font(.system(.body, design: .monospaced))
+                .padding(4)
+        }
+        .onAppear {
+            // Dosyayı yalnızca ilk açılışta yükle; kullanıcının düzenlemesini ezmesin.
+            if !loaded {
+                text = state.loadProtectedWords()
+                loaded = true
+            }
         }
     }
 }

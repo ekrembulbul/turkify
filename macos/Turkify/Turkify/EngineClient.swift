@@ -69,6 +69,20 @@ final class EngineClient {
         try start(settings: settings)
     }
 
+    /// Motora ateşle-unut bir `{"cmd":"reload"}` gönderir; motor ayarları ve
+    /// korumalı kelime önbelleğini tazeler (model sıcak kalır). Yanıt (`{"ok":true}`)
+    /// id taşımadığından yok sayılır. Motor çalışmıyorsa sessizce atlanır.
+    func reload() {
+        queue.async {
+            guard
+                let handle = self.stdinHandle, self.isRunning,
+                var line = try? JSONSerialization.data(withJSONObject: ["cmd": "reload"])
+            else { return }
+            line.append(0x0A)
+            handle.write(line)
+        }
+    }
+
     func stop() {
         if let proc = process, proc.isRunning { proc.terminate() }
         process = nil
