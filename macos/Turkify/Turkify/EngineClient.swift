@@ -83,25 +83,38 @@ final class EngineClient {
         }
     }
 
-    /// Metni motora gönderir ve düzeltilmiş halini döndürür.
+    /// Metni motora gönderir ve düzeltilmiş halini döndürür. Task iptal edilirse
+    /// bekleyen istek bırakılır (motor isteği arka planda bitirir, yanıtı yok sayılır).
     func correct(_ text: String) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
+        // id'yi önceden üret ki iptal işleyicisi doğru isteği temizleyebilsin.
+        let id = queue.sync { () -> Int in
+            let current = nextID
+            nextID += 1
+            return current
+        }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                queue.async {
+                    guard let handle = self.stdinHandle, self.isRunning else {
+                        continuation.resume(throwing: EngineError.notRunning)
+                        return
+                    }
+                    self.pending[id] = continuation
+                    let payload: [String: Any] = ["id": id, "text": text]
+                    guard var line = try? JSONSerialization.data(withJSONObject: payload) else {
+                        self.pending.removeValue(forKey: id)
+                        continuation.resume(throwing: EngineError.badResponse)
+                        return
+                    }
+                    line.append(0x0A)  // satır sonu
+                    handle.write(line)
+                }
+            }
+        } onCancel: {
             queue.async {
-                guard let handle = self.stdinHandle, self.isRunning else {
-                    continuation.resume(throwing: EngineError.notRunning)
-                    return
+                if let continuation = self.pending.removeValue(forKey: id) {
+                    continuation.resume(throwing: CancellationError())
                 }
-                let id = self.nextID
-                self.nextID += 1
-                self.pending[id] = continuation
-                let payload: [String: Any] = ["id": id, "text": text]
-                guard var line = try? JSONSerialization.data(withJSONObject: payload) else {
-                    self.pending.removeValue(forKey: id)
-                    continuation.resume(throwing: EngineError.badResponse)
-                    return
-                }
-                line.append(0x0A)  // satır sonu
-                handle.write(line)
             }
         }
     }

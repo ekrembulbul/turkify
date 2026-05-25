@@ -65,6 +65,7 @@ final class AppState: ObservableObject {
     private lazy var corrector = Corrector(engine: engine)
     private var windowOpen = false
     private var spinnerTimer: Timer?
+    private var correctionTask: Task<Void, Never>?
 
     /// İşlem göstergesi: ProgressView menü-bar'da animasyon yapmaz; bu yüzden
     /// timer ile açıyı güncelleyip ikonu döndürürüz (her tick yeni bir kare).
@@ -189,16 +190,27 @@ final class AppState: ObservableObject {
         }
         let modifiers = HotKey.carbonModifiers(from: settings.hotkeyMods)
         hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in
-            Task { @MainActor in await self?.correctSelection() }
+            Task { @MainActor in self?.requestCorrection() }
         }
         if hotKey == nil { lastStatus = "Kısayol kaydedilemedi" }
+    }
+
+    /// Düzeltmeyi iptal edilebilir bir görev olarak başlatır (kısayol/test çağırır).
+    func requestCorrection() {
+        guard !busy else { return }
+        correctionTask = Task { await correctSelection() }
+    }
+
+    /// Devam eden düzeltmeyi iptal eder (LLM beklemesi dahil).
+    func cancelCorrection() {
+        correctionTask?.cancel()
     }
 
     func correctSelection() async {
         guard !busy else { Log.info("correctSelection: zaten mesgul, atlandi"); return }
         busy = true
         startSpinner()
-        defer { busy = false; stopSpinner() }
+        defer { busy = false; stopSpinner(); correctionTask = nil }
         Log.info("correctSelection: basladi; accessibility=\(accessibilityGranted) inputMonitoring=\(inputMonitoringGranted) engineRunning=\(engine.isRunning)")
         if !accessibilityGranted {
             Log.info("correctSelection: UYARI Accessibility izni YOK -> Cmd+C/Cmd+V calismaz")
@@ -210,6 +222,9 @@ final class AppState: ObservableObject {
         } catch Corrector.CorrectorError.emptySelection {
             lastStatus = "Seçili metin bulunamadı"
             Log.info("correctSelection: secim bos")
+        } catch is CancellationError {
+            lastStatus = "İşlem iptal edildi"
+            Log.info("correctSelection: iptal edildi")
         } catch {
             lastStatus = "Hata: \(error)"
             Log.info("correctSelection: HATA \(error)")
@@ -225,6 +240,13 @@ struct MenuContent: View {
 
     var body: some View {
         Text(statusLine)
+
+        Divider()
+
+        // İptal seçeneği her zaman görünür; işlem yokken pasif (kullanıcıya
+        // bu yeteneğin var olduğunu bildirir).
+        Button("İşlemi iptal et") { state.cancelCorrection() }
+            .disabled(!state.busy)
 
         Divider()
 
@@ -434,8 +456,9 @@ struct OtherSettingsView: View {
             Section("Durum") {
                 LabeledContent("Motor", value: state.engineRunning ? "çalışıyor" : "kapalı")
                 Button("Seçili metni düzelt (test)") {
-                    Task { @MainActor in await state.correctSelection() }
+                    state.requestCorrection()
                 }
+                .disabled(state.busy)
                 LabeledContent("Son işlem", value: state.lastStatus)
             }
 
