@@ -8,11 +8,15 @@ import Carbon.HIToolbox
 /// derlemesinde en olası iterasyon noktası burasıdır.
 final class HotKey {
     private var hotKeyRef: EventHotKeyRef?
-    private let action: () -> Void
     private let identifier: UInt32
 
     private static let signature: OSType = 0x544B4659  // 'TKFY'
-    private static var registry: [UInt32: HotKey] = [:]
+    // Registry YALNIZCA eylem closure'unu tutar, HotKey nesnesini DEĞİL. Nesneyi
+    // tutsaydı statik sözlük onu güçlü referansla canlı tutar, sahip (AppState)
+    // referansı bıraksa bile `deinit` hiç çalışmaz → Carbon kısayolu
+    // `UnregisterEventHotKey` edilmez. Sonuç: kayıt sırasında eski kısayol hâlâ
+    // tetiklenir ve her yeniden kayıtta kısayollar birikir (sızıntı).
+    private static var registry: [UInt32: () -> Void] = [:]
     private static var counter: UInt32 = 0
     private static var handlerInstalled = false
 
@@ -20,10 +24,8 @@ final class HotKey {
     ///   - keyCode: sanal tuş kodu (bkz. `keyCode(for:)`)
     ///   - modifiers: Carbon modifier maskesi (bkz. `carbonModifiers(from:)`)
     init?(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
-        self.action = action
         HotKey.counter += 1
         self.identifier = HotKey.counter
-        HotKey.registry[identifier] = self
         HotKey.installHandlerIfNeeded()
 
         let hotKeyID = EventHotKeyID(signature: HotKey.signature, id: identifier)
@@ -31,9 +33,9 @@ final class HotKey {
             keyCode, modifiers, hotKeyID, GetEventDispatcherTarget(), 0, &hotKeyRef
         )
         if status != noErr {
-            HotKey.registry[identifier] = nil
             return nil
         }
+        HotKey.registry[identifier] = action
     }
 
     deinit {
@@ -59,8 +61,8 @@ final class HotKey {
                     EventParamType(typeEventHotKeyID), nil,
                     MemoryLayout<EventHotKeyID>.size, nil, &hkID
                 )
-                if let hotKey = HotKey.registry[hkID.id] {
-                    DispatchQueue.main.async { hotKey.action() }
+                if let action = HotKey.registry[hkID.id] {
+                    DispatchQueue.main.async { action() }
                 }
                 return noErr
             },
