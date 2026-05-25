@@ -138,10 +138,23 @@ final class AppState: ObservableObject {
         NSApp.setActivationPolicy(policy)
     }
 
+    /// Pencereyi açtıktan SONRA uygulamayı öne getirip ana pencereyi key yapar.
+    /// `openWindow` çağrısı View bağlamında yapılmalı; bu yalnızca aktivasyonu
+    /// üstlenir. accessory app'lerde tek başına `NSApp.activate` güvenilir değil;
+    /// bu yüzden önce .regular'a geçer, sonraki runloop'ta pencereyi öne getirir.
+    static func activateMainWindow() {
+        NSApp.setActivationPolicy(.regular)
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            // MenuBarExtra status penceresi canBecomeMain değildir → asıl pencere bu.
+            NSApp.windows.first { $0.canBecomeMain }?.makeKeyAndOrderFront(nil)
+        }
+    }
+
     func windowAppeared() {
         windowOpen = true
         applyActivationPolicy()
-        NSApp.activate(ignoringOtherApps: true)  // pencereyi öne getir
+        Self.activateMainWindow()  // pencereyi öne getir + key yap
         refreshPermissions()
         Task { await discoverModels() }
     }
@@ -465,7 +478,7 @@ struct MenuContent: View {
 
         Button("Turkify'ı aç") {
             openWindow(id: AppState.mainWindowID)
-            NSApp.activate(ignoringOtherApps: true)
+            AppState.activateMainWindow()
         }
         .keyboardShortcut(",", modifiers: .command)
 
@@ -518,7 +531,7 @@ struct MenuBarLabel: View {
                 // Dock-tık (AppDelegate) ana pencereyi bu kapanışla açar.
                 state.presentMainWindow = {
                     openWindow(id: AppState.mainWindowID)
-                    NSApp.activate(ignoringOtherApps: true)
+                    AppState.activateMainWindow()
                 }
             }
     }
