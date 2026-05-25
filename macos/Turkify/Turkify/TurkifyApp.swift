@@ -65,6 +65,16 @@ final class AppState: ObservableObject {
     /// Kayıt sırasında geçersiz kombinasyon uyarısı (nil = uyarı yok).
     @Published var recordingError: String?
 
+    /// Düzeltme sekmesi durumu. AppState'te tutulur ki sekme değişince KAYBOLMASIN
+    /// (detail view yeniden yaratılır → View @State sıfırlanırdı).
+    enum CorrectionPhase { case idle, processing, done, failed }
+    @Published var correctionInput = ""
+    @Published var correctionOutput = ""
+    @Published var correctionStatus = "Hazır"
+    @Published var correctionPhase: CorrectionPhase = .idle
+    var correctionProcessing: Bool { correctionPhase == .processing }
+    private var correctionTextTask: Task<Void, Never>?
+
     private let engine = EngineClient()
     private var hotKey: HotKey?
     private var cancelHotKey: HotKey?
@@ -238,10 +248,50 @@ final class AppState: ObservableObject {
 
     // MARK: - Metin düzeltme (Düzeltme sekmesi; pano akışından bağımsız)
 
-    /// Verilen metni motora gönderip düzeltilmiş halini döndürür. Görev iptal
-    /// edilirse ``CancellationError`` fırlatır (motor isteği bırakılır).
-    func correctText(_ text: String) async throws -> String {
-        try await engine.correct(text)
+    /// Giriş metnini motora gönderir; ``copy`` ise sonucu panoya da yazar.
+    /// İptal edilebilir; durum/çıktı AppState'te tutulduğu için sekme değişse de korunur.
+    func runTextCorrection(copy: Bool) {
+        let text = correctionInput
+        guard !text.isEmpty, !correctionProcessing else { return }
+        correctionPhase = .processing
+        correctionStatus = copy ? "Düzeltiliyor (panoya kopyalanacak)…" : "Düzeltiliyor…"
+        correctionTextTask = Task { @MainActor in
+            do {
+                let result = try await engine.correct(text)
+                try Task.checkCancellation()
+                correctionOutput = result
+                if copy {
+                    copyToClipboard(result)
+                    correctionStatus = "Düzeltildi ve panoya kopyalandı"
+                } else {
+                    correctionStatus = "Düzeltildi"
+                }
+                correctionPhase = .done
+            } catch is CancellationError {
+                correctionStatus = "İşlem iptal edildi"
+                correctionPhase = .idle
+            } catch let error as EngineClient.EngineError {
+                correctionStatus = Self.engineErrorText(error)
+                correctionPhase = .failed
+            } catch {
+                correctionStatus = "Hata: \(error.localizedDescription)"
+                correctionPhase = .failed
+            }
+            correctionTextTask = nil
+        }
+    }
+
+    func cancelTextCorrection() {
+        guard correctionProcessing else { return }
+        correctionTextTask?.cancel()
+    }
+
+    func clearCorrection() {
+        guard !correctionProcessing else { return }
+        correctionInput = ""
+        correctionOutput = ""
+        correctionStatus = "Hazır"
+        correctionPhase = .idle
     }
 
     /// Metni sistem panosuna yazar.
@@ -249,6 +299,14 @@ final class AppState: ObservableObject {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+    }
+
+    private static func engineErrorText(_ error: EngineClient.EngineError) -> String {
+        switch error {
+        case .engine(let message): return "Motor hatası: \(message)"
+        case .notRunning: return "Motor çalışmıyor"
+        case .badResponse: return "Motor yanıtı çözülemedi"
+        }
     }
 
     private func registerHotKey() {
@@ -540,109 +598,100 @@ struct MainView: View {
 struct CorrectionView: View {
     @ObservedObject var state: AppState
 
-    @State private var input = ""
-    @State private var output = ""
-    @State private var task: Task<Void, Never>?
-    @State private var phase: Phase = .idle
-    @State private var status = "Hazır"
-
-    private enum Phase: Equatable { case idle, processing, done, failed }
-    private var isProcessing: Bool { phase == .processing }
+    private var isProcessing: Bool { state.correctionProcessing }
+    private var inputEmpty: Bool { state.correctionInput.isEmpty }
+    private var outputEmpty: Bool { state.correctionOutput.isEmpty }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                if isProcessing { ProgressView().controlSize(.small) }
-                Text(status)
-                    .font(.caption)
-                    .foregroundStyle(phase == .failed ? .red : .secondary)
-                    .lineLimit(1)
-                Spacer()
-                Button("İptal") { cancel() }
-                    .disabled(!isProcessing)
-                    .keyboardShortcut(.cancelAction)
-                Button("Düzelt") { run(copy: false) }
-                    .disabled(isProcessing || input.isEmpty)
-                Button("Düzelt ve Kopyala") { run(copy: true) }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isProcessing || input.isEmpty)
-            }
-            .padding(.horizontal).padding(.vertical, 8)
-
+        VStack(spacing: 0) {
+            toolbar
             Divider()
-
-            Text("Metin  ·  Enter: düzelt  ·  ⇧Enter: alt satır  ·  ⌘Enter: düzelt + kopyala")
-                .font(.caption).foregroundStyle(.secondary)
-                .padding(.horizontal).padding(.top, 6)
-            CorrectionInputEditor(
-                text: $input,
-                isEditable: !isProcessing,
-                onSubmit: { run(copy: false) },
-                onSubmitAndCopy: { run(copy: true) },
-                onCancel: { cancel() }
-            )
-            .frame(minHeight: 140)
-            .padding(.horizontal).padding(.bottom, 6)
-
-            Divider()
-
-            Text("Düzeltilmiş metin")
-                .font(.caption).foregroundStyle(.secondary)
-                .padding(.horizontal).padding(.top, 6)
-            ScrollView {
-                Text(output.isEmpty ? "Düzeltilmiş metin burada görünecek." : output)
-                    .foregroundStyle(output.isEmpty ? .secondary : .primary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            content
         }
     }
 
-    /// Düzeltmeyi iptal edilebilir bir görev olarak başlatır.
-    private func run(copy: Bool) {
-        let text = input
-        guard !text.isEmpty, !isProcessing else { return }
-        phase = .processing
-        status = copy ? "Düzeltiliyor (panoya kopyalanacak)…" : "Düzeltiliyor…"
-        task = Task { @MainActor in
-            do {
-                let result = try await state.correctText(text)
-                try Task.checkCancellation()
-                output = result
-                if copy {
-                    state.copyToClipboard(result)
-                    status = "Düzeltildi ve panoya kopyalandı"
-                } else {
-                    status = "Düzeltildi"
+    private var toolbar: some View {
+        HStack(spacing: 8) {
+            statusIndicator
+            Spacer()
+            Button("İptal") { state.cancelTextCorrection() }
+                .disabled(!isProcessing)
+                .keyboardShortcut(.cancelAction)
+            Button("Temizle") { state.clearCorrection() }
+                .disabled(isProcessing || (inputEmpty && outputEmpty))
+            Button("Düzelt") { state.runTextCorrection(copy: false) }
+                .disabled(isProcessing || inputEmpty)
+            Button("Düzelt ve Kopyala") { state.runTextCorrection(copy: true) }
+                .buttonStyle(.borderedProminent)
+                .disabled(isProcessing || inputEmpty)
+        }
+        .padding(.horizontal).padding(.vertical, 8)
+    }
+
+    @ViewBuilder
+    private var statusIndicator: some View {
+        HStack(spacing: 6) {
+            switch state.correctionPhase {
+            case .processing: ProgressView().controlSize(.small)
+            case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+            case .idle: EmptyView()
+            }
+            Text(state.correctionStatus)
+                .font(.callout)
+                .foregroundStyle(state.correctionPhase == .failed ? .red : .secondary)
+                .lineLimit(1)
+        }
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Metin", systemImage: "pencil.line")
+                    .font(.subheadline.weight(.semibold))
+                Text("Enter: düzelt  ·  ⇧Enter: alt satır  ·  ⌘Enter: düzelt + kopyala")
+                    .font(.caption).foregroundStyle(.secondary)
+                CorrectionInputEditor(
+                    text: $state.correctionInput,
+                    isEditable: !isProcessing,
+                    onSubmit: { state.runTextCorrection(copy: false) },
+                    onSubmitAndCopy: { state.runTextCorrection(copy: true) },
+                    onCancel: { state.cancelTextCorrection() }
+                )
+                .frame(minHeight: 150, maxHeight: .infinity)
+                .opacity(isProcessing ? 0.6 : 1)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Label("Düzeltilmiş metin", systemImage: "checkmark.seal")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Button {
+                        state.copyToClipboard(state.correctionOutput)
+                    } label: {
+                        Label("Kopyala", systemImage: "doc.on.doc")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(outputEmpty)
                 }
-                phase = .done
-            } catch is CancellationError {
-                status = "İşlem iptal edildi"
-                phase = .idle
-            } catch let error as EngineClient.EngineError {
-                status = Self.engineErrorText(error)
-                phase = .failed
-            } catch {
-                status = "Hata: \(error.localizedDescription)"
-                phase = .failed
+                outputCard
+                    .frame(minHeight: 120, maxHeight: .infinity)
             }
-            task = nil
         }
+        .padding(14)
     }
 
-    private func cancel() {
-        guard isProcessing else { return }
-        task?.cancel()
-    }
-
-    private static func engineErrorText(_ error: EngineClient.EngineError) -> String {
-        switch error {
-        case .engine(let message): return "Motor hatası: \(message)"
-        case .notRunning: return "Motor çalışmıyor"
-        case .badResponse: return "Motor yanıtı çözülemedi"
+    private var outputCard: some View {
+        ScrollView {
+            Text(outputEmpty ? "Düzeltilmiş metin burada görünecek." : state.correctionOutput)
+                .textSelection(.enabled)
+                .foregroundStyle(outputEmpty ? .secondary : .primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
         }
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .textBackgroundColor)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))
     }
 }
 
