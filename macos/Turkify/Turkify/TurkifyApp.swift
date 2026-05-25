@@ -627,18 +627,33 @@ struct CorrectionView: View {
         HStack(spacing: 8) {
             statusIndicator
             Spacer()
-            Button("İptal") { state.cancelTextCorrection() }
-                .disabled(!isProcessing)
-                .keyboardShortcut(.cancelAction)
+            Button { state.cancelTextCorrection() } label: {
+                HStack(spacing: 5) { Text("İptal"); shortcutGlyph(["escape"]) }
+            }
+            .disabled(!isProcessing)
+            .keyboardShortcut(.cancelAction)
             Button("Temizle") { state.clearCorrection() }
                 .disabled(isProcessing || (inputEmpty && outputEmpty))
-            Button("Düzelt") { state.runTextCorrection(copy: false) }
-                .disabled(isProcessing || inputEmpty)
-            Button("Düzelt ve Kopyala") { state.runTextCorrection(copy: true) }
-                .buttonStyle(.borderedProminent)
-                .disabled(isProcessing || inputEmpty)
+            Button { state.runTextCorrection(copy: false) } label: {
+                HStack(spacing: 5) { Text("Düzelt"); shortcutGlyph(["return"]) }
+            }
+            .disabled(isProcessing || inputEmpty)
+            Button { state.runTextCorrection(copy: true) } label: {
+                HStack(spacing: 5) { Text("Düzelt ve Kopyala"); shortcutGlyph(["command", "return"]) }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isProcessing || inputEmpty)
         }
         .padding(.horizontal).padding(.vertical, 8)
+    }
+
+    /// Buton içinde kısayol ipucu: SF Symbol tuş ikonları (ör. ⌘↵), hafif soluk.
+    private func shortcutGlyph(_ names: [String]) -> some View {
+        HStack(spacing: 1) {
+            ForEach(names, id: \.self) { Image(systemName: $0) }
+        }
+        .imageScale(.small)
+        .opacity(0.7)
     }
 
     @ViewBuilder
@@ -662,8 +677,6 @@ struct CorrectionView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Metin", systemImage: "pencil.line")
                     .font(.subheadline.weight(.semibold))
-                Text("Enter: düzelt  ·  ⇧Enter: alt satır  ·  ⌘Enter: düzelt + kopyala")
-                    .font(.caption).foregroundStyle(.secondary)
                 CorrectionInputEditor(
                     text: $state.correctionInput,
                     isEditable: !isProcessing,
