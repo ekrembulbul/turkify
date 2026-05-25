@@ -25,8 +25,7 @@ struct TurkifyApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)  // menü-bar uygulaması; Dock ikonu yok
-        AppState.shared.startup()
+        AppState.shared.startup()  // aktivasyon politikası startup içinde ayarlanır
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -50,6 +49,7 @@ final class AppState: ObservableObject {
     private let engine = EngineClient()
     private var hotKey: HotKey?
     private lazy var corrector = Corrector(engine: engine)
+    private var settingsWindowOpen = false
 
     var menuBarSymbol: String {
         if busy { return "hourglass" }
@@ -57,9 +57,38 @@ final class AppState: ObservableObject {
     }
 
     func startup() {
+        applyActivationPolicy()
         refreshPermissions()
         startEngine()
         registerHotKey()
+    }
+
+    /// Dock ikonu görünürlüğü: Ayarlar penceresi açıkken VEYA kullanıcı "Dock'ta
+    /// göster" seçtiyse uygulama normal (.regular, Dock'ta) olur; aksi halde
+    /// menü-bar-only (.accessory, Dock'ta yok).
+    func applyActivationPolicy() {
+        let policy: NSApplication.ActivationPolicy =
+            (settingsWindowOpen || settings.showInDock) ? .regular : .accessory
+        NSApp.setActivationPolicy(policy)
+    }
+
+    func settingsWindowAppeared() {
+        settingsWindowOpen = true
+        applyActivationPolicy()
+        NSApp.activate(ignoringOtherApps: true)  // pencereyi öne getir
+        refreshPermissions()
+    }
+
+    func settingsWindowDisappeared() {
+        settingsWindowOpen = false
+        applyActivationPolicy()
+    }
+
+    /// "Dock'ta göster" tercihi değişince: kaydet + politikayı uygula.
+    func setShowInDock(_ value: Bool) {
+        settings.showInDock = value
+        settings.save()
+        applyActivationPolicy()
     }
 
     func shutdown() {
@@ -190,6 +219,16 @@ struct SettingsView: View {
                 Button("İzinleri yenile") { state.refreshPermissions() }
             }
 
+            Section("Görünüm") {
+                Toggle("Dock'ta göster", isOn: Binding(
+                    get: { state.settings.showInDock },
+                    set: { state.setShowInDock($0) }
+                ))
+                Text("Kapalıyken uygulama yalnızca menü-bar'da durur. Ayarlar açıkken Dock'ta geçici görünür.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Durum / Test") {
                 LabeledContent("Motor", value: state.engineRunning ? "çalışıyor" : "kapalı")
                 Button("Seçili metni düzelt (test)") {
@@ -204,8 +243,9 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 560)
-        .onAppear { state.refreshPermissions() }
+        .frame(width: 420, height: 600)
+        .onAppear { state.settingsWindowAppeared() }
+        .onDisappear { state.settingsWindowDisappeared() }
     }
 
     @ViewBuilder

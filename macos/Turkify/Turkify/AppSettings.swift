@@ -16,6 +16,9 @@ struct AppSettings {
     var assistantPrefill: String
     var hotkeyMods: [String]
     var hotkeyKey: String
+    /// Yalnızca UI tercihi (motora gönderilmez): uygulama çalışırken Dock'ta
+    /// simge görünsün mü? Kapalıysa menü-bar-only (accessory).
+    var showInDock: Bool
 
     static let fallback = AppSettings(
         model: "",
@@ -26,7 +29,8 @@ struct AppSettings {
         apiKey: "",
         assistantPrefill: "",
         hotkeyMods: ["ctrl", "opt", "cmd"],
-        hotkeyKey: "a"
+        hotkeyKey: "a",
+        showInDock: false
     )
 
     static func load() -> AppSettings {
@@ -40,7 +44,8 @@ struct AppSettings {
             apiKey: d.string(forKey: "apiKey") ?? "",
             assistantPrefill: d.string(forKey: "assistantPrefill") ?? "",
             hotkeyMods: d.stringArray(forKey: "hotkeyMods") ?? fallback.hotkeyMods,
-            hotkeyKey: d.string(forKey: "hotkeyKey") ?? fallback.hotkeyKey
+            hotkeyKey: d.string(forKey: "hotkeyKey") ?? fallback.hotkeyKey,
+            showInDock: d.object(forKey: "showInDock") as? Bool ?? fallback.showInDock
         )
     }
 
@@ -55,6 +60,7 @@ struct AppSettings {
         d.set(assistantPrefill, forKey: "assistantPrefill")
         d.set(hotkeyMods, forKey: "hotkeyMods")
         d.set(hotkeyKey, forKey: "hotkeyKey")
+        d.set(showInDock, forKey: "showInDock")
     }
 
     /// Motoru bu ayarlarla başlatacak `serve` argümanları (CLI bayrakları).
