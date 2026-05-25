@@ -62,6 +62,7 @@ final class AppState: ObservableObject {
 
     private let engine = EngineClient()
     private var hotKey: HotKey?
+    private var cancelHotKey: HotKey?
     private lazy var corrector = Corrector(engine: engine)
     private var windowOpen = false
     private var spinnerTimer: Timer?
@@ -183,16 +184,29 @@ final class AppState: ObservableObject {
     }
 
     private func registerHotKey() {
-        hotKey = nil  // eskisini bırak (deinit unregister eder)
-        guard let keyCode = HotKey.keyCode(for: settings.hotkeyKey) else {
+        // Eskileri bırak (deinit unregister eder).
+        hotKey = nil
+        cancelHotKey = nil
+
+        // Düzeltme kısayolu.
+        if let keyCode = HotKey.keyCode(for: settings.hotkeyKey) {
+            let modifiers = HotKey.carbonModifiers(from: settings.hotkeyMods)
+            hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in
+                Task { @MainActor in self?.requestCorrection() }
+            }
+            if hotKey == nil { lastStatus = "Düzeltme kısayolu kaydedilemedi" }
+        } else {
             lastStatus = "Kısayol tuşu desteklenmiyor: \(settings.hotkeyKey)"
-            return
         }
-        let modifiers = HotKey.carbonModifiers(from: settings.hotkeyMods)
-        hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in
-            Task { @MainActor in self?.requestCorrection() }
+
+        // İptal kısayolu.
+        if let cancelCode = HotKey.keyCode(for: settings.cancelHotkeyKey) {
+            let cancelMods = HotKey.carbonModifiers(from: settings.cancelHotkeyMods)
+            cancelHotKey = HotKey(keyCode: cancelCode, modifiers: cancelMods) { [weak self] in
+                Task { @MainActor in self?.cancelCorrection() }
+            }
+            if cancelHotKey == nil { lastStatus = "İptal kısayolu kaydedilemedi" }
         }
-        if hotKey == nil { lastStatus = "Kısayol kaydedilemedi" }
     }
 
     /// Düzeltmeyi iptal edilebilir bir görev olarak başlatır (kısayol/test çağırır).
@@ -244,8 +258,9 @@ struct MenuContent: View {
         Divider()
 
         // İptal seçeneği her zaman görünür; işlem yokken pasif (kullanıcıya
-        // bu yeteneğin var olduğunu bildirir).
+        // bu yeteneğin var olduğunu bildirir). Kısayol etiketi config'ten gelir.
         Button("İşlemi iptal et") { state.cancelCorrection() }
+            .keyboardShortcut(cancelShortcut.key, modifiers: cancelShortcut.modifiers)
             .disabled(!state.busy)
 
         Divider()
@@ -263,6 +278,23 @@ struct MenuContent: View {
     private var statusLine: String {
         if state.busy { return "Turkify — işleniyor…" }
         return state.engineRunning ? "Turkify — çalışıyor" : "Turkify — motor kapalı"
+    }
+
+    /// İptal kısayolunu config'ten SwiftUI menü kısayoluna çevirir (menüde gösterim).
+    /// Global yakalama Carbon HotKey ile; bu yalnızca menüde etiketi gösterir.
+    private var cancelShortcut: (key: KeyEquivalent, modifiers: EventModifiers) {
+        let character = Character(state.settings.cancelHotkeyKey.first.map(String.init) ?? "q")
+        var modifiers: EventModifiers = []
+        for mod in state.settings.cancelHotkeyMods {
+            switch mod.lowercased() {
+            case "ctrl", "control": modifiers.insert(.control)
+            case "alt", "opt", "option": modifiers.insert(.option)
+            case "cmd", "command", "win", "windows", "super": modifiers.insert(.command)
+            case "shift": modifiers.insert(.shift)
+            default: break
+            }
+        }
+        return (KeyEquivalent(character), modifiers)
     }
 }
 
@@ -489,9 +521,10 @@ struct OtherSettingsView: View {
                 Text("Anında etki eder. Kapalıyken uygulama yalnızca menü-bar'da durur.")
             }
 
-            Section("Kısayol") {
-                LabeledContent("Kısayol", value: state.settings.hotkeyDescription)
-                Text("Kısayol kaydedici sonraki adımda eklenecek.")
+            Section("Kısayollar") {
+                LabeledContent("Düzeltme", value: state.settings.hotkeyDescription)
+                LabeledContent("İşlemi iptal", value: state.settings.cancelHotkeyDescription)
+                Text("Kısayol kaydedici sonraki adımda eklenecek; şimdilik config/UserDefaults'tan.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

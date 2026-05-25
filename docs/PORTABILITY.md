@@ -115,7 +115,8 @@ Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır v
   "api_key": null,                  // sunucu isterse (yerelde genelde gerekmez)
   "llm_options": {},                // /chat/completions gövdesine eklenecek ekstra ALANLAR
   "assistant_prefill": null,        // isteğe eklenecek asistan MESAJI (ör. "<think>\n\n</think>\n\n")
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // Hyper+A (meta=OS'a göre, bkz. §4)
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" },        // Düzeltme: Hyper+A (meta=OS'a göre, bkz. §4)
+  "cancel_hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "q" }  // İşlem iptali: Hyper+Q (meta=OS'a göre, bkz. §4)
 }
 ```
 Örnek: [`config/config.example.json`](../config/config.example.json).
@@ -123,6 +124,10 @@ Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır v
 > **Not:** `mods` içindeki **meta tuşu OS'a göre yazılır** — macOS `cmd`, Windows
 > `win`, Linux `super`. Yukarıdaki örnek macOS içindir; Windows'ta
 > `["ctrl", "alt", "win"]`, Linux'ta `["ctrl", "alt", "super"]` kullanın. Ayrıntı: [§4](#4-kısayol-ajanı-turkify-agent).
+>
+> İki kısayol vardır: `hotkey` seçili metni düzeltir (varsayılan **Hyper+A**),
+> `cancel_hotkey` sürmekte olan bir işlemi iptal eder (varsayılan **Hyper+Q**).
+> İkisinin de meta tuşu OS'a göre yazılır.
 
 ---
 
@@ -191,6 +196,12 @@ karşılığına çevrilir (büyük/küçük harf önemsiz):
 Örnek (Hyper+A): macOS `["ctrl", "alt", "cmd"]` (ya da `["ctrl", "opt", "cmd"]`),
 Windows `["ctrl", "alt", "win"]`, Linux `["ctrl", "alt", "super"]`.
 
+### İptal kısayolu (`cancel_hotkey`)
+`cancel_hotkey` (varsayılan **Hyper+Q**) sürmekte olan bir düzeltme işlemini iptal
+eder; `hotkey` ile aynı `mods`/`key` şemasını kullanır. Şu an yalnızca **native
+frontend** (macOS GUI) bu kısayolu dinler; geçici `turkify agent` yalnızca düzeltme
+kısayolunu (`hotkey`) dinler. Alan, tüm frontend'ler için ortak sözleşmedir.
+
 ---
 
 ## 5. Bilinen kısıtlar
@@ -254,8 +265,9 @@ maddeler özellikle **macOS/Windows GUI** için geçerlidir (Linux'ta config + l
   zaten yalnızca gerçek belirsizliklerde olur.
 
 ### 7.4 Ayar arayüzü
-- `config.json` alanları (kısayol, `use_llm`, `use_morphology`, `timeout`,
-  `model`, `base_url`, `api_key`, `llm_options`, `assistant_prefill`) düzenlenebilir.
+- `config.json` alanları (düzeltme kısayolu, iptal kısayolu, `use_llm`,
+  `use_morphology`, `timeout`, `model`, `base_url`, `api_key`, `llm_options`,
+  `assistant_prefill`) düzenlenebilir.
 - Kısayol kaydedici (hotkey recorder), Tier 2/Tier 3 aç-kapa anahtarları.
 - GUI ayarı değiştirince `config.json`'a yazar ve servise `{"cmd":"reload"}` gönderir.
 

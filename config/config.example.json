@@ -7,5 +7,6 @@
   "api_key": null,
   "llm_options": {},
   "assistant_prefill": null,
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" },
+  "cancel_hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "q" }
 }

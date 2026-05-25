@@ -16,8 +16,10 @@ struct AppSettings {
     var assistantPrefill: String
     /// /chat/completions gövdesine eklenecek ham JSON (boş = gönderilmez).
     var llmOptions: String
-    var hotkeyMods: [String]
+    var hotkeyMods: [String]       // düzeltme kısayolu
     var hotkeyKey: String
+    var cancelHotkeyMods: [String] // işlem iptali kısayolu
+    var cancelHotkeyKey: String
     /// Yalnızca UI tercihi (motora gönderilmez): uygulama çalışırken Dock'ta
     /// simge görünsün mü? Kapalıysa menü-bar-only (accessory).
     var showInDock: Bool
@@ -36,6 +38,8 @@ struct AppSettings {
         llmOptions: "",
         hotkeyMods: ["ctrl", "opt", "cmd"],
         hotkeyKey: "a",
+        cancelHotkeyMods: ["ctrl", "opt", "cmd"],
+        cancelHotkeyKey: "q",
         showInDock: false,
         autoModelSelection: true
     )
@@ -53,6 +57,8 @@ struct AppSettings {
             llmOptions: d.string(forKey: "llmOptions") ?? "",
             hotkeyMods: d.stringArray(forKey: "hotkeyMods") ?? fallback.hotkeyMods,
             hotkeyKey: d.string(forKey: "hotkeyKey") ?? fallback.hotkeyKey,
+            cancelHotkeyMods: d.stringArray(forKey: "cancelHotkeyMods") ?? fallback.cancelHotkeyMods,
+            cancelHotkeyKey: d.string(forKey: "cancelHotkeyKey") ?? fallback.cancelHotkeyKey,
             showInDock: d.object(forKey: "showInDock") as? Bool ?? fallback.showInDock,
             autoModelSelection: d.object(forKey: "autoModelSelection") as? Bool ?? fallback.autoModelSelection
         )
@@ -70,6 +76,8 @@ struct AppSettings {
         d.set(llmOptions, forKey: "llmOptions")
         d.set(hotkeyMods, forKey: "hotkeyMods")
         d.set(hotkeyKey, forKey: "hotkeyKey")
+        d.set(cancelHotkeyMods, forKey: "cancelHotkeyMods")
+        d.set(cancelHotkeyKey, forKey: "cancelHotkeyKey")
         d.set(showInDock, forKey: "showInDock")
         d.set(autoModelSelection, forKey: "autoModelSelection")
     }
@@ -101,7 +109,15 @@ struct AppSettings {
     }
 
     var hotkeyDescription: String {
-        hotkeyMods.map { $0.capitalized }.joined(separator: "+") + "+" + hotkeyKey.uppercased()
+        Self.describe(mods: hotkeyMods, key: hotkeyKey)
+    }
+
+    var cancelHotkeyDescription: String {
+        Self.describe(mods: cancelHotkeyMods, key: cancelHotkeyKey)
+    }
+
+    private static func describe(mods: [String], key: String) -> String {
+        mods.map { $0.capitalized }.joined(separator: "+") + "+" + key.uppercased()
     }
 
     /// Python yürütücüsü + `-m turkify` öneki. `serve` argümanları ayrı eklenir.

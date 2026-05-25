@@ -287,7 +287,8 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
   "api_key": null,                  // yerel sunucular genelde istemez
   "llm_options": {},                // istek govdesine eklenecek alanlar ( or. chat_template_kwargs)
   "assistant_prefill": null,        // ust asistan prefill'i; dusunmeyi kapatmak icin "<think>\n\n</think>\n\n"
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" }   // meta=OS'a göre: macOS cmd / Windows win / Linux super
+  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" },        // Düzeltme kısayolu — Hyper+A (meta=OS'a göre: macOS cmd / Windows win / Linux super)
+  "cancel_hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "q" }  // İşlem iptali kısayolu — Hyper+Q (yalnızca native GUI dinler)
 }
 ```
 
@@ -375,7 +376,8 @@ tasarlanmıştır.
 | Ana ayarlar | `~/.config/turkify/config.json` | model, use_llm, timeout, hotkey (bkz. [§6](#6-yapılandırma-config)) |
 | LLM modeli | config `model` / `--model` / `TURKIFY_MODEL` | Önerilen `qwen3.5:9b-mlx`. |
 | LLM zaman aşımı | config `timeout` / `TURKIFY_TIMEOUT` | Saniye; varsayılan 60. |
-| Kısayol (hotkey) | config `hotkey` | Varsayılan Hyper+A; ajan okur. |
+| Kısayol (hotkey) | config `hotkey` | Düzeltme; varsayılan Hyper+A; ajan okur. |
+| İptal kısayolu | config `cancel_hotkey` | İşlem iptali; varsayılan Hyper+Q; yalnızca native GUI dinler. |
 | Rerank prompt'u | `prompts/rerank_prompt.txt` | LLM'e verilen şablon. |
 
 ---

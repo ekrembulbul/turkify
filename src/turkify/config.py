@@ -49,7 +49,11 @@ DEFAULTS: dict = {
     # İstek sonuna eklenecek asistan prefill'i. "düşünen" modellerde reasoning'i
     # atlatmak için "<think>\n\n</think>\n\n" verilebilir (bkz. reranker).
     "assistant_prefill": None,
+    # Düzeltme kısayolu (Hyper+A) ve işlem iptali kısayolu (Hyper+Q). Meta tuşu
+    # OS'a göre (cmd/win/super). Şu an native GUI (macOS) kendi ayarından okur;
+    # bu alanlar CLI/agent ve diğer frontend'ler için ortak sözleşmedir.
     "hotkey": {"mods": ["ctrl", "alt", _DEFAULT_META], "key": "a"},
+    "cancel_hotkey": {"mods": ["ctrl", "alt", _DEFAULT_META], "key": "q"},
 }
 
 

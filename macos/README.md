@@ -38,7 +38,8 @@ bir satır JSON yanıt vermeli.
 1. `macos/Turkify/Turkify.xcodeproj`'u Xcode ile açın.
 2. Şemada `TURKIFY_PYTHON` env'ini ayarlayın (yukarı).
 3. **Run (⌘R).** Menü-bar'da simge belirir (Dock ikonu yok — accessory app).
-   Menü sade: **durum**, **Ayarlar…** (⌘,), **Cikis** (⌘Q).
+   Menü sade: **durum**, **İşlemi iptal et** (işlem sürerken etkin; Hyper+Q),
+   **Turkify'ı aç**, **Çıkış**.
 4. **Ayarlar…** penceresi:
    - **Ayar düzenleme:** LLM/morfoloji, model, base_url, API anahtarı, timeout,
      assistant_prefill. **Kaydet** → **UserDefaults**'a yazar + motoru yeni
@@ -47,6 +48,8 @@ bir satır JSON yanıt vermeli.
    - **İzinler:** "Erisilebilirlik" / "Girdi Izleme" → **Ac** → System Settings →
      izni aç → **Izinleri yenile**.
 5. Gerçek kullanım: başka uygulamada metin seçin → global kısayol (varsayılan Hyper+A).
+   İşlem uzun sürerse (LLM) **iptal kısayolu** (varsayılan Hyper+Q) ya da menü-bar
+   menüsündeki "İşlemi iptal et" ile durdurabilirsiniz.
 
 > Ayarları sıfırlama: `defaults delete com.ekrem.Turkify` (bundle id'nize göre).
 
@@ -60,7 +63,7 @@ Bu proje şu ayarlarla kurulmuştur; klonlayıp farklı makinede açarken gereke
 ## Bilinen iterasyon / dikkat noktaları
 - **HotKey.swift (Carbon):** en düşük seviye parça; tuş kodları US-ANSI varsayar.
 - **İzin API'leri:** `IOHIDCheckAccess`/`IOHIDRequestAccess`, `AXIsProcessTrusted`.
-- **Kısayol kaydedici** henüz yok (varsayılan Hyper+A) — ROADMAP 7.4.
+- **Kısayol kaydedici** henüz yok (varsayılan: düzeltme Hyper+A, iptal Hyper+Q) — ROADMAP 7.4.
 - **İmzalama/notarization & dağıtım:** Faz 6.4 (paketleme).
 
 ## Mimari hatırlatma
