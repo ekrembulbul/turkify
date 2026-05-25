@@ -14,6 +14,8 @@ struct AppSettings {
     var baseURL: String
     var apiKey: String
     var assistantPrefill: String
+    /// /chat/completions gövdesine eklenecek ham JSON (boş = gönderilmez).
+    var llmOptions: String
     var hotkeyMods: [String]
     var hotkeyKey: String
     /// Yalnızca UI tercihi (motora gönderilmez): uygulama çalışırken Dock'ta
@@ -28,6 +30,7 @@ struct AppSettings {
         baseURL: "http://localhost:11434/v1",
         apiKey: "",
         assistantPrefill: "",
+        llmOptions: "",
         hotkeyMods: ["ctrl", "opt", "cmd"],
         hotkeyKey: "a",
         showInDock: false
@@ -43,6 +46,7 @@ struct AppSettings {
             baseURL: d.string(forKey: "baseURL") ?? fallback.baseURL,
             apiKey: d.string(forKey: "apiKey") ?? "",
             assistantPrefill: d.string(forKey: "assistantPrefill") ?? "",
+            llmOptions: d.string(forKey: "llmOptions") ?? "",
             hotkeyMods: d.stringArray(forKey: "hotkeyMods") ?? fallback.hotkeyMods,
             hotkeyKey: d.string(forKey: "hotkeyKey") ?? fallback.hotkeyKey,
             showInDock: d.object(forKey: "showInDock") as? Bool ?? fallback.showInDock
@@ -58,6 +62,7 @@ struct AppSettings {
         d.set(baseURL, forKey: "baseURL")
         d.set(apiKey, forKey: "apiKey")
         d.set(assistantPrefill, forKey: "assistantPrefill")
+        d.set(llmOptions, forKey: "llmOptions")
         d.set(hotkeyMods, forKey: "hotkeyMods")
         d.set(hotkeyKey, forKey: "hotkeyKey")
         d.set(showInDock, forKey: "showInDock")
@@ -73,7 +78,20 @@ struct AppSettings {
         if !baseURL.isEmpty { args += ["--base-url", baseURL] }
         if !apiKey.isEmpty { args += ["--api-key", apiKey] }
         if !assistantPrefill.isEmpty { args += ["--assistant-prefill", assistantPrefill] }
+        // Yalnızca geçerli JSON ise gönder; geçersizse motor hiç başlamazdı.
+        let trimmedOptions = llmOptions.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedOptions.isEmpty, AppSettings.isValidJSON(trimmedOptions) {
+            args += ["--llm-options", trimmedOptions]
+        }
         return args
+    }
+
+    /// Boş ya da geçerli JSON mu? (UI'da uyarı + serveArguments'ta filtre için.)
+    static func isValidJSON(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return true }
+        guard let data = trimmed.data(using: .utf8) else { return false }
+        return (try? JSONSerialization.jsonObject(with: data)) != nil
     }
 
     var hotkeyDescription: String {

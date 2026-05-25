@@ -257,18 +257,41 @@ struct SettingsView: View {
             Divider()
 
             Form {
-                Section {
-                    Toggle("LLM kullan (Tier 3)", isOn: $state.settings.useLLM)
+                Section("Katmanlar") {
                     Toggle("Morfoloji (Tier 2)", isOn: $state.settings.useMorphology)
+                    Toggle("LLM kullan (Tier 3)", isOn: $state.settings.useLLM)
+                }
+
+                Section {
                     TextField("Model", text: $state.settings.model)
                     TextField("Sunucu (base_url)", text: $state.settings.baseURL)
                     TextField("API anahtarı", text: $state.settings.apiKey)
                     TextField("Zaman aşımı (sn)", value: $state.settings.timeout, format: .number)
-                    TextField("assistant_prefill", text: $state.settings.assistantPrefill)
                 } header: {
-                    Text("Motor / LLM")
+                    Text("LLM bağlantısı (Tier 3)")
                 } footer: {
-                    Text("Bu bölümdeki değişiklikler **Kaydet** ile uygulanır (motor yeniden başlar).")
+                    Text("Bu sekmedeki değişiklikler **Kaydet** ile uygulanır (motor yeniden başlar).")
+                }
+
+                Section {
+                    codeEditor(text: $state.settings.assistantPrefill, minHeight: 60)
+                } header: {
+                    Text("assistant_prefill")
+                } footer: {
+                    Text("İsteğe eklenecek asistan metni. Düşünmeyi kapatmak için: `<think>\\n\\n</think>\\n\\n`")
+                }
+
+                Section {
+                    codeEditor(text: $state.settings.llmOptions, minHeight: 90)
+                    if !AppSettings.isValidJSON(state.settings.llmOptions) {
+                        Label("Geçersiz JSON — kaydedilse de motora gönderilmez.", systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                } header: {
+                    Text("llm_options (JSON)")
+                } footer: {
+                    Text("İsteğin gövdesine eklenecek JSON. Ör: `{\"chat_template_kwargs\":{\"enable_thinking\":false}}`")
                 }
 
                 Section("Kısayol") {
@@ -318,6 +341,15 @@ struct SettingsView: View {
             Spacer()
             Button("Aç") { action() }
         }
+    }
+
+    /// Kod (monospace) fontlu, çok satırlı giriş alanı — JSON / prefill için.
+    private func codeEditor(text: Binding<String>, minHeight: CGFloat) -> some View {
+        TextEditor(text: text)
+            .font(.system(.body, design: .monospaced))
+            .frame(minHeight: minHeight)
+            .padding(4)
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
     }
 }
 
