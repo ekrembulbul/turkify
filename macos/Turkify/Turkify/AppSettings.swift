@@ -123,11 +123,21 @@ struct AppSettings {
         mods.map { $0.capitalized }.joined(separator: "+") + "+" + key.uppercased()
     }
 
-    /// Python yürütücüsü + `-m turkify` öneki. `serve` argümanları ayrı eklenir.
-    /// Venv için Xcode scheme'inde `TURKIFY_PYTHON` env'ini ayarla.
+    /// Motoru çalıştıracak komut. `serve` argümanları ayrı eklenir.
+    ///
+    /// Öncelik:
+    ///  1. **Geliştirme:** Xcode scheme'inde `TURKIFY_PYTHON` env'i (venv python + `-m turkify`).
+    ///  2. **Release:** `.app` içine gömülü donmuş motor
+    ///     (`Contents/Resources/turkify-engine/turkify-engine`; bkz. ADR 0009 / packaging).
+    ///  3. **Son çare:** sistem `python3 -m turkify` (yalnızca geliştirme fallback'i).
     static func engineExecutable() -> (executable: String, prefixArgs: [String]) {
         if let python = ProcessInfo.processInfo.environment["TURKIFY_PYTHON"], !python.isEmpty {
             return (python, ["-m", "turkify"])
+        }
+        if let embedded = Bundle.main.url(
+            forResource: "turkify-engine", withExtension: nil, subdirectory: "turkify-engine"
+        ) {
+            return (embedded.path, [])
         }
         return ("/usr/bin/env", ["python3", "-m", "turkify"])
     }

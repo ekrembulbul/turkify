@@ -75,7 +75,8 @@ Bu proje şu ayarlarla kurulmuştur; klonlayıp farklı makinede açarken gereke
 - **Kısayol kaydedici:** Diğer Ayarlar → Kısayollar → "Değiştir" ile yeni kombinasyon
   yakalanır (yerel NSEvent monitörü; Girdi İzleme izni gerekmez). Varsayılan: düzeltme
   Hyper+A, iptal Hyper+Q. Tuş kodları US-ANSI harf/rakamla sınırlıdır (HotKey.swift).
-- **İmzalama/notarization & dağıtım:** Faz 6.4 (paketleme).
+- **Paketleme / imzalama / notarization & dağıtım:** motor PyInstaller ile dondurulup
+  `.app` içine gömülür — adımlar: [`packaging/README.md`](packaging/README.md) (ADR 0009).
 
 ## Mimari hatırlatma
 - Bu app metni **düzeltmez**; seçimi alır, `serve`'e gönderir, sonucu yapıştırır.

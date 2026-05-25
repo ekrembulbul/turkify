@@ -15,3 +15,8 @@ DerivedData/
 # .xcodeproj izlenir; yalnizca kullaniciya ozel durum yok sayilir
 xcuserdata/
 *.xcuserstate
+
+# Paketleme (PyInstaller) build ciktilari
+macos/packaging/.build-venv/
+macos/packaging/build/
+macos/packaging/dist/
