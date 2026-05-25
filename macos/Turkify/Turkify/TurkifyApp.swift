@@ -56,6 +56,7 @@ final class AppState: ObservableObject {
     @Published var engineRunning = false
     @Published var lastStatus = "Hazır"
     @Published var settings = AppSettings.load()
+    @Published var discoveredBackends: [DiscoveredBackend] = []
 
     private let engine = EngineClient()
     private var hotKey: HotKey?
@@ -88,6 +89,19 @@ final class AppState: ObservableObject {
         applyActivationPolicy()
         NSApp.activate(ignoringOtherApps: true)  // pencereyi öne getir
         refreshPermissions()
+        Task { await discoverModels() }
+    }
+
+    /// Yerel sunucuları tarayıp modelleri türlerine göre listeler.
+    func discoverModels() async {
+        discoveredBackends = await ModelDiscovery.discover()
+    }
+
+    /// Combobox'tan model seçimi: modeli ve sunucu adresini birlikte ayarlar
+    /// (Kaydet ile uygulanır).
+    func selectModel(_ model: String, baseURL: String) {
+        settings.model = model
+        settings.baseURL = baseURL
     }
 
     func windowDisappeared() {
@@ -263,14 +277,57 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    // Mod: Otomatik (combobox) veya Manuel (elle).
+                    Picker("Model seçimi", selection: $state.settings.autoModelSelection) {
+                        Text("Otomatik").tag(true)
+                        Text("Manuel").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+
+                    if state.settings.autoModelSelection {
+                        // Bulunan yerel modeller (Ollama / LM Studio / …) — tür başlıklarıyla.
+                        HStack {
+                            Menu {
+                                if state.discoveredBackends.isEmpty {
+                                    Text("Model bulunamadı")
+                                }
+                                ForEach(state.discoveredBackends) { backend in
+                                    Section(backend.name) {
+                                        ForEach(backend.models, id: \.self) { model in
+                                            Button(model) {
+                                                state.selectModel(model, baseURL: backend.baseURL)
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Label(
+                                    state.settings.model.isEmpty ? "Model seç" : state.settings.model,
+                                    systemImage: "cpu"
+                                )
+                            }
+                            Button {
+                                Task { await state.discoverModels() }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .help("Yerel modelleri yeniden tara")
+                        }
+                    }
+
+                    // Otomatik modda model/sunucu salt-okunur (combobox doldurur).
                     TextField("Model", text: $state.settings.model)
+                        .disabled(state.settings.autoModelSelection)
                     TextField("Sunucu (base_url)", text: $state.settings.baseURL)
+                        .disabled(state.settings.autoModelSelection)
                     TextField("API anahtarı", text: $state.settings.apiKey)
                     TextField("Zaman aşımı (sn)", value: $state.settings.timeout, format: .number)
                 } header: {
                     Text("LLM bağlantısı (Tier 3)")
                 } footer: {
-                    Text("Bu sekmedeki değişiklikler **Kaydet** ile uygulanır (motor yeniden başlar).")
+                    Text(state.settings.autoModelSelection
+                         ? "Otomatik: combobox'tan model seç; model ve sunucu otomatik dolar (salt-okunur)."
+                         : "Manuel: model ve sunucu adresini elle gir.")
                 }
 
                 Section {

@@ -21,6 +21,9 @@ struct AppSettings {
     /// Yalnızca UI tercihi (motora gönderilmez): uygulama çalışırken Dock'ta
     /// simge görünsün mü? Kapalıysa menü-bar-only (accessory).
     var showInDock: Bool
+    /// UI tercihi: model seçimi otomatik mi (combobox'tan, model/url readonly) yoksa
+    /// manuel mi (combobox kapalı, model/url elle yazılır)?
+    var autoModelSelection: Bool
 
     static let fallback = AppSettings(
         model: "",
@@ -33,7 +36,8 @@ struct AppSettings {
         llmOptions: "",
         hotkeyMods: ["ctrl", "opt", "cmd"],
         hotkeyKey: "a",
-        showInDock: false
+        showInDock: false,
+        autoModelSelection: true
     )
 
     static func load() -> AppSettings {
@@ -49,7 +53,8 @@ struct AppSettings {
             llmOptions: d.string(forKey: "llmOptions") ?? "",
             hotkeyMods: d.stringArray(forKey: "hotkeyMods") ?? fallback.hotkeyMods,
             hotkeyKey: d.string(forKey: "hotkeyKey") ?? fallback.hotkeyKey,
-            showInDock: d.object(forKey: "showInDock") as? Bool ?? fallback.showInDock
+            showInDock: d.object(forKey: "showInDock") as? Bool ?? fallback.showInDock,
+            autoModelSelection: d.object(forKey: "autoModelSelection") as? Bool ?? fallback.autoModelSelection
         )
     }
 
@@ -66,6 +71,7 @@ struct AppSettings {
         d.set(hotkeyMods, forKey: "hotkeyMods")
         d.set(hotkeyKey, forKey: "hotkeyKey")
         d.set(showInDock, forKey: "showInDock")
+        d.set(autoModelSelection, forKey: "autoModelSelection")
     }
 
     /// Motoru bu ayarlarla başlatacak `serve` argümanları (CLI bayrakları).
