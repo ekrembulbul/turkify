@@ -19,7 +19,14 @@ kurulabilen bir yazılım olarak sunalım.
 - Tetikleme **masaüstü ortamının kendi kısayolu** (GNOME/KDE custom shortcut) ile —
   bir komut/ince istemci çalıştırır. Bu, Wayland'ın "uygulama hotkey grab edemez"
   kısıtını **atlatır** (kısayolu uygulama değil, DE yakalar).
-- Pano: X11 `xclip`/`xsel`, Wayland `wl-clipboard`. Ayar: mevcut `config.json`.
+- **Kısayollar config'te tutulmaz.** Hem düzeltme hem de işlem iptali ayrı birer
+  DE custom shortcut'tır; her biri bir komut çalıştırır (düzeltme: seçim → sokete
+  gönder → yapıştır; iptal: çalışan isteğe iptal sinyali gönder). Kullanıcı
+  kombinasyonları doğrudan GNOME/KDE klavye ayarlarında tanımlar — uygulama bu
+  tuşları bilmez/dinlemez. (macOS native uygulaması ise kendi kısayollarını
+  UserDefaults'ta saklar; bkz. [ADR 0007](0007-ayar-saklama-gui-native.md).)
+- Pano: X11 `xclip`/`xsel`, Wayland `wl-clipboard`. **config.json yalnızca motor
+  ayarlarını** (model, base_url, timeout, …) taşır.
 - Dağıtım: `.deb`/`.rpm`/AUR veya **Flatpak** (ayrı paketleme fazı).
 
 ## Sonuçlar

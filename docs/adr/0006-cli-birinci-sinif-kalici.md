@@ -19,8 +19,8 @@ kalıcı** arayüz kabul edilir.
 - `serve` ve native frontend'ler CLI'ın **üstüne eklenen** giriş noktalarıdır;
   CLI'ın yerine geçmez.
 - [ADR 0003](0003-native-per-os-gui.md)/[0004](0004-motor-sinir-protokolu.md)'teki
-  değişiklikler ve `agent`'in geçici statüsü **CLI'ı kapsamaz** — `agent` (kısayol/
-  pano) emekliye ayrılabilir, ama CLI ayrılmaz.
+  değişiklikler **CLI'ı kapsamaz** — geçici `agent` (kısayol/pano) emekliye ayrıldı
+  (kaldırıldı), ama CLI ayrılmaz.
 - CLI tüm ayar bayraklarını destekler ve öncelik sırasına uyar (bkz. PORTABILITY §2).
 
 ## Sonuçlar

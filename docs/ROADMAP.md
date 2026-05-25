@@ -38,8 +38,8 @@ Tokenizer, Tier 1 deasciifier, frekans sözlüğü, koruma katmanı, reconstruct
 yapacağız`; noktalama/case korunur; korumalı kelimeler dönüşmez; < 50 ms/cümle.
 
 > Not: İlk kısayol entegrasyonu Hammerspoon (macOS) ile yapılmıştı; sonradan
-> kaldırıldı. Kısayol artık çok-platform `turkify agent` ile (Faz 6'da native
-> arayüzlere devrediliyor — bkz. [ADR 0003](adr/0003-native-per-os-gui.md)).
+> kaldırıldı. Geçici `turkify agent` (pynput/pyperclip) de kaldırıldı; sistem
+> geneli kısayol artık **native frontend'in** görevidir (bkz. [ADR 0003](adr/0003-native-per-os-gui.md)).
 
 ## Faz 2 — Morfolojik Doğrulama + Güven Skoru ✅
 
@@ -98,8 +98,8 @@ Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzelti
   - `engine.correct` aynen kullanılır; `serve` ince bir döngü/sarmalayıcıdır.
   - ✅ `src/turkify/serve.py` (`EngineService.handle` + `serve_stdio` + `serve_socket`),
     `turkify serve [--stdio|--socket YOL]`, testler. İki taşıma da uçtan uca doğrulandı.
-- 🔄 `agent.py` (pynput/pyperclip) **geçici statüye** alınır: kısayol+pano native'e
-  devredildikçe emekliye ayrılır. Henüz native frontend'i olmayan OS'lar için durur.
+- ✅ `agent.py` (pynput/pyperclip) **kaldırıldı**: sistem geneli kısayol+pano
+  görevi native frontend'lere (macOS uygulaması) devredildi.
 - 🔒 **CLI dokunulmaz:** `turkify` CLI birinci-sınıf ve birincil senaryodur; `serve`
   onun *üstüne* eklenir, yerine geçmez ([ADR 0006](adr/0006-cli-birinci-sinif-kalici.md)).
   CLI in-process kalır (serve'e bağımlı değil) ve her zaman test kapsamındadır.

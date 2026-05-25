@@ -43,8 +43,8 @@ echo "bugun gorusme yapacagiz" | python -m turkify
 # Hangi katmanın çözdüğünü gör
 echo "bugun gorusme" | python -m turkify --verbose
 
-# Global kısayol ajanı (Hyper+A): metni seç → kısayola bas → düzeltilir (geçici)
-python -m turkify agent
+# Sistem geneli kısayol (seç → kısayola bas → düzeltilir): native macOS uygulaması
+# bkz. macos/README.md
 ```
 
 > **CLI birincil arayüzdür** ve her zaman kullanılabilir kalır — script'lenebilir,

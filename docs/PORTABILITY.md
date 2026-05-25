@@ -9,8 +9,8 @@
 > [ADR 0004](adr/0004-motor-sinir-protokolu.md) (serve protokolü),
 > [ADR 0005](adr/0005-linux-terminal-servis.md) (Linux).
 >
-> Durum: Çekirdek + CLI + (geçici) `turkify agent` macOS'ta çalışıyor. Native
-> frontend'ler ve `serve` **sıradaki** iştir (bkz. [ROADMAP Faz 6](ROADMAP.md)).
+> Durum: Çekirdek + CLI + `turkify serve` ve **macOS native uygulaması** çalışıyor.
+> Windows/Linux native frontend'leri sıradaki iştir (bkz. [ROADMAP Faz 6](ROADMAP.md)).
 
 ---
 
@@ -21,8 +21,7 @@
 | **Çekirdek motor** | Tier 1/2/3 düzeltme (`correct()`) | yok (zeyrek/LLM sunucusu opsiyonel) | her platform |
 | **CLI** (`turkify`) — *birincil, kalıcı* | stdin/dosya → düzeltilmiş metin (in-process) | — | her platform |
 | **Motor servisi** (`turkify serve`) | Sıcak motoru JSON protokolüyle sunar (stdio/soket) | — | her platform |
-| **Native frontend** | menü-bar/tray + kısayol + pano + izinler → servise konuşur | OS'a özel (bkz. aşağı) | OS başına |
-| **Ajan** (`turkify agent`) — *geçici* | Global kısayol → kopyala→düzelt→yapıştır | `pynput`, `pyperclip` | macOS ✅ / Win / Linux* |
+| **Native frontend** | menü-bar/tray + kısayol + pano + izinler → servise konuşur | OS'a özel (bkz. aşağı) | macOS ✅ / Win / Linux |
 | **Config** (`config.py`) | Tüm ayarları tek JSON'da topla + öncelik çöz | — | her platform |
 
 Native frontend'ler (Faz 6):
@@ -36,16 +35,17 @@ Native frontend'ler (Faz 6):
 \* Linux/Wayland'da global kısayol/enjeksiyon OS kısıtları nedeniyle sınırlıdır
 (bkz. [§5](#5-bilinen-kısıtlar)); Linux'ta tetikleme masaüstü ortamının kısayoluyla yapılır.
 
-> **CLI kalıcıdır, `agent` geçicidir.** `turkify` CLI birinci-sınıf ve **birincil
+> **CLI birincildir ve kalıcıdır.** `turkify` CLI birinci-sınıf ve **birincil
 > kullanım senaryosudur** — in-process çalışır, `serve`/native frontend'e bağımlı
 > değildir, her zaman kullanılabilir kalır ([ADR 0006](adr/0006-cli-birinci-sinif-kalici.md)).
-> Buna karşılık `agent` (kısayol+pano) geçicidir; native frontend'lere devredildikçe
-> emekliye ayrılacak. `serve`/native katmanlar CLI'ın **üstüne** eklenir, yerine geçmez.
+> Sistem geneli kısayol artık **native frontend'in** görevidir; eski geçici
+> `turkify agent` (pynput/pyperclip) **kaldırıldı**. `serve`/native katmanlar
+> CLI'ın **üstüne** eklenir, yerine geçmez.
 >
-> **`serve` ve daemon:** Eskiden bir "daemon" vardı, kaldırılmıştı (ajan motoru sıcak
-> tuttuğu için). Frontend'ler artık farklı dillerde (Swift/C#) olduğundan motoru o
-> dilden sıcak tutmak için `serve` geri getirildi — bu sefer **gerekçeli ve tek JSON
-> protokolüyle** (bkz. [ADR 0004](adr/0004-motor-sinir-protokolu.md)). Eski
+> **`serve` ve daemon:** Eskiden bir "daemon" vardı, kaldırılmıştı. Frontend'ler
+> artık farklı dillerde (Swift/C#) olduğundan motoru o dilden sıcak tutmak için
+> `serve` geri getirildi — bu sefer **gerekçeli ve tek JSON protokolüyle**
+> (bkz. [ADR 0004](adr/0004-motor-sinir-protokolu.md)). Eski
 > **Hammerspoon/Raycast/launchd** (yalnızca macOS) kaldırılmış durumda.
 
 ### Motor servisi sözleşmesi (`turkify serve`)
@@ -81,8 +81,7 @@ kontrol: {"cmd": "ping"} → {"ok": true}
 CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik varsayılan
 ```
 Bu sıra `config.resolve()` içinde uygulanır: `load()` (config+varsayılan) → env
-katmanı → CLI override. `hotkey` dışındaki her ayar hem env hem CLI bayrağı
-olarak verilebilir.
+katmanı → CLI override. Her ayar hem env hem CLI bayrağı olarak verilebilir.
 
 ### Ortam değişkenleri
 Her config alanının bir `TURKIFY_*` karşılığı vardır: `TURKIFY_MODEL`,
@@ -93,7 +92,7 @@ Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır v
 ### CLI bayrakları
 `--model`, `--llm`/`--no-llm`, `--morphology`/`--no-morphology`, `--timeout`,
 `--base-url`, `--api-key`, `--llm-options` (JSON), `--assistant-prefill`,
-`--verbose`/`-v`. Hem düzeltme komutu hem `agent` kabul eder.
+`--verbose`/`-v`. Düzeltme ve `serve` komutları kabul eder.
 
 ### Format & konum
 - **Format: JSON** (stdlib `json` ile bağımlılıksız okunur). JSON **yorum
@@ -114,20 +113,15 @@ Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır v
   "base_url": "http://localhost:11434/v1",  // OpenAI-uyumlu sunucu (LM Studio: .../1234/v1)
   "api_key": null,                  // sunucu isterse (yerelde genelde gerekmez)
   "llm_options": {},                // /chat/completions gövdesine eklenecek ekstra ALANLAR
-  "assistant_prefill": null,        // isteğe eklenecek asistan MESAJI (ör. "<think>\n\n</think>\n\n")
-  "hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "a" },        // Düzeltme: Hyper+A (meta=OS'a göre, bkz. §4)
-  "cancel_hotkey": { "mods": ["ctrl", "alt", "cmd"], "key": "q" }  // İşlem iptali: Hyper+Q (meta=OS'a göre, bkz. §4)
+  "assistant_prefill": null         // isteğe eklenecek asistan MESAJI (ör. "<think>\n\n</think>\n\n")
 }
 ```
 Örnek: [`config/config.example.json`](../config/config.example.json).
 
-> **Not:** `mods` içindeki **meta tuşu OS'a göre yazılır** — macOS `cmd`, Windows
-> `win`, Linux `super`. Yukarıdaki örnek macOS içindir; Windows'ta
-> `["ctrl", "alt", "win"]`, Linux'ta `["ctrl", "alt", "super"]` kullanın. Ayrıntı: [§4](#4-kısayol-ajanı-turkify-agent).
->
-> İki kısayol vardır: `hotkey` seçili metni düzeltir (varsayılan **Hyper+A**),
-> `cancel_hotkey` sürmekte olan bir işlemi iptal eder (varsayılan **Hyper+Q**).
-> İkisinin de meta tuşu OS'a göre yazılır.
+> **Not:** Kısayollar config'te tutulmaz. Sistem geneli kısayol (düzeltme/iptal)
+> **native frontend'in** ayarıdır ve orada saklanır (macOS: UserDefaults —
+> [ADR 0007](adr/0007-ayar-saklama-gui-native.md)); config.json yalnızca motor
+> ayarlarını taşır.
 
 ---
 
@@ -173,34 +167,26 @@ ama yavaş. Kapatma yöntemi **çalıştırma motoruna** bağlıdır:
 
 ---
 
-## 4. Kısayol ajanı (`turkify agent`)
+## 4. Sistem geneli kısayol (native frontend)
 
-- Motoru bir kez yükler (sıcak tutar), config'teki kısayolu **global** dinler.
-- Kısayola basınca: `Cmd/Ctrl+C` (kopyala) → düzelt → panoya yaz → `Cmd/Ctrl+V`
-  (yapıştır) → eski panoyu geri yükle. Modifier macOS'ta `Cmd`, diğerlerinde `Ctrl`.
-- Kısayol config'ten gelir; değiştirmek için config'i düzenle ve ajanı yeniden başlat.
-- Çekirdek akış (`agent.correct_clipboard_selection`) OS-bağımsız ve test edilebilir;
-  pynput/pyperclip yalnızca `agent.run()` içinde kullanılır.
+Sistem geneli kısayol artık **native frontend'in** görevidir (eski `turkify agent`
+kaldırıldı). Frontend motoru `serve` ile sıcak tutar, global kısayolu dinler ve
+seçili metni kopyala → düzelt → yapıştır yapar.
 
-### Modifier adları (`mods`)
-`hotkey.mods` içindeki adlar OS'a göre yazılır; hepsi pynput'un platforma-uyarlı
-karşılığına çevrilir (büyük/küçük harf önemsiz):
-
-| Tuş | macOS | Windows | Linux | Not |
-|---|---|---|---|---|
-| **Meta** | `cmd` / `command` | `win` / `windows` | `super` | Yalnızca çalışılan OS'un adı geçerlidir (pynput `<cmd>` = OS'un meta tuşu: Command/Win/Super). |
-| **Alt/Option** | `opt` / `option` / `alt` | `alt` / `opt` / `option` | `alt` / `opt` / `option` | Aynı fiziksel tuş; macOS'ta **Option**. Üç ad da her yerde kabul edilir (macOS klavyesinde "alt" etiketi yoktur, `opt` yazılabilir). |
-| **Ctrl** | `ctrl` / `control` | `ctrl` / `control` | `ctrl` / `control` | |
-| **Shift** | `shift` | `shift` | `shift` | |
-
-Örnek (Hyper+A): macOS `["ctrl", "alt", "cmd"]` (ya da `["ctrl", "opt", "cmd"]`),
-Windows `["ctrl", "alt", "win"]`, Linux `["ctrl", "alt", "super"]`.
-
-### İptal kısayolu (`cancel_hotkey`)
-`cancel_hotkey` (varsayılan **Hyper+Q**) sürmekte olan bir düzeltme işlemini iptal
-eder; `hotkey` ile aynı `mods`/`key` şemasını kullanır. Şu an yalnızca **native
-frontend** (macOS GUI) bu kısayolu dinler; geçici `turkify agent` yalnızca düzeltme
-kısayolunu (`hotkey`) dinler. Alan, tüm frontend'ler için ortak sözleşmedir.
+- **macOS uygulaması:** kısayol Carbon `RegisterEventHotKey` ile global dinlenir;
+  pano/tuş simülasyonu CGEvent (Cmd+C / Cmd+V) ile yapılır. İki kısayol vardır:
+  düzeltme (varsayılan **Hyper+A**) ve işlem iptali (varsayılan **Hyper+Q**).
+  Kullanıcı uygulama içinden "Değiştir" ile yeniden atar.
+- **Kısayollar config'te değil**, native frontend'in kendi deposundadır (macOS:
+  UserDefaults — [ADR 0007](adr/0007-ayar-saklama-gui-native.md)). Modifier adları
+  uygulama içinde `ctrl`/`opt`/`cmd`/`shift` olarak tutulur; meta tuşu OS'a göre
+  (macOS `cmd`, Windows `win`, Linux `super`).
+- **Linux:** uygulama kısayol *yakalamaz* (Wayland kısıtı). Hem düzeltme hem iptal
+  birer **DE custom shortcut**'tır (GNOME/KDE klavye ayarları); her biri bir komut
+  çalıştırır (düzeltme: seçim → sokete gönder → yapıştır; iptal: çalışan isteğe
+  iptal sinyali). Kombinasyonu kullanıcı DE'de tanımlar — bkz.
+  [ADR 0005](adr/0005-linux-terminal-servis.md).
+- Kurulum/kullanım (macOS): [`macos/README.md`](../macos/README.md).
 
 ---
 
@@ -222,7 +208,7 @@ tam plan: [ROADMAP.md → Faz 6](ROADMAP.md). Özet sıra:
 
 | Aşama | Kapsam | Durum |
 |---|---|---|
-| **6.0** | `turkify serve` (stdio + soket JSON protokolü); `agent`'i geçici statüye al | sırada |
+| **6.0** | `turkify serve` (stdio + soket JSON protokolü); eski `agent` kaldırıldı | tamam |
 | **6.1** | macOS native app (Swift / SwiftUI menü-bar) — MVP | sonra |
 | **6.2** | Windows native app (C#/.NET / WPF tray) | sonra |
 | **6.3** | Linux (Python, terminal + `systemd --user` servisi) | sonra |
@@ -267,11 +253,12 @@ maddeler özellikle **macOS/Windows GUI** için geçerlidir (Linux'ta config + l
   zaten yalnızca gerçek belirsizliklerde olur.
 
 ### 7.4 Ayar arayüzü
-- `config.json` alanları (düzeltme kısayolu, iptal kısayolu, `use_llm`,
-  `use_morphology`, `timeout`, `model`, `base_url`, `api_key`, `llm_options`,
-  `assistant_prefill`) düzenlenebilir.
-- Kısayol kaydedici (hotkey recorder), Tier 2/Tier 3 aç-kapa anahtarları.
-- GUI ayarı değiştirince `config.json`'a yazar ve servise `{"cmd":"reload"}` gönderir.
+- Motor ayarları (`use_llm`, `use_morphology`, `timeout`, `model`, `base_url`,
+  `api_key`, `llm_options`, `assistant_prefill`) ve kısayollar (düzeltme/iptal)
+  düzenlenebilir; kısayol kaydedici (hotkey recorder) uygulamada mevcuttur.
+- macOS GUI ayarları **native saklar** (UserDefaults) ve motora **CLI bayrakları**
+  olarak geçirir; `config.json` kullanmaz ([ADR 0007](adr/0007-ayar-saklama-gui-native.md)).
+  (Linux servisi config.json + `{"cmd":"reload"}` kullanır.)
 
 **Teknoloji:** native-per-OS (macOS Swift, Windows C#/WPF, Linux config+terminal).
 Tek çapraz-platform framework (Tkinter vb.) **terk edildi** — gerekçe: macOS izin
