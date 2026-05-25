@@ -58,11 +58,28 @@ final class AppState: ObservableObject {
     @Published var settings = AppSettings.load()
     @Published var discoveredBackends: [DiscoveredBackend] = []
     @Published var logLines: [LogLine] = []
+    @Published var spinnerAngle: Double = 0  // busy iken menü-bar ikonunu döndürür
 
     private let engine = EngineClient()
     private var hotKey: HotKey?
     private lazy var corrector = Corrector(engine: engine)
     private var windowOpen = false
+    private var spinnerTimer: Timer?
+
+    /// İşlem göstergesi: ProgressView menü-bar'da animasyon yapmaz; bu yüzden
+    /// timer ile açıyı güncelleyip ikonu döndürürüz (her tick yeni bir kare).
+    private func startSpinner() {
+        spinnerTimer?.invalidate()
+        spinnerTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.spinnerAngle += 30 }
+        }
+    }
+
+    private func stopSpinner() {
+        spinnerTimer?.invalidate()
+        spinnerTimer = nil
+        spinnerAngle = 0
+    }
 
     private static let logTimeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -77,9 +94,9 @@ final class AppState: ObservableObject {
         if logLines.count > 1000 { logLines.removeFirst(logLines.count - 1000) }
     }
 
+    /// İdle/durum ikonu (busy iken spinner gösterilir; bkz. MenuBarLabel).
     var menuBarSymbol: String {
-        if busy { return "hourglass" }
-        return engineRunning ? "textformat.abc" : "exclamationmark.triangle"
+        engineRunning ? "textformat" : "exclamationmark.triangle"
     }
 
     func startup() {
@@ -180,7 +197,8 @@ final class AppState: ObservableObject {
     func correctSelection() async {
         guard !busy else { Log.info("correctSelection: zaten mesgul, atlandi"); return }
         busy = true
-        defer { busy = false }
+        startSpinner()
+        defer { busy = false; stopSpinner() }
         Log.info("correctSelection: basladi; accessibility=\(accessibilityGranted) inputMonitoring=\(inputMonitoringGranted) engineRunning=\(engine.isRunning)")
         if !accessibilityGranted {
             Log.info("correctSelection: UYARI Accessibility izni YOK -> Cmd+C/Cmd+V calismaz")
@@ -233,7 +251,7 @@ struct MenuBarLabel: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Image(systemName: state.menuBarSymbol)
+        content
             .onAppear {
                 // Dock-tık (AppDelegate) ana pencereyi bu kapanışla açar.
                 state.presentMainWindow = {
@@ -241,6 +259,18 @@ struct MenuBarLabel: View {
                     NSApp.activate(ignoringOtherApps: true)
                 }
             }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if state.busy {
+            // İşlem (LLM) sürerken dönen gösterge. ProgressView menü-bar'da
+            // animasyon yapmadığı için timer-güdümlü dönen bir SF Symbol kullanıyoruz.
+            Image(systemName: "rays")
+                .rotationEffect(.degrees(state.spinnerAngle))
+        } else {
+            Image(systemName: state.menuBarSymbol)
+        }
     }
 }
 
