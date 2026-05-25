@@ -4,21 +4,44 @@ SwiftUI menü-bar uygulaması. Kısayol/pano/izinleri **native** yapar; metin
 düzeltmeyi paylaşımlı Python motoruna (`turkify serve --stdio`) bırakır
 (bkz. [ADR 0003](../docs/adr/0003-native-per-os-gui.md), [0004](../docs/adr/0004-motor-sinir-protokolu.md)).
 
-> ⚠️ **Durum: ilk iskelet.** Bu kod henüz derlenip çalıştırılmadı (Xcode sizde).
-> Aşağıdaki "Bilinen iterasyon noktaları"na bakın.
+> ⚠️ **İzinler için gerçek `.app` gerekir.** Package.swift'i Xcode'da çalıştırmak
+> (çıplak SPM executable) hızlı kod denemesi için iyidir **ama Accessibility/Input
+> Monitoring izinleri çalışmaz** (bundle identifier yok → TCC tutunamaz, listede
+> görünmez). Gerçek kullanım için aşağıdaki **"Xcode App target"** adımlarını izleyin.
 
 ## Yapı
 ```
 macos/
-├── Package.swift                 # SwiftUI executable, macOS 13+
+├── Package.swift                 # (opsiyonel) hizli kod denemesi; izinler CALISMAZ
 └── Sources/Turkify/
     ├── TurkifyApp.swift          # @main App + AppDelegate + AppState + menü UI
-    ├── EngineClient.swift        # turkify serve köprüsü (stdio JSON)
+    ├── EngineClient.swift        # turkify serve köprüsü (stdio JSON, restart)
     ├── Corrector.swift           # kopyala→düzelt→yapıştır + pano
     ├── Permissions.swift         # Accessibility + Input Monitoring
     ├── HotKey.swift              # Carbon global kısayol
-    └── AppConfig.swift           # ~/.config/turkify/config.json okur
+    ├── AppSettings.swift         # ayarlar (UserDefaults) + serve bayraklari
+    └── Log.swift                 # stderr teshis logu
 ```
+
+## Xcode App target (izinler için gerekli)
+İzinlerin çalışması için imzalı bir `.app` bundle'ı gerekir:
+
+1. Xcode → **File → New → Project → macOS → App**. Interface: **SwiftUI**, Language:
+   **Swift**. Product Name: `Turkify`, Organization Identifier: `com.ekrem`
+   (→ bundle id `com.ekrem.Turkify`). Projeyi `macos/` içine kaydedin.
+2. Xcode'un ürettiği `TurkifyApp.swift` ve `ContentView.swift`'i **silin**
+   (bizde zaten `@main` var; çift `@main` derleme hatası verir).
+3. **Add Files to "Turkify"…** ile `macos/Sources/Turkify/` altındaki 6 `.swift`
+   dosyasını ekleyin (**"Copy items if needed" KAPALI** → tek kaynak `Sources/`'ta kalsın).
+4. Target → **Signing & Capabilities**:
+   - **"Automatically manage signing"** açık; Team olarak kendi Apple ID'nizi seçin.
+   - ⚠️ **App Sandbox capability'si VARSA KALDIRIN.** Sandbox, python alt sürecini
+     başlatmayı ve global tuş/CGEvent'i **engeller**.
+5. Target → **Info** → **"Application is agent (UIElement)"** = **YES** (menü-bar-only).
+6. Scheme → `TURKIFY_PYTHON` env'ini ayarlayın (aşağıdaki "Ön koşul").
+7. **Run.** Artık gerçek bir `.app`. System Settings → Gizlilik → Erisilebilirlik /
+   Girdi İzleme listesinde **Turkify görünür**; izni açın → menüde "Izinleri yenile".
+   - İmzalı kimlik kararlı olduğundan izin yeniden derlemelerde genelde korunur.
 
 ## Ön koşul: Python motoru erişilebilir olmalı
 Uygulama motoru `turkify serve --stdio` ile başlatır. Turkify'ın kurulu olduğu
@@ -34,7 +57,11 @@ Test: terminalde `echo '{"text":"bugun"}' | <python> -m turkify serve --stdio`
 bir satır JSON yanıt vermeli.
 
 ## Çalıştırma
-1. `macos/Package.swift`'i Xcode ile açın (File → Open).
+> Gerçek kullanım için **Xcode App target** (yukarıda) ile çalıştırın — izinler
+> yalnızca orada çalışır. `Package.swift`'i açıp Run yapmak yalnızca hızlı kod/UI
+> denemesi içindir; o yolda Accessibility/Input Monitoring **çalışmaz**.
+
+1. App target'ı (ya da hızlı deneme için `macos/Package.swift`'i) Xcode'da açın.
 2. Şemada `TURKIFY_PYTHON` env'ini ayarlayın (yukarı).
 3. Run (⌘R). Menü-bar'da bir simge belirir (Dock ikonu yok — accessory app).
    - Menü sadedir: **durum**, **Ayarlar…** (⌘,), **Cikis** (⌘Q).

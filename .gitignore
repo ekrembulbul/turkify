@@ -11,6 +11,7 @@ cache/*
 # Swift / Xcode (macos/)
 macos/.build/
 macos/.swiftpm/
-*.xcodeproj
-*.xcworkspace
 DerivedData/
+# .xcodeproj izlenir; yalnizca kullaniciya ozel durum yok sayilir
+xcuserdata/
+*.xcuserstate
