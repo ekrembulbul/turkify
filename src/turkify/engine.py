@@ -47,10 +47,21 @@ _TURKISH_DIACRITICS = frozenset("çğıöşüÇĞİÖŞÜ")
 _FREQ_RARE_RUNNERUP = 50
 
 
-@lru_cache(maxsize=1)
-def _protected_words() -> frozenset[str]:
-    """Korumalı kelime listesini yükler ve süreç boyunca önbellekler."""
-    return load_protected_words()
+@lru_cache(maxsize=8)
+def _protected_words(user_path: str | None = None) -> frozenset[str]:
+    """Korumalı kelimeleri ``user_path`` dosyasından yükler ve önbellekler.
+
+    ``user_path`` ``None`` ise ya da dosya yoksa boş döner (paketle gelen örnek
+    otomatik yüklenmez — bkz. ADR 0008). ``user_path`` başına ayrı önbellek girdisi
+    tutulur. Dosya çalışırken değişirse (ör. ``serve reload``)
+    ``reload_protected_words()`` ile önbellek temizlenmelidir.
+    """
+    return load_protected_words(user_path)
+
+
+def reload_protected_words() -> None:
+    """Korumalı kelime önbelleğini temizler; sonraki çağrı dosyayı yeniden okur."""
+    _protected_words.cache_clear()
 
 
 def _overlaps_protected(start: int, end: int, spans: list[tuple[int, int]]) -> bool:
@@ -287,6 +298,7 @@ def correct(
     use_llm: bool = False,
     use_morphology: bool = True,
     model: str | None = None,
+    protected_words_file: str | None = None,
 ) -> str:
     """ASCII Türkçe metni doğru diakritiklerle düzeltir.
 
@@ -303,6 +315,9 @@ def correct(
             kurulu değilse otomatik atlanır.
         model: Tier 3 için kullanılacak model adı (OpenAI-uyumlu sunucudaki).
             ``None`` ise ``reranker.DEFAULT_MODEL`` (TURKIFY_MODEL env).
+        protected_words_file: Korumalı kelime dosyası yolu. Yalnızca bu dosyadaki
+            kelimeler korunur (bkz. ADR 0008). ``None`` ise kelime-listesi koruması
+            yoktur (URL/e-posta/sayı/Türkçe-karakter koruması yine uygulanır).
 
     Returns:
         Diakritikleri restore edilmiş metin.
@@ -310,7 +325,7 @@ def correct(
     if not text:
         return text
 
-    spans = protected_spans(text, _protected_words())
+    spans = protected_spans(text, _protected_words(protected_words_file))
     corrected = deasciify(text)
     corrected = restore_spans(corrected, text, spans)
 

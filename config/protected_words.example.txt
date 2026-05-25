@@ -1,5 +1,11 @@
 # Korumalı kelimeler — diakritik dönüşümü UYGULANMAZ.
 #
+# ÖRNEK DOSYA. Bu dosya yalnızca başlangıç noktasıdır; motor BUNU otomatik
+# yüklemez. Kullanmak için kullanıcı korumalı-kelime dosyasına kopyalayın:
+#     cp config/protected_words.example.txt ~/.config/turkify/protected_words.txt
+# (veya CLI'da --protected-words-file / config'te protected_words_file ile başka
+#  bir yol verin). Yalnızca o dosyadaki kelimeler korunur.
+#
 # Amaç: Türkçe metinde İNGİLİZCE/Latin biçimiyle yazılan yabancı/teknik terimleri
 # yanlış şapkalanmaktan korumak (ör. "server" → "şerver" olmasın).
 #

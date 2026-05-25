@@ -14,10 +14,6 @@ from pathlib import Path
 
 from turkify.tokenizer import tokenize
 
-_DEFAULT_PROTECTED_WORDS_PATH = (
-    Path(__file__).resolve().parents[2] / "config" / "protected_words.txt"
-)
-
 _TURKISH_CHARS = frozenset("çğıöşüÇĞİÖŞÜ")
 _CHUNK_RE = re.compile(r"\S+")
 _URL_RE = re.compile(r"https?://|www\.", re.IGNORECASE)
@@ -32,16 +28,22 @@ def tr_lower(text: str) -> str:
 
 
 def load_protected_words(path: Path | str | None = None) -> frozenset[str]:
-    """Korumalı kelime listesini dosyadan yükler (Türkçe küçük harfe normalize).
+    """Korumalı kelime listesini bir dosyadan yükler (Türkçe küçük harfe normalize).
+
+    Yalnızca verilen dosya okunur; paketle gelen ``protected_words.example.txt``
+    **otomatik yüklenmez** (yalnızca kopyalanacak bir örnektir — bkz. ADR 0008).
 
     Args:
-        path: Liste dosyası yolu. ``None`` ise paketle gelen varsayılan kullanılır.
+        path: Liste dosyası yolu. ``None`` ya da dosya yoksa boş küme döner
+            (kelime-listesi koruması opsiyoneldir; URL/e-posta/sayı/Türkçe-karakter
+            koruması yine de uygulanır).
 
     Returns:
-        Türkçe küçük harfe çevrilmiş korumalı kelimeler kümesi. Dosya yoksa
-        boş küme döner (koruma listesi opsiyoneldir).
+        Türkçe küçük harfe çevrilmiş korumalı kelimeler kümesi.
     """
-    file_path = Path(path) if path is not None else _DEFAULT_PROTECTED_WORDS_PATH
+    if path is None:
+        return frozenset()
+    file_path = Path(path)
     if not file_path.exists():
         return frozenset()
 

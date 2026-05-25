@@ -50,7 +50,17 @@ def test_ordinary_word_is_not_protected():
     assert _protected_substrings("gorusme") == []
 
 
-def test_load_protected_words_reads_packaged_list():
-    words = load_protected_words()
-    assert "framework" in words
-    assert "mail" in words
+def test_load_protected_words_without_path_is_empty():
+    # Paketle gelen ornek OTOMATIK yuklenmez (bkz. ADR 0008).
+    assert load_protected_words() == frozenset()
+
+
+def test_load_protected_words_reads_given_file(tmp_path):
+    user_file = tmp_path / "protected_words.txt"
+    user_file.write_text("# kullanici\nKubernetes\nDTO\n", encoding="utf-8")
+    words = load_protected_words(user_file)
+    assert words == frozenset({"kubernetes", "dto"})  # tr_lower normalize, yorum atlanir
+
+
+def test_load_protected_words_missing_file_is_empty(tmp_path):
+    assert load_protected_words(tmp_path / "yok.txt") == frozenset()

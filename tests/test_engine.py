@@ -11,10 +11,20 @@ def test_correct_preserves_punctuation_and_case():
     )
 
 
-def test_correct_does_not_touch_protected_words():
-    assert correct("mail attim framework kullandim") == (
-        "mail attım framework kullandım"
-    )
+def test_correct_does_not_touch_protected_words(tmp_path):
+    # Korumalı kelimeler yalnızca verilen dosyadan gelir (ADR 0008).
+    user_file = tmp_path / "protected_words.txt"
+    user_file.write_text("mail\nframework\n", encoding="utf-8")
+    out = correct("mail attim framework kullandim", protected_words_file=str(user_file))
+    assert out == "mail attım framework kullandım"
+
+
+def test_correct_honors_user_protected_words_file(tmp_path):
+    # "gorusme" normalde "görüşme" olur; kullanıcı dosyasında korunursa dokunulmaz.
+    user_file = tmp_path / "protected_words.txt"
+    user_file.write_text("gorusme\n", encoding="utf-8")
+    out = correct("bugun gorusme", protected_words_file=str(user_file))
+    assert out == "bugün gorusme"
 
 
 def test_correct_does_not_touch_url():

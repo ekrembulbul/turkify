@@ -73,10 +73,13 @@ def test_correct_applies_tier2_in_sentence(fake_morphology):
     assert out.startswith("şırıl ")
 
 
-def test_correct_skips_protected_words_in_tier2(fake_morphology):
-    # "mail" korumali; gecerli kelime sayilmasa bile Tier 2 ona dokunmaz.
+def test_correct_skips_protected_words_in_tier2(fake_morphology, tmp_path):
+    # "mail" korumali (kullanici dosyasinda); gecerli kelime sayilmasa bile
+    # Tier 2 ona dokunmaz.
     fake_morphology(set())
-    assert engine.correct("mail") == "mail"
+    user_file = tmp_path / "protected_words.txt"
+    user_file.write_text("mail\n", encoding="utf-8")
+    assert engine.correct("mail", protected_words_file=str(user_file)) == "mail"
 
 
 def test_use_morphology_false_disables_tier2(fake_morphology):

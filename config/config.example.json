@@ -6,5 +6,6 @@
   "base_url": "http://localhost:11434/v1",
   "api_key": null,
   "llm_options": {},
-  "assistant_prefill": null
+  "assistant_prefill": null,
+  "protected_words_file": null
 }

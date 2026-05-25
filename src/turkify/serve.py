@@ -73,8 +73,15 @@ class EngineService:
         )
 
     def reload(self) -> None:
-        """config.json + env'i yeniden okur (CLI override'ları korunur)."""
+        """config.json + env'i yeniden okur (CLI override'ları korunur).
+
+        Korumalı kelime dosyası değişmiş olabileceğinden motor önbelleği de
+        temizlenir (bkz. ADR 0008).
+        """
         self._settings = _resolve_and_apply(self._overrides)
+        from turkify import engine
+
+        engine.reload_protected_words()
         self._log_active("yeniden yuklendi")
 
     def _correct(self, text: str) -> str:
@@ -84,6 +91,7 @@ class EngineService:
             use_llm=s.get("use_llm", False),
             use_morphology=s.get("use_morphology", True),
             model=s.get("model"),
+            protected_words_file=str(config.protected_words_path(s)),
         )
 
     def handle(self, request: dict) -> dict:

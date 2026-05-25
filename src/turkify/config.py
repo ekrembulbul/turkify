@@ -43,6 +43,10 @@ DEFAULTS: dict = {
     # İstek sonuna eklenecek asistan prefill'i. "düşünen" modellerde reasoning'i
     # atlatmak için "<think>\n\n</think>\n\n" verilebilir (bkz. reranker).
     "assistant_prefill": None,
+    # Korumalı kelime dosyası (dönüştürülmeyecek terimler). None → standart konum
+    # (config dizini / protected_words.txt). Yalnızca bu dosyadaki kelimeler
+    # korunur; paketle gelen örnek otomatik yüklenmez (bkz. ADR 0008).
+    "protected_words_file": None,
 }
 
 
@@ -56,6 +60,19 @@ def config_path() -> Path:
     else:  # macOS / Linux (XDG)
         base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
     return Path(base) / "turkify" / "config.json"
+
+
+def protected_words_path(settings: dict | None = None) -> Path:
+    """Kullanıcı korumalı-kelime dosyasının yolunu döner.
+
+    ``protected_words_file`` ayarı verilmişse o; yoksa standart konum (config
+    dizini altında ``protected_words.txt``). Dosyanın var olması gerekmez —
+    yoksa motor yalnızca paketle gelen varsayılanları kullanır (bkz. ADR 0008).
+    """
+    explicit = (settings or {}).get("protected_words_file")
+    if explicit:
+        return Path(explicit)
+    return config_path().parent / "protected_words.txt"
 
 
 def load(path: Path | str | None = None) -> dict:
@@ -117,6 +134,7 @@ _ENV_MAP: dict = {
     "api_key": ("TURKIFY_API_KEY", str),
     "llm_options": ("TURKIFY_LLM_OPTIONS", json.loads),
     "assistant_prefill": ("TURKIFY_ASSISTANT_PREFILL", str),
+    "protected_words_file": ("TURKIFY_PROTECTED_WORDS_FILE", str),
 }
 
 
