@@ -60,9 +60,16 @@ final class AppState: ObservableObject {
     @Published var logLines: [LogLine] = []
     @Published var spinnerAngle: Double = 0  // busy iken menü-bar ikonunu döndürür
 
+    /// Kısayol kaydedicinin hangi kısayolu beklediği (nil = kayıt yok).
+    enum HotkeyTarget { case correction, cancel }
+    @Published var recordingTarget: HotkeyTarget?
+    /// Kayıt sırasında geçersiz kombinasyon uyarısı (nil = uyarı yok).
+    @Published var recordingError: String?
+
     private let engine = EngineClient()
     private var hotKey: HotKey?
     private var cancelHotKey: HotKey?
+    private var hotkeyRecordMonitor: Any?
     private lazy var corrector = Corrector(engine: engine)
     private var windowOpen = false
     private var spinnerTimer: Timer?
@@ -144,6 +151,7 @@ final class AppState: ObservableObject {
 
     func windowDisappeared() {
         windowOpen = false
+        if recordingTarget != nil { stopHotkeyRecording() }  // yarıda kalan kaydı temizle
         applyActivationPolicy()
     }
 
@@ -208,6 +216,72 @@ final class AppState: ObservableObject {
             }
             if cancelHotKey == nil { lastStatus = "İptal kısayolu kaydedilemedi" }
         }
+    }
+
+    // MARK: - Kısayol kaydedici
+
+    /// Kaydı başlatır: global kısayolları geçici durdurur (kayıt sırasında
+    /// tetiklenmesinler) ve uygulamaya gelen tuşları yakalamak için yerel bir
+    /// NSEvent monitörü kurar. Yerel monitör yalnızca odaktaki kendi penceremize
+    /// gelen olayları görür — Girdi İzleme izni gerekmez.
+    func startHotkeyRecording(_ target: HotkeyTarget) {
+        hotKey = nil
+        cancelHotKey = nil
+        recordingError = nil
+        recordingTarget = target
+        hotkeyRecordMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleRecordingEvent(event)
+            return nil  // olayı yut (başka yere yazılmasın)
+        }
+    }
+
+    /// Kaydı bitirir: monitörü kaldırır ve global kısayolları yeniden kaydeder
+    /// (kaydedilen yeni değer ya da iptalde eski değer geçerli olur).
+    func stopHotkeyRecording() {
+        if let monitor = hotkeyRecordMonitor {
+            NSEvent.removeMonitor(monitor)
+            hotkeyRecordMonitor = nil
+        }
+        recordingTarget = nil
+        recordingError = nil
+        registerHotKey()
+    }
+
+    /// Kayıt sırasında basılan tuşu değerlendirir; geçerliyse kısayolu kaydeder.
+    private func handleRecordingEvent(_ event: NSEvent) {
+        if event.keyCode == 53 {  // Esc → iptal
+            stopHotkeyRecording()
+            return
+        }
+        guard let keyName = HotKey.keyName(for: UInt32(event.keyCode)) else {
+            recordingError = "Bu tuş desteklenmiyor (harf veya rakam seçin)."
+            return
+        }
+        let flags = event.modifierFlags
+        var mods: [String] = []
+        if flags.contains(.control) { mods.append("ctrl") }
+        if flags.contains(.option) { mods.append("opt") }
+        if flags.contains(.command) { mods.append("cmd") }
+        if flags.contains(.shift) { mods.append("shift") }
+        // Shift tek başına yeterli değil; en az bir Ctrl/Alt/Cmd gerekir
+        // (yoksa düz harfler kazara kısayol olur).
+        guard mods.contains(where: { $0 != "shift" }) else {
+            recordingError = "En az bir Ctrl, Alt veya Cmd gerekli."
+            return
+        }
+        switch recordingTarget {
+        case .correction:
+            settings.hotkeyMods = mods
+            settings.hotkeyKey = keyName
+        case .cancel:
+            settings.cancelHotkeyMods = mods
+            settings.cancelHotkeyKey = keyName
+        case nil:
+            return
+        }
+        settings.save()
+        stopHotkeyRecording()  // monitörü kaldırır + yeni kısayolu kaydeder
+        lastStatus = "Kısayol güncellendi"
     }
 
     /// Düzeltmeyi iptal edilebilir bir görev olarak başlatır (kısayol/test çağırır).
@@ -507,8 +581,8 @@ struct OtherSettingsView: View {
                 Button("İzinleri yenile") { state.refreshPermissions() }
             } header: {
                 Text("İzinler")
-            } footer: {
-                Text("Anında etki eder; Kaydet gerekmez.")
+            // } footer: {
+            //     Text("Anında etki eder; Kaydet gerekmez.")
             }
 
             Section {
@@ -519,17 +593,49 @@ struct OtherSettingsView: View {
             } header: {
                 Text("Görünüm")
             } footer: {
-                Text("Anında etki eder. Kapalıyken uygulama yalnızca menü-bar'da durur.")
+                Text("Kapalıyken uygulama yalnızca menü-bar'da durur.")
             }
 
-            Section("Kısayollar") {
-                LabeledContent("Düzeltme", value: state.settings.hotkeyDescription)
-                LabeledContent("İşlemi iptal", value: state.settings.cancelHotkeyDescription)
-                Text("Kısayol kaydedici sonraki adımda eklenecek; şimdilik config/UserDefaults'tan.")
-                    .font(.caption).foregroundStyle(.secondary)
+            Section {
+                hotkeyRow("Düzeltme", description: state.settings.hotkeyDescription, target: .correction)
+                hotkeyRow("İşlemi iptal", description: state.settings.cancelHotkeyDescription, target: .cancel)
+            } header: {
+                Text("Kısayollar")
+            } footer: {
+                if let error = state.recordingError {
+                    Text(error).foregroundStyle(.red)
+                } else if state.recordingTarget != nil {
+                    Text("Yeni kısayol kombinasyonuna basın. En az bir Ctrl/Alt/Cmd ve bir harf/rakam. (Esc: iptal)")
+                } else {
+                    Text("“Değiştir”e basıp istediğiniz kısayol kombinasyonuna basın.")
+                }
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Bir kısayol satırı: mevcut kombinasyonu gösterir, "Değiştir" ile kaydı başlatır.
+    @ViewBuilder
+    private func hotkeyRow(
+        _ title: String, description: String, target: AppState.HotkeyTarget
+    ) -> some View {
+        let isRecording = state.recordingTarget == target
+        LabeledContent(title) {
+            HStack(spacing: 12) {
+                Text(isRecording ? "Tuşa basın…" : description)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(isRecording ? Color.orange : .primary)
+                Button(isRecording ? "İptal" : "Değiştir") {
+                    if isRecording {
+                        state.stopHotkeyRecording()
+                    } else {
+                        state.startHotkeyRecording(target)
+                    }
+                }
+                // Diğer satır kayıttayken bu satırın butonunu kilitle.
+                .disabled(state.recordingTarget != nil && !isRecording)
+            }
+        }
     }
 
     @ViewBuilder

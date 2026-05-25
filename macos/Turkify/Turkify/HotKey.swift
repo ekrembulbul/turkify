@@ -87,15 +87,24 @@ final class HotKey {
         return mask
     }
 
+    /// Harf/rakam ↔ US-ANSI sanal tuş kodu eşlemesi (tek kaynak). Hem kayıt
+    /// (`keyCode(for:)`) hem de kaydedici geri-çözümü (`keyName(for:)`) bunu kullanır.
+    static let keyCodeMap: [String: UInt32] = [
+        "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7,
+        "c": 8, "v": 9, "b": 11, "q": 12, "w": 13, "e": 14, "r": 15, "y": 16,
+        "t": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22, "5": 23, "9": 25,
+        "7": 26, "8": 28, "0": 29, "o": 31, "u": 32, "i": 34, "p": 35,
+        "l": 37, "j": 38, "k": 40, "n": 45, "m": 46,
+    ]
+
     /// Tek harf/rakam → US-ANSI sanal tuş kodu. Bilinmiyorsa nil.
     static func keyCode(for key: String) -> UInt32? {
-        let map: [String: UInt32] = [
-            "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7,
-            "c": 8, "v": 9, "b": 11, "q": 12, "w": 13, "e": 14, "r": 15, "y": 16,
-            "t": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22, "5": 23, "9": 25,
-            "7": 26, "8": 28, "0": 29, "o": 31, "u": 32, "i": 34, "p": 35,
-            "l": 37, "j": 38, "k": 40, "n": 45, "m": 46,
-        ]
-        return map[key.lowercased()]
+        keyCodeMap[key.lowercased()]
+    }
+
+    /// Sanal tuş kodu → harf/rakam adı (kaydedici NSEvent.keyCode'unu çözer).
+    /// NSEvent ve Carbon aynı US sanal tuş kodlarını kullanır. Bilinmiyorsa nil.
+    static func keyName(for code: UInt32) -> String? {
+        keyCodeMap.first { $0.value == code }?.key
     }
 }

@@ -63,7 +63,9 @@ Bu proje şu ayarlarla kurulmuştur; klonlayıp farklı makinede açarken gereke
 ## Bilinen iterasyon / dikkat noktaları
 - **HotKey.swift (Carbon):** en düşük seviye parça; tuş kodları US-ANSI varsayar.
 - **İzin API'leri:** `IOHIDCheckAccess`/`IOHIDRequestAccess`, `AXIsProcessTrusted`.
-- **Kısayol kaydedici** henüz yok (varsayılan: düzeltme Hyper+A, iptal Hyper+Q) — ROADMAP 7.4.
+- **Kısayol kaydedici:** Diğer Ayarlar → Kısayollar → "Değiştir" ile yeni kombinasyon
+  yakalanır (yerel NSEvent monitörü; Girdi İzleme izni gerekmez). Varsayılan: düzeltme
+  Hyper+A, iptal Hyper+Q. Tuş kodları US-ANSI harf/rakamla sınırlıdır (HotKey.swift).
 - **İmzalama/notarization & dağıtım:** Faz 6.4 (paketleme).
 
 ## Mimari hatırlatma
