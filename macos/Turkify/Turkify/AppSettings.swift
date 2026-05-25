@@ -84,7 +84,10 @@ struct AppSettings {
 
     /// Motoru bu ayarlarla başlatacak `serve` argümanları (CLI bayrakları).
     func serveArguments() -> [String] {
-        var args = ["serve", "--stdio"]
+        // --verbose: motorun Tier 2/3 karar günlüğünü stderr'e yazdırır; bu çıktı
+        // EngineClient tarafından yakalanıp Log sekmesine (motor kaynağı) düşer.
+        // stdout (JSON protokolü) temiz kalır.
+        var args = ["serve", "--stdio", "--verbose"]
         if !model.isEmpty { args += ["--model", model] }
         args += [useLLM ? "--llm" : "--no-llm"]
         args += [useMorphology ? "--morphology" : "--no-morphology"]

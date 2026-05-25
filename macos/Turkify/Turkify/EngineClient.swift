@@ -56,7 +56,7 @@ final class EngineClient {
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
             for line in text.split(whereSeparator: \.isNewline) where !line.isEmpty {
-                Log.engine(String(line))
+                Log.engine(EngineClient.stripLeadingTimestamp(String(line)))
             }
         }
 
@@ -117,6 +117,22 @@ final class EngineClient {
                 }
             }
         }
+    }
+
+    /// Motorun `--verbose` çıktısı her satıra `HH:MM:SS.SSS ` zaman damgası ekler;
+    /// Log sekmesi kendi zaman sütununu gösterdiği için bu öneki ayıklarız (çift
+    /// zaman damgasını önler). Desen eşleşmezse satır olduğu gibi döner.
+    static func stripLeadingTimestamp(_ line: String) -> String {
+        let prefixLength = 13  // "HH:MM:SS.SSS " = 12 karakter + boşluk
+        guard line.count > prefixLength else { return line }
+        let chars = Array(line.prefix(prefixLength))
+        func isDigit(_ i: Int) -> Bool { chars[i].isNumber }
+        guard isDigit(0), isDigit(1), chars[2] == ":",
+              isDigit(3), isDigit(4), chars[5] == ":",
+              isDigit(6), isDigit(7), chars[8] == ".",
+              isDigit(9), isDigit(10), isDigit(11), chars[12] == " "
+        else { return line }
+        return String(line.dropFirst(prefixLength))
     }
 
     // MARK: - Gelen veriyi satırlara böl (queue üzerinde çalışır)
