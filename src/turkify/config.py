@@ -18,17 +18,11 @@ uygular. ``apply()`` çözülmüş ayarları reranker modülüne yazar.
 import json
 import logging
 import os
-import sys
 from pathlib import Path
 
 # Config sorunları "turkify" günlüğüne WARNING olarak yazılır; --verbose olmasa
 # bile (Python'un last-resort handler'ı sayesinde) stderr'de görünür.
 _log = logging.getLogger("turkify")
-
-# Varsayılan kısayolun meta tuşu OS'un yerel adıyla yazılır (macOS "cmd",
-# Windows "win", Linux/diğer "super"); agent._MOD_ALIASES bunu pynput'un
-# platforma-uyarlı <cmd> tokenına çözer.
-_DEFAULT_META = {"darwin": "cmd", "win32": "win"}.get(sys.platform, "super")
 
 # Yerleşik varsayılanlar. ``model`` bilinçli olarak None: model config'te
 # belirtilmezse Tier 3 (LLM) çalışmaz (otomatik model tespiti yapılmaz).
@@ -49,11 +43,6 @@ DEFAULTS: dict = {
     # İstek sonuna eklenecek asistan prefill'i. "düşünen" modellerde reasoning'i
     # atlatmak için "<think>\n\n</think>\n\n" verilebilir (bkz. reranker).
     "assistant_prefill": None,
-    # Düzeltme kısayolu (Hyper+A) ve işlem iptali kısayolu (Hyper+Q). Meta tuşu
-    # OS'a göre (cmd/win/super). Şu an native GUI (macOS) kendi ayarından okur;
-    # bu alanlar CLI/agent ve diğer frontend'ler için ortak sözleşmedir.
-    "hotkey": {"mods": ["ctrl", "alt", _DEFAULT_META], "key": "a"},
-    "cancel_hotkey": {"mods": ["ctrl", "alt", _DEFAULT_META], "key": "q"},
 }
 
 
