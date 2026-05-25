@@ -236,6 +236,21 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Metin düzeltme (Düzeltme sekmesi; pano akışından bağımsız)
+
+    /// Verilen metni motora gönderip düzeltilmiş halini döndürür. Görev iptal
+    /// edilirse ``CancellationError`` fırlatır (motor isteği bırakılır).
+    func correctText(_ text: String) async throws -> String {
+        try await engine.correct(text)
+    }
+
+    /// Metni sistem panosuna yazar.
+    func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
     private func registerHotKey() {
         // Eskileri bırak (deinit unregister eder).
         hotKey = nil
@@ -471,6 +486,7 @@ struct MainView: View {
     /// Sidebar bölümleri. Yeni ekran eklemek için buraya bir case + `detail`
     /// switch'ine bir satır eklemek yeterli.
     enum Section: String, CaseIterable, Identifiable {
+        case correct = "Düzeltme"
         case engine = "Motor Ayarları"
         case other = "Diğer Ayarlar"
         case protectedWords = "Korumalı Kelimeler"
@@ -479,6 +495,7 @@ struct MainView: View {
         var id: String { rawValue }
         var icon: String {
             switch self {
+            case .correct: return "text.badge.checkmark"
             case .engine: return "cpu"
             case .protectedWords: return "shield"
             case .other: return "slider.horizontal.3"
@@ -487,7 +504,7 @@ struct MainView: View {
         }
     }
 
-    @State private var selection: Section? = .engine
+    @State private var selection: Section? = .correct
 
     var body: some View {
         NavigationSplitView {
@@ -508,12 +525,198 @@ struct MainView: View {
 
     @ViewBuilder
     private var detail: some View {
-        switch selection ?? .engine {
+        switch selection ?? .correct {
+        case .correct: CorrectionView(state: state)
         case .engine: SettingsView(state: state)
         case .protectedWords: ProtectedWordsView(state: state)
         case .other: OtherSettingsView(state: state)
         case .log: LogView(state: state)
         }
+    }
+}
+
+// MARK: - Düzeltme sekmesi (metin yaz → düzelt; opsiyonel panoya kopyala)
+
+struct CorrectionView: View {
+    @ObservedObject var state: AppState
+
+    @State private var input = ""
+    @State private var output = ""
+    @State private var task: Task<Void, Never>?
+    @State private var phase: Phase = .idle
+    @State private var status = "Hazır"
+
+    private enum Phase: Equatable { case idle, processing, done, failed }
+    private var isProcessing: Bool { phase == .processing }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                if isProcessing { ProgressView().controlSize(.small) }
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(phase == .failed ? .red : .secondary)
+                    .lineLimit(1)
+                Spacer()
+                Button("İptal") { cancel() }
+                    .disabled(!isProcessing)
+                    .keyboardShortcut(.cancelAction)
+                Button("Düzelt") { run(copy: false) }
+                    .disabled(isProcessing || input.isEmpty)
+                Button("Düzelt ve Kopyala") { run(copy: true) }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isProcessing || input.isEmpty)
+            }
+            .padding(.horizontal).padding(.vertical, 8)
+
+            Divider()
+
+            Text("Metin  ·  Enter: düzelt  ·  ⇧Enter: alt satır  ·  ⌘Enter: düzelt + kopyala")
+                .font(.caption).foregroundStyle(.secondary)
+                .padding(.horizontal).padding(.top, 6)
+            CorrectionInputEditor(
+                text: $input,
+                isEditable: !isProcessing,
+                onSubmit: { run(copy: false) },
+                onSubmitAndCopy: { run(copy: true) },
+                onCancel: { cancel() }
+            )
+            .frame(minHeight: 140)
+            .padding(.horizontal).padding(.bottom, 6)
+
+            Divider()
+
+            Text("Düzeltilmiş metin")
+                .font(.caption).foregroundStyle(.secondary)
+                .padding(.horizontal).padding(.top, 6)
+            ScrollView {
+                Text(output.isEmpty ? "Düzeltilmiş metin burada görünecek." : output)
+                    .foregroundStyle(output.isEmpty ? .secondary : .primary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /// Düzeltmeyi iptal edilebilir bir görev olarak başlatır.
+    private func run(copy: Bool) {
+        let text = input
+        guard !text.isEmpty, !isProcessing else { return }
+        phase = .processing
+        status = copy ? "Düzeltiliyor (panoya kopyalanacak)…" : "Düzeltiliyor…"
+        task = Task { @MainActor in
+            do {
+                let result = try await state.correctText(text)
+                try Task.checkCancellation()
+                output = result
+                if copy {
+                    state.copyToClipboard(result)
+                    status = "Düzeltildi ve panoya kopyalandı"
+                } else {
+                    status = "Düzeltildi"
+                }
+                phase = .done
+            } catch is CancellationError {
+                status = "İşlem iptal edildi"
+                phase = .idle
+            } catch let error as EngineClient.EngineError {
+                status = Self.engineErrorText(error)
+                phase = .failed
+            } catch {
+                status = "Hata: \(error.localizedDescription)"
+                phase = .failed
+            }
+            task = nil
+        }
+    }
+
+    private func cancel() {
+        guard isProcessing else { return }
+        task?.cancel()
+    }
+
+    private static func engineErrorText(_ error: EngineClient.EngineError) -> String {
+        switch error {
+        case .engine(let message): return "Motor hatası: \(message)"
+        case .notRunning: return "Motor çalışmıyor"
+        case .badResponse: return "Motor yanıtı çözülemedi"
+        }
+    }
+}
+
+/// Düzeltme giriş alanı: Enter düzeltir, ⇧Enter alt satır, ⌘Enter düzelt+kopyala,
+/// Esc iptal. Bu davranış çok-satırlı NSTextView'de SwiftUI ile sağlanamadığından
+/// (Enter newline ekler) tuşları NSTextView seviyesinde yakalıyoruz.
+struct CorrectionInputEditor: NSViewRepresentable {
+    @Binding var text: String
+    var isEditable: Bool
+    var onSubmit: () -> Void
+    var onSubmitAndCopy: () -> Void
+    var onCancel: () -> Void
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let textView = SubmitTextView()
+        textView.delegate = context.coordinator
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.font = .systemFont(ofSize: NSFont.systemFontSize)
+        textView.textContainerInset = NSSize(width: 4, height: 6)
+        textView.autoresizingMask = [.width]
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        textView.string = text
+
+        let scroll = NSScrollView()
+        scroll.documentView = textView
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.borderType = .bezelBorder
+        return scroll
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let textView = nsView.documentView as? SubmitTextView else { return }
+        if textView.string != text { textView.string = text }
+        textView.isEditable = isEditable
+        textView.isSelectable = true
+        textView.onSubmit = onSubmit
+        textView.onSubmitAndCopy = onSubmitAndCopy
+        textView.onCancel = onCancel
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        private let text: Binding<String>
+        init(text: Binding<String>) { self.text = text }
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text.wrappedValue = textView.string
+        }
+    }
+}
+
+/// Enter/⇧Enter/⌘Enter/Esc tuşlarını yakalayan NSTextView.
+final class SubmitTextView: NSTextView {
+    var onSubmit: (() -> Void)?
+    var onSubmitAndCopy: (() -> Void)?
+    var onCancel: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if event.keyCode == 36 || event.keyCode == 76 {  // Return / numpad Enter
+            if flags.contains(.command) { onSubmitAndCopy?(); return }
+            if flags.contains(.shift) { super.keyDown(with: event); return }  // alt satır
+            onSubmit?(); return
+        }
+        if event.keyCode == 53 {  // Esc
+            onCancel?(); return
+        }
+        super.keyDown(with: event)
     }
 }
 

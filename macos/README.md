@@ -41,6 +41,9 @@ bir satır JSON yanıt vermeli.
    Menü sade: **durum**, **İşlemi iptal et** (işlem sürerken etkin; Hyper+Q),
    **Turkify'ı aç**, **Çıkış**.
 4. **Ana pencere** (solda sidebar; bölüm seçilir):
+   - **Düzeltme:** metni yaz → **Enter** (⇧Enter: alt satır) ya da **Düzelt** düzeltir;
+     **⌘Enter** / **Düzelt ve Kopyala** sonucu panoya da yazar. İşlem sırasında giriş
+     kilitlenir, butonlar pasifleşir, durum gösterilir; **İptal** / **Esc** ile durdurulur.
    - **Motor Ayarları:** LLM/morfoloji, model, base_url, API anahtarı, timeout,
      assistant_prefill. **Kaydet** → **UserDefaults**'a yazar + motoru yeni
      ayarlarla yeniden başlatır. macOS'ta `config.json` **kullanılmaz**
