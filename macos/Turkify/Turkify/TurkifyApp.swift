@@ -57,11 +57,25 @@ final class AppState: ObservableObject {
     @Published var lastStatus = "Hazır"
     @Published var settings = AppSettings.load()
     @Published var discoveredBackends: [DiscoveredBackend] = []
+    @Published var logLines: [LogLine] = []
 
     private let engine = EngineClient()
     private var hotKey: HotKey?
     private lazy var corrector = Corrector(engine: engine)
     private var windowOpen = false
+
+    private static let logTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss.SSS"
+        return f
+    }()
+
+    /// Log satırını (zaman damgalı) UI deposuna ekler; son 1000 satır tutulur.
+    func appendLog(_ message: String) {
+        let stamped = "\(Self.logTimeFormatter.string(from: Date())) \(message)"
+        logLines.append(LogLine(text: stamped))
+        if logLines.count > 1000 { logLines.removeFirst(logLines.count - 1000) }
+    }
 
     var menuBarSymbol: String {
         if busy { return "hourglass" }
@@ -69,6 +83,10 @@ final class AppState: ObservableObject {
     }
 
     func startup() {
+        // Log'ları UI'ya yönlendir (her thread'den çağrılabilir → main'e geç).
+        Log.sink = { message in
+            Task { @MainActor in AppState.shared.appendLog(message) }
+        }
         applyActivationPolicy()
         refreshPermissions()
         startEngine()
@@ -237,11 +255,13 @@ struct MainView: View {
                 .tabItem { Label("Motor Ayarları", systemImage: "cpu") }
             OtherSettingsView(state: state)
                 .tabItem { Label("Diğer Ayarlar", systemImage: "slider.horizontal.3") }
-            // İleride buraya yeni sekmeler eklenebilir (ör. Geçmiş, Hakkında).
+            LogView(state: state)
+                .tabItem { Label("Log", systemImage: "doc.plaintext") }
         }
-        // Yeniden boyutlanabilir: küçük alt sınır, serbest büyüme.
-        .frame(minWidth: 440, idealWidth: 520, maxWidth: .infinity,
-               minHeight: 460, idealHeight: 600, maxHeight: .infinity)
+        // .contentMinSize ilk boyutu idealWidth/idealHeight'ten alır → geniş açılır;
+        // minWidth ile küçültülebilir, maxWidth .infinity ile büyütülebilir.
+        .frame(minWidth: 440, idealWidth: 680, maxWidth: .infinity,
+               minHeight: 460, idealHeight: 660, maxHeight: .infinity)
         .onAppear { state.windowAppeared() }
         .onDisappear { state.windowDisappeared() }
     }
@@ -434,6 +454,53 @@ struct OtherSettingsView: View {
             Text(name)
             Spacer()
             Button("Aç") { action() }
+        }
+    }
+}
+
+// MARK: - Log sekmesi (canlı; yeni satırlar anında düşer)
+
+struct LogLine: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
+struct LogView: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("\(state.logLines.count) satır")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Temizle") { state.logLines.removeAll() }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+
+            Divider()
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 1) {
+                        ForEach(state.logLines) { line in
+                            Text(line.text)
+                                .font(.system(.caption, design: .monospaced))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .id(line.id)
+                        }
+                    }
+                    .padding(8)
+                }
+                .onChange(of: state.logLines.count) { _ in
+                    // Yeni satır gelince en alta kaydır (canlı akış).
+                    if let last = state.logLines.last {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
+                }
+            }
         }
     }
 }

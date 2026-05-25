@@ -42,14 +42,22 @@ final class EngineClient {
 
         let stdin = Pipe()
         let stdout = Pipe()
+        let stderr = Pipe()
         proc.standardInput = stdin
         proc.standardOutput = stdout
-        // stderr devralınır → motor tanı mesajları Xcode konsolunda görünür.
+        proc.standardError = stderr  // motor tanı mesajlarını yakala → Log sekmesi
 
         stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
             self?.queue.async { self?.ingest(data) }
+        }
+        stderr.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
+            for line in text.split(whereSeparator: \.isNewline) where !line.isEmpty {
+                Log.info("[motor] " + String(line))
+            }
         }
 
         try proc.run()

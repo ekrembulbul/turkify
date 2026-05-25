@@ -1,9 +1,14 @@
 import Foundation
 
-/// Basit teşhis logu — stderr'e yazar (Xcode konsolunda görünür).
+/// Basit teşhis logu — stderr'e yazar (Xcode konsolu) **ve** UI'daki Log sekmesine
+/// iletir. `sink` AppState tarafından kurulur; herhangi bir thread'den çağrılabilir
+/// (sink, main actor'a kendisi geçer).
 enum Log {
+    /// UI'ya iletim kancası (AppState kurar). Boşsa yalnızca stderr'e yazılır.
+    static var sink: ((String) -> Void)?
+
     static func info(_ message: String) {
-        let line = "[turkify-mac] \(message)\n"
-        FileHandle.standardError.write(Data(line.utf8))
+        FileHandle.standardError.write(Data("[turkify-mac] \(message)\n".utf8))
+        sink?(message)
     }
 }
