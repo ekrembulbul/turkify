@@ -577,19 +577,27 @@ struct OtherSettingsView: View {
     var body: some View {
         Form {
             Section {
-                permissionRow("Erişilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
+                permissionRow(
+                    "Erişilebilirlik (Accessibility)",
+                    explanation: "Zorunlu. Seçili metni almak için Cmd+C, düzeltilmiş metni geri yazmak için Cmd+V tuşlarını aktif uygulamaya gönderir. İzin yoksa düzeltme uygulanamaz.",
+                    granted: state.accessibilityGranted
+                ) {
                     Permissions.promptAccessibility()
                     Permissions.openAccessibilitySettings()
                 }
-                permissionRow("Girdi İzleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
+                permissionRow(
+                    "Girdi İzleme (Input Monitoring)",
+                    explanation: "Genelde gerekmez. Global kısayol Carbon ile dinlenir ve bu izni istemez; bazı kurulumlarda kısayol algılanmazsa yedek olarak açılabilir.",
+                    granted: state.inputMonitoringGranted
+                ) {
                     Permissions.requestInputMonitoring()
                     Permissions.openInputMonitoringSettings()
                 }
                 Button("İzinleri yenile") { state.refreshPermissions() }
             } header: {
                 Text("İzinler")
-            // } footer: {
-            //     Text("Anında etki eder; Kaydet gerekmez.")
+            } footer: {
+                Text("İzinleri Apple güvenlik nedeniyle uygulama veremez; “Aç” ile System Settings açılır, anahtarı siz çevirirsiniz. Sonra “İzinleri yenile”.")
             }
 
             Section {
@@ -647,13 +655,19 @@ struct OtherSettingsView: View {
 
     @ViewBuilder
     private func permissionRow(
-        _ name: String, granted: Bool, action: @escaping () -> Void
+        _ name: String, explanation: String, granted: Bool, action: @escaping () -> Void
     ) -> some View {
-        HStack {
-            Text(granted ? "✅" : "❌")
-            Text(name)
-            Spacer()
-            Button("Aç") { action() }
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(granted ? "✅" : "❌")
+                Text(name)
+                Spacer()
+                Button("Aç") { action() }
+            }
+            Text(explanation)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
