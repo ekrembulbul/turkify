@@ -7,12 +7,18 @@ struct TurkifyApp: App {
     @ObservedObject private var state = AppState.shared
 
     var body: some Scene {
+        // Menü-bar: yalnızca durum + Ayarlar + Çıkış. Gerisi Ayarlar penceresinde.
         MenuBarExtra {
             MenuContent(state: state)
         } label: {
-            Image(systemName: state.busy ? "hourglass" : "textformat.abc")
+            Image(systemName: state.menuBarSymbol)
         }
         .menuBarExtraStyle(.menu)
+
+        Window("Turkify Ayarlar", id: AppState.settingsWindowID) {
+            SettingsView(state: state)
+        }
+        .windowResizability(.contentSize)
     }
 }
 
@@ -27,31 +33,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// Uygulama durumunu ve bileşenleri (motor, kısayol, izinler) bir arada tutan koordinatör.
+/// Uygulama durumunu ve bileşenleri (motor, kısayol, izinler, config) bir arada tutar.
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
+    static let settingsWindowID = "turkify-settings"
 
     @Published var busy = false
     @Published var accessibilityGranted = false
     @Published var inputMonitoringGranted = false
     @Published var engineRunning = false
     @Published var lastStatus = "Hazir"
+    @Published var settings = AppSettings.load()
 
-    let config = AppConfig.load()
     private let engine = EngineClient()
     private var hotKey: HotKey?
     private lazy var corrector = Corrector(engine: engine)
 
+    var menuBarSymbol: String {
+        if busy { return "hourglass" }
+        return engineRunning ? "textformat.abc" : "exclamationmark.triangle"
+    }
+
     func startup() {
         refreshPermissions()
-        do {
-            try engine.start()
-            engineRunning = engine.isRunning
-            lastStatus = engineRunning ? "Motor calisiyor" : "Motor baslamadi"
-        } catch {
-            lastStatus = "Motor baslatilamadi: \(error)"
-        }
+        startEngine()
         registerHotKey()
     }
 
@@ -64,12 +70,34 @@ final class AppState: ObservableObject {
         inputMonitoringGranted = Permissions.inputMonitoringGranted()
     }
 
+    /// Motoru mevcut ayarlarla (yeniden) başlatır.
+    private func startEngine() {
+        do {
+            try engine.start(settings: settings)
+            engineRunning = engine.isRunning
+            lastStatus = engineRunning ? "Motor calisiyor" : "Motor baslamadi"
+        } catch {
+            engineRunning = false
+            lastStatus = "Motor baslatilamadi: \(error)"
+        }
+    }
+
+    /// Ayarları native saklar (UserDefaults), motoru yeni bayraklarla yeniden
+    /// başlatır ve kısayolu yeniden kaydeder. config.json kullanılmaz (ADR 0007).
+    func saveSettings() {
+        settings.save()
+        startEngine()
+        registerHotKey()
+        if engineRunning { lastStatus = "Ayarlar kaydedildi" }
+    }
+
     private func registerHotKey() {
-        guard let keyCode = HotKey.keyCode(for: config.hotkeyKey) else {
-            lastStatus = "Kisayol tusu desteklenmiyor: \(config.hotkeyKey)"
+        hotKey = nil  // eskisini bırak (deinit unregister eder)
+        guard let keyCode = HotKey.keyCode(for: settings.hotkeyKey) else {
+            lastStatus = "Kisayol tusu desteklenmiyor: \(settings.hotkeyKey)"
             return
         }
-        let modifiers = HotKey.carbonModifiers(from: config.hotkeyMods)
+        let modifiers = HotKey.carbonModifiers(from: settings.hotkeyMods)
         hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in
             Task { @MainActor in await self?.correctSelection() }
         }
@@ -91,41 +119,96 @@ final class AppState: ObservableObject {
     }
 }
 
+// MARK: - Menü-bar içeriği (sade)
+
 struct MenuContent: View {
+    @ObservedObject var state: AppState
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Text(statusLine)
+
+        Divider()
+
+        Button("Ayarlar…") {
+            openWindow(id: AppState.settingsWindowID)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        .keyboardShortcut(",", modifiers: .command)
+
+        Button("Cikis") { NSApplication.shared.terminate(nil) }
+            .keyboardShortcut("q", modifiers: .command)
+    }
+
+    private var statusLine: String {
+        if state.busy { return "Turkify — isleniyor…" }
+        return state.engineRunning ? "Turkify — calisiyor" : "Turkify — motor kapali"
+    }
+}
+
+// MARK: - Ayarlar penceresi (config düzenleme + izinler + test)
+
+struct SettingsView: View {
     @ObservedObject var state: AppState
 
     var body: some View {
-        Text(state.lastStatus)
+        Form {
+            Section("Motor / LLM") {
+                Toggle("LLM kullan (Tier 3)", isOn: $state.settings.useLLM)
+                Toggle("Morfoloji (Tier 2)", isOn: $state.settings.useMorphology)
+                TextField("Model", text: $state.settings.model)
+                TextField("Sunucu (base_url)", text: $state.settings.baseURL)
+                TextField("API anahtari", text: $state.settings.apiKey)
+                TextField("Zaman asimi (sn)", value: $state.settings.timeout, format: .number)
+                TextField("assistant_prefill", text: $state.settings.assistantPrefill)
+            }
 
-        Divider()
+            Section("Kisayol") {
+                LabeledContent("Kisayol", value: state.settings.hotkeyDescription)
+                Text("Kisayol kaydedici sonraki adimda; simdilik config.json'dan duzenlenir.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
-        Button("Secili metni duzelt") {
-            Task { @MainActor in await state.correctSelection() }
+            Section("Izinler") {
+                permissionRow("Erisilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
+                    Permissions.promptAccessibility()
+                    Permissions.openAccessibilitySettings()
+                }
+                permissionRow("Girdi Izleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
+                    Permissions.requestInputMonitoring()
+                    Permissions.openInputMonitoringSettings()
+                }
+                Button("Izinleri yenile") { state.refreshPermissions() }
+            }
+
+            Section("Durum / Test") {
+                LabeledContent("Motor", value: state.engineRunning ? "calisiyor" : "kapali")
+                Button("Secili metni duzelt (test)") {
+                    Task { @MainActor in await state.correctSelection() }
+                }
+                Text(state.lastStatus).font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section {
+                Button("Kaydet") { state.saveSettings() }
+                    .keyboardShortcut(.defaultAction)
+            }
         }
-
-        Divider()
-
-        Button(permissionLabel("Erisilebilirlik", state.accessibilityGranted)) {
-            Permissions.promptAccessibility()
-            Permissions.openAccessibilitySettings()
-        }
-        Button(permissionLabel("Girdi Izleme", state.inputMonitoringGranted)) {
-            Permissions.requestInputMonitoring()
-            Permissions.openInputMonitoringSettings()
-        }
-        Button("Izinleri yenile") { state.refreshPermissions() }
-
-        Divider()
-
-        Text("Model: " + (state.config.model ?? "(yok)"))
-        Text(state.engineRunning ? "Motor: calisiyor" : "Motor: kapali")
-
-        Divider()
-
-        Button("Cikis") { NSApplication.shared.terminate(nil) }
+        .formStyle(.grouped)
+        .frame(width: 420, height: 560)
+        .onAppear { state.refreshPermissions() }
     }
 
-    private func permissionLabel(_ name: String, _ granted: Bool) -> String {
-        (granted ? "✅ " : "❌ ") + name + " izni"
+    @ViewBuilder
+    private func permissionRow(
+        _ name: String, granted: Bool, action: @escaping () -> Void
+    ) -> some View {
+        HStack {
+            Text(granted ? "✅" : "❌")
+            Text(name)
+            Spacer()
+            Button("Ac") { action() }
+        }
     }
 }

@@ -2,13 +2,15 @@ import Foundation
 
 /// Python düzeltme motoruyla (`turkify serve --stdio`) köprü.
 ///
-/// Motoru bir kez çocuk süreç olarak başlatır (sıcak tutar) ve satır-bazlı JSON
+/// Motoru çocuk süreç olarak başlatır (sıcak tutar) ve satır-bazlı JSON
 /// protokolüyle konuşur (bkz. ADR 0004):
 ///
 ///     istek :  {"id": 1, "text": "..."}
 ///     yanıt :  {"id": 1, "corrected": "..."} | {"id": 1, "error": "..."}
 ///
-/// İstekler `id` ile eşleştirilir; tüm durum erişimi tek bir kuyrukta seri yapılır.
+/// Ayarlar, motoru başlatırken **CLI bayrakları** olarak geçirilir (config.json
+/// kullanılmaz — bkz. ADR 0007). Ayar değişince `restart(settings:)` ile yeni
+/// bayraklarla yeniden başlatılır.
 final class EngineClient {
     enum EngineError: Error {
         case engine(String)
@@ -16,44 +18,64 @@ final class EngineClient {
         case notRunning
     }
 
-    private let process = Process()
-    private let stdinPipe = Pipe()
-    private let stdoutPipe = Pipe()
+    private var process: Process?
+    private var stdinHandle: FileHandle?
 
     private let queue = DispatchQueue(label: "com.turkify.engine")
     private var buffer = Data()
     private var pending: [Int: CheckedContinuation<String, Error>] = [:]
     private var nextID = 1
 
-    init() {
-        let launch = AppConfig.engineLaunch()
-        process.executableURL = URL(fileURLWithPath: launch.executable)
-        process.arguments = launch.arguments
-        process.standardInput = stdinPipe
-        process.standardOutput = stdoutPipe
-        // stderr devralınır → motor tanı mesajları Xcode konsolunda görünür.
-    }
+    var isRunning: Bool { process?.isRunning ?? false }
 
-    func start() throws {
-        stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+    /// Motoru verilen ayarlarla başlatır (önce çalışan varsa durdurur).
+    func start(settings: AppSettings) throws {
+        stop()
+        let proc = Process()
+        let launch = AppSettings.engineExecutable()
+        proc.executableURL = URL(fileURLWithPath: launch.executable)
+        proc.arguments = launch.prefixArgs + settings.serveArguments()
+
+        let stdin = Pipe()
+        let stdout = Pipe()
+        proc.standardInput = stdin
+        proc.standardOutput = stdout
+        // stderr devralınır → motor tanı mesajları Xcode konsolunda görünür.
+
+        stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
             self?.queue.async { self?.ingest(data) }
         }
-        try process.run()
+
+        try proc.run()
+        process = proc
+        stdinHandle = stdin.fileHandleForWriting
+    }
+
+    func restart(settings: AppSettings) throws {
+        try start(settings: settings)
     }
 
     func stop() {
-        if process.isRunning { process.terminate() }
+        if let proc = process, proc.isRunning { proc.terminate() }
+        process = nil
+        stdinHandle = nil
+        queue.async {
+            let waiting = self.pending
+            self.pending.removeAll()
+            self.buffer.removeAll()
+            for (_, continuation) in waiting {
+                continuation.resume(throwing: EngineError.notRunning)
+            }
+        }
     }
-
-    var isRunning: Bool { process.isRunning }
 
     /// Metni motora gönderir ve düzeltilmiş halini döndürür.
     func correct(_ text: String) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                guard self.process.isRunning else {
+                guard let handle = self.stdinHandle, self.isRunning else {
                     continuation.resume(throwing: EngineError.notRunning)
                     return
                 }
@@ -67,7 +89,7 @@ final class EngineClient {
                     return
                 }
                 line.append(0x0A)  // satır sonu
-                self.stdinPipe.fileHandleForWriting.write(line)
+                handle.write(line)
             }
         }
     }

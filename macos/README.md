@@ -37,12 +37,24 @@ bir satır JSON yanıt vermeli.
 1. `macos/Package.swift`'i Xcode ile açın (File → Open).
 2. Şemada `TURKIFY_PYTHON` env'ini ayarlayın (yukarı).
 3. Run (⌘R). Menü-bar'da bir simge belirir (Dock ikonu yok — accessory app).
-4. **İzinleri verin:** menüden "Erisilebilirlik" ve "Girdi Izleme" butonlarına
-   tıklayın → System Settings açılır → Turkify'a izin verin → "Izinleri yenile".
-   - Accessibility: Cmd+C/Cmd+V simülasyonu için.
-   - Input Monitoring: global kısayol için gerekebilir.
-5. Test: bir yerde metin seçin, menüden **"Secili metni duzelt"** ya da global
-   kısayola (config'teki, varsayılan Hyper+A) basın.
+   - Menü sadedir: **durum**, **Ayarlar…** (⌘,), **Cikis** (⌘Q).
+4. Menüden **Ayarlar…**'ı açın. Ayarlar penceresinde:
+   - **Ayar düzenleme:** LLM/morfoloji aç-kapa, model, base_url, API anahtarı,
+     zaman aşımı, assistant_prefill. **Kaydet** → ayarları **native saklar**
+     (`UserDefaults`) ve motoru yeni ayarlarla **yeniden başlatır**.
+     macOS'ta `config.json` **kullanılmaz** ([ADR 0007](../docs/adr/0007-ayar-saklama-gui-native.md)).
+   - **İzinler:** "Erisilebilirlik" ve "Girdi Izleme" satırlarındaki **Ac**
+     butonu System Settings'i açar → izni verin → **Izinleri yenile**.
+     (Accessibility: Cmd+C/V simülasyonu; Input Monitoring: global kısayol.)
+   - **Test:** "Secili metni duzelt (test)" butonu.
+5. Gerçek kullanım: bir yerde metin seçin, global kısayola basın (varsayılan Hyper+A).
+
+> Kısayol kaydedici (hotkey recorder) henüz yok; varsayılan Hyper+A. Ayarlar'da
+> değiştirme sonraki adımda.
+
+> **macOS ayarları `UserDefaults`'ta** saklanır; sıfırlamak için:
+> `defaults delete <bundle-id>` (App target'ta bundle id; SPM çalıştırmada
+> ayarlar geçici/uygulamaya özgü olabilir).
 
 ## Bilinen iterasyon noktaları (ilk derlemede kontrol)
 - **MenuBarExtra + SPM executable:** `@main App` SPM'de çalışır; sorun olursa

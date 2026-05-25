@@ -70,6 +70,12 @@ kontrol: {"cmd": "ping"} → {"ok": true}
 
 ## 2. Yapılandırma (config)
 
+> **`config.json` kapsamı:** Linux servisi ve **CLI** içindir. **macOS/Windows
+> GUI** ayarları native saklar (macOS `UserDefaults`) ve motora **CLI bayrakları**
+> olarak geçirir — config.json kullanmaz ([ADR 0007](adr/0007-ayar-saklama-gui-native.md)).
+> Bayraklar öncelikli olduğundan (aşağıya bkz.) GUI ayarları, ortamda bir config.json
+> olsa bile kazanır.
+
 ### Öncelik
 ```
 CLI bayrağı  >  TURKIFY_* ortam değişkeni  >  config dosyası  >  yerleşik varsayılan

@@ -24,3 +24,4 @@ verilir.
 | [0004](0004-motor-sinir-protokolu.md) | Motor sınır protokolü: tek JSON, stdio + Unix soket | ✅ Kabul |
 | [0005](0005-linux-terminal-servis.md) | Linux: terminal + systemd servisi (native GUI yok) | ✅ Kabul |
 | [0006](0006-cli-birinci-sinif-kalici.md) | CLI birinci-sınıf ve kalıcı arayüzdür | ✅ Kabul |
+| [0007](0007-ayar-saklama-gui-native.md) | Ayar saklama: GUI native, config.json Linux/CLI'ya özgü | ✅ Kabul |
