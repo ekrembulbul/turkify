@@ -234,9 +234,9 @@ struct MainView: View {
     var body: some View {
         TabView {
             SettingsView(state: state)
-                .tabItem { Label("Ayarlar", systemImage: "gearshape") }
-            StatusView(state: state)
-                .tabItem { Label("Durum", systemImage: "gauge") }
+                .tabItem { Label("Motor Ayarları", systemImage: "cpu") }
+            OtherSettingsView(state: state)
+                .tabItem { Label("Diğer Ayarlar", systemImage: "slider.horizontal.3") }
             // İleride buraya yeni sekmeler eklenebilir (ör. Geçmiş, Hakkında).
         }
         // Yeniden boyutlanabilir: küçük alt sınır, serbest büyüme.
@@ -247,7 +247,7 @@ struct MainView: View {
     }
 }
 
-// MARK: - Ayarlar sekmesi (üstte Kaydet; Kaydet-gerektiren ve anlık bölümler ayrı)
+// MARK: - Motor Ayarları sekmesi (üstte Kaydet; tüm alanlar Kaydet ile uygulanır)
 
 struct SettingsView: View {
     @ObservedObject var state: AppState
@@ -350,53 +350,8 @@ struct SettingsView: View {
                 } footer: {
                     Text("İsteğin gövdesine eklenecek JSON. Ör: `{\"chat_template_kwargs\":{\"enable_thinking\":false}}`")
                 }
-
-                Section("Kısayol") {
-                    LabeledContent("Kısayol", value: state.settings.hotkeyDescription)
-                    Text("Kısayol kaydedici sonraki adımda eklenecek.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-
-                Section {
-                    permissionRow("Erişilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
-                        Permissions.promptAccessibility()
-                        Permissions.openAccessibilitySettings()
-                    }
-                    permissionRow("Girdi İzleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
-                        Permissions.requestInputMonitoring()
-                        Permissions.openInputMonitoringSettings()
-                    }
-                    Button("İzinleri yenile") { state.refreshPermissions() }
-                } header: {
-                    Text("İzinler")
-                } footer: {
-                    Text("Anında etki eder; Kaydet gerekmez.")
-                }
-
-                Section {
-                    Toggle("Dock'ta göster", isOn: Binding(
-                        get: { state.settings.showInDock },
-                        set: { state.setShowInDock($0) }
-                    ))
-                } header: {
-                    Text("Görünüm")
-                } footer: {
-                    Text("Anında etki eder. Kapalıyken uygulama yalnızca menü-bar'da durur.")
-                }
             }
             .formStyle(.grouped)
-        }
-    }
-
-    @ViewBuilder
-    private func permissionRow(
-        _ name: String, granted: Bool, action: @escaping () -> Void
-    ) -> some View {
-        HStack {
-            Text(granted ? "✅" : "❌")
-            Text(name)
-            Spacer()
-            Button("Aç") { action() }
         }
     }
 
@@ -410,21 +365,66 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Durum sekmesi (motor durumu + test)
+// MARK: - Diğer Ayarlar sekmesi (Kaydet YOK; anlık kontroller + durum)
 
-struct StatusView: View {
+struct OtherSettingsView: View {
     @ObservedObject var state: AppState
 
     var body: some View {
         Form {
-            Section("Motor") {
-                LabeledContent("Durum", value: state.engineRunning ? "çalışıyor" : "kapalı")
+            Section("Durum") {
+                LabeledContent("Motor", value: state.engineRunning ? "çalışıyor" : "kapalı")
                 Button("Seçili metni düzelt (test)") {
                     Task { @MainActor in await state.correctSelection() }
                 }
                 LabeledContent("Son işlem", value: state.lastStatus)
             }
+
+            Section {
+                permissionRow("Erişilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
+                    Permissions.promptAccessibility()
+                    Permissions.openAccessibilitySettings()
+                }
+                permissionRow("Girdi İzleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
+                    Permissions.requestInputMonitoring()
+                    Permissions.openInputMonitoringSettings()
+                }
+                Button("İzinleri yenile") { state.refreshPermissions() }
+            } header: {
+                Text("İzinler")
+            } footer: {
+                Text("Anında etki eder; Kaydet gerekmez.")
+            }
+
+            Section {
+                Toggle("Dock'ta göster", isOn: Binding(
+                    get: { state.settings.showInDock },
+                    set: { state.setShowInDock($0) }
+                ))
+            } header: {
+                Text("Görünüm")
+            } footer: {
+                Text("Anında etki eder. Kapalıyken uygulama yalnızca menü-bar'da durur.")
+            }
+
+            Section("Kısayol") {
+                LabeledContent("Kısayol", value: state.settings.hotkeyDescription)
+                Text("Kısayol kaydedici sonraki adımda eklenecek.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+    }
+
+    @ViewBuilder
+    private func permissionRow(
+        _ name: String, granted: Bool, action: @escaping () -> Void
+    ) -> some View {
+        HStack {
+            Text(granted ? "✅" : "❌")
+            Text(name)
+            Spacer()
+            Button("Aç") { action() }
+        }
     }
 }
