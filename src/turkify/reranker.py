@@ -25,7 +25,8 @@ import time
 import urllib.error
 import urllib.request
 from functools import lru_cache
-from pathlib import Path
+
+from turkify import resources
 
 # Tanı mesajları "turkify" günlüğüne yazılır. Bunlar WARNING seviyesindedir;
 # böylece --verbose olmasa bile (kullanıcı --llm/--model'i bilerek istediği için)
@@ -66,12 +67,14 @@ LLM_OPTIONS: dict = {}
 # kapatamayan motorlarda (ör. LM Studio MLX) çalışan, runtime-bağımsız yöntem.
 ASSISTANT_PREFILL: str | None = None
 
-_PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "rerank_prompt.txt"
-
-
 @lru_cache(maxsize=1)
 def _prompt_template() -> str:
-    return _PROMPT_PATH.read_text(encoding="utf-8")
+    text = resources.read_text("prompts", "rerank_prompt.txt")
+    if text is None:
+        raise FileNotFoundError(
+            "rerank_prompt.txt paket içinde bulunamadı (turkify/prompts/)"
+        )
+    return text
 
 
 def _endpoint(path: str) -> str:

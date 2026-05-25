@@ -5,26 +5,26 @@ sık kullanıldığını bilmek belirsizliği çözer:
   * Bir aday baskın biçimde daha sıksa → deterministik seçilir (LLM gerekmez).
   * Frekanslar yakınsa → gerçek bağlamsal belirsizliktir, Tier 3'e (LLM) yükseltilir.
 
-Veri ``data/tr_frequency.txt`` dosyasından okunur (``kelime sayı`` biçimi).
-Dosya yoksa katman graceful biçimde devre dışı kalır (tüm frekanslar 0 döner).
+Veri ``turkify/data/tr_frequency.txt`` (pakete gömülü) dosyasından okunur
+(``kelime sayı`` biçimi). Dosya yoksa katman graceful biçimde devre dışı kalır
+(tüm frekanslar 0 döner).
 """
 
 from functools import lru_cache
-from pathlib import Path
 
+from turkify import resources
 from turkify.protect import tr_lower
-
-_DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "tr_frequency.txt"
 
 
 @lru_cache(maxsize=1)
 def _frequencies() -> dict[str, int]:
     """Frekans dosyasını okur ve ``{kelime: sayı}`` sözlüğü olarak önbellekler."""
-    if not _DEFAULT_PATH.exists():
+    text = resources.read_text("data", "tr_frequency.txt")
+    if text is None:
         return {}
 
     freqs: dict[str, int] = {}
-    for line in _DEFAULT_PATH.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
