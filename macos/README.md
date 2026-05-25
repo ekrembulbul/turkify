@@ -40,7 +40,7 @@ bir satır JSON yanıt vermeli.
 3. **Run (⌘R).** Menü-bar'da simge belirir (Dock ikonu yok — accessory app).
    Menü sade: **durum**, **İşlemi iptal et** (işlem sürerken etkin; Hyper+Q),
    **Turkify'ı aç**, **Çıkış**.
-4. **Ana pencere** (sekmeli):
+4. **Ana pencere** (solda sidebar; bölüm seçilir):
    - **Motor Ayarları:** LLM/morfoloji, model, base_url, API anahtarı, timeout,
      assistant_prefill. **Kaydet** → **UserDefaults**'a yazar + motoru yeni
      ayarlarla yeniden başlatır. macOS'ta `config.json` **kullanılmaz**

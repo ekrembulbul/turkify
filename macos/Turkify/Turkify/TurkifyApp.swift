@@ -463,28 +463,57 @@ struct MenuBarLabel: View {
     }
 }
 
-// MARK: - Ana pencere (sekmeli; ileride sekme eklenebilir)
+// MARK: - Ana pencere (sidebar; ileride bölüm eklenebilir)
 
 struct MainView: View {
     @ObservedObject var state: AppState
 
-    var body: some View {
-        TabView {
-            SettingsView(state: state)
-                .tabItem { Label("Motor Ayarları", systemImage: "cpu") }
-            ProtectedWordsView(state: state)
-                .tabItem { Label("Korumalı Kelimeler", systemImage: "shield") }
-            OtherSettingsView(state: state)
-                .tabItem { Label("Diğer Ayarlar", systemImage: "slider.horizontal.3") }
-            LogView(state: state)
-                .tabItem { Label("Log", systemImage: "doc.plaintext") }
+    /// Sidebar bölümleri. Yeni ekran eklemek için buraya bir case + `detail`
+    /// switch'ine bir satır eklemek yeterli.
+    enum Section: String, CaseIterable, Identifiable {
+        case engine = "Motor Ayarları"
+        case other = "Diğer Ayarlar"
+        case protectedWords = "Korumalı Kelimeler"
+        case log = "Log"
+
+        var id: String { rawValue }
+        var icon: String {
+            switch self {
+            case .engine: return "cpu"
+            case .protectedWords: return "shield"
+            case .other: return "slider.horizontal.3"
+            case .log: return "doc.plaintext"
+            }
         }
-        // .contentMinSize ilk boyutu idealWidth/idealHeight'ten alır → geniş açılır;
-        // minWidth ile küçültülebilir, maxWidth .infinity ile büyütülebilir.
-        .frame(minWidth: 440, idealWidth: 680, maxWidth: .infinity,
+    }
+
+    @State private var selection: Section? = .engine
+
+    var body: some View {
+        NavigationSplitView {
+            List(Section.allCases, selection: $selection) { section in
+                Label(section.rawValue, systemImage: section.icon).tag(section)
+            }
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 260)
+        } detail: {
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .navigationTitle("Turkify")
+        .frame(minWidth: 640, idealWidth: 920, maxWidth: .infinity,
                minHeight: 460, idealHeight: 660, maxHeight: .infinity)
         .onAppear { state.windowAppeared() }
         .onDisappear { state.windowDisappeared() }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch selection ?? .engine {
+        case .engine: SettingsView(state: state)
+        case .protectedWords: ProtectedWordsView(state: state)
+        case .other: OtherSettingsView(state: state)
+        case .log: LogView(state: state)
+        }
     }
 }
 
