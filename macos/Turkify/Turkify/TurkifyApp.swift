@@ -44,7 +44,7 @@ final class AppState: ObservableObject {
     @Published var accessibilityGranted = false
     @Published var inputMonitoringGranted = false
     @Published var engineRunning = false
-    @Published var lastStatus = "Hazir"
+    @Published var lastStatus = "Hazır"
     @Published var settings = AppSettings.load()
 
     private let engine = EngineClient()
@@ -76,10 +76,10 @@ final class AppState: ObservableObject {
         do {
             try engine.start(settings: settings)
             engineRunning = engine.isRunning
-            lastStatus = engineRunning ? "Motor calisiyor" : "Motor baslamadi"
+            lastStatus = engineRunning ? "Motor çalışıyor" : "Motor başlamadı"
         } catch {
             engineRunning = false
-            lastStatus = "Motor baslatilamadi: \(error)"
+            lastStatus = "Motor başlatılamadı: \(error)"
         }
     }
 
@@ -95,14 +95,14 @@ final class AppState: ObservableObject {
     private func registerHotKey() {
         hotKey = nil  // eskisini bırak (deinit unregister eder)
         guard let keyCode = HotKey.keyCode(for: settings.hotkeyKey) else {
-            lastStatus = "Kisayol tusu desteklenmiyor: \(settings.hotkeyKey)"
+            lastStatus = "Kısayol tuşu desteklenmiyor: \(settings.hotkeyKey)"
             return
         }
         let modifiers = HotKey.carbonModifiers(from: settings.hotkeyMods)
         hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in
             Task { @MainActor in await self?.correctSelection() }
         }
-        if hotKey == nil { lastStatus = "Kisayol kaydedilemedi" }
+        if hotKey == nil { lastStatus = "Kısayol kaydedilemedi" }
     }
 
     func correctSelection() async {
@@ -115,10 +115,10 @@ final class AppState: ObservableObject {
         }
         do {
             let result = try await corrector.run()
-            lastStatus = "Duzeltildi: " + String(result.prefix(40))
+            lastStatus = "Düzeltildi: " + String(result.prefix(40))
             Log.info("correctSelection: OK -> \(result.prefix(40))")
         } catch Corrector.CorrectorError.emptySelection {
-            lastStatus = "Secili metin bulunamadi"
+            lastStatus = "Seçili metin bulunamadı"
             Log.info("correctSelection: secim bos")
         } catch {
             lastStatus = "Hata: \(error)"
@@ -138,19 +138,19 @@ struct MenuContent: View {
 
         Divider()
 
-        Button("Ayarlar…") {
+        Button("Ayarlar") {
             openWindow(id: AppState.settingsWindowID)
             NSApp.activate(ignoringOtherApps: true)
         }
         .keyboardShortcut(",", modifiers: .command)
 
-        Button("Cikis") { NSApplication.shared.terminate(nil) }
+        Button("Çıkış") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q", modifiers: .command)
     }
 
     private var statusLine: String {
-        if state.busy { return "Turkify — isleniyor…" }
-        return state.engineRunning ? "Turkify — calisiyor" : "Turkify — motor kapali"
+        if state.busy { return "Turkify — işleniyor…" }
+        return state.engineRunning ? "Turkify — çalışıyor" : "Turkify — motor kapalı"
     }
 }
 
@@ -166,33 +166,33 @@ struct SettingsView: View {
                 Toggle("Morfoloji (Tier 2)", isOn: $state.settings.useMorphology)
                 TextField("Model", text: $state.settings.model)
                 TextField("Sunucu (base_url)", text: $state.settings.baseURL)
-                TextField("API anahtari", text: $state.settings.apiKey)
-                TextField("Zaman asimi (sn)", value: $state.settings.timeout, format: .number)
+                TextField("API anahtarı", text: $state.settings.apiKey)
+                TextField("Zaman aşımı (sn)", value: $state.settings.timeout, format: .number)
                 TextField("assistant_prefill", text: $state.settings.assistantPrefill)
             }
 
-            Section("Kisayol") {
-                LabeledContent("Kisayol", value: state.settings.hotkeyDescription)
-                Text("Kisayol kaydedici sonraki adimda; simdilik config.json'dan duzenlenir.")
+            Section("Kısayol") {
+                LabeledContent("Kısayol", value: state.settings.hotkeyDescription)
+                Text("Kısayol kaydedici sonraki adımda eklenecek.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Izinler") {
-                permissionRow("Erisilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
+            Section("İzinler") {
+                permissionRow("Erişilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
                     Permissions.promptAccessibility()
                     Permissions.openAccessibilitySettings()
                 }
-                permissionRow("Girdi Izleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
+                permissionRow("Girdi İzleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
                     Permissions.requestInputMonitoring()
                     Permissions.openInputMonitoringSettings()
                 }
-                Button("Izinleri yenile") { state.refreshPermissions() }
+                Button("İzinleri yenile") { state.refreshPermissions() }
             }
 
             Section("Durum / Test") {
-                LabeledContent("Motor", value: state.engineRunning ? "calisiyor" : "kapali")
-                Button("Secili metni duzelt (test)") {
+                LabeledContent("Motor", value: state.engineRunning ? "çalışıyor" : "kapalı")
+                Button("Seçili metni düzelt (test)") {
                     Task { @MainActor in await state.correctSelection() }
                 }
                 Text(state.lastStatus).font(.caption).foregroundStyle(.secondary)
@@ -216,7 +216,7 @@ struct SettingsView: View {
             Text(granted ? "✅" : "❌")
             Text(name)
             Spacer()
-            Button("Ac") { action() }
+            Button("Aç") { action() }
         }
     }
 }
