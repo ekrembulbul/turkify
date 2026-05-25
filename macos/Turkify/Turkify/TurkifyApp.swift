@@ -539,9 +539,27 @@ struct SettingsView: View {
             Divider()
 
             Form {
-                Section("Katmanlar") {
-                    Toggle("Morfoloji (Tier 2)", isOn: $state.settings.useMorphology)
-                    Toggle("LLM kullan (Tier 3)", isOn: $state.settings.useLLM)
+                Section {
+                    tierRow(
+                        title: "Tier 1 — Deterministik",
+                        detail: "Şapkaları kalıp tabanlı (Yüret) geri ekler. Hızlı, çevrimdışı temel düzeltme; her zaman açıktır.",
+                        isOn: .constant(true),
+                        locked: true
+                    )
+                    tierRow(
+                        title: "Tier 2 — Morfoloji + frekans",
+                        detail: "Geçersiz/belirsiz kelimeleri biçimbilim (zeyrek) ve kelime sıklığıyla çözer. zeyrek kurulu değilse sessizce atlanır.",
+                        isOn: $state.settings.useMorphology
+                    )
+                    tierRow(
+                        title: "Tier 3 — LLM (bağlam)",
+                        detail: "Yalnızca birden çok geçerli aday bağlam gerektirdiğinde LLM doğru olanı seçer. OpenAI-uyumlu sunucu + model gerekir.",
+                        isOn: $state.settings.useLLM
+                    )
+                } header: {
+                    Text("Katmanlar")
+                } footer: {
+                    Text("Düzeltme kademelidir: her katman bir öncekinin çözemediği kelimelere bakar.")
                 }
 
                 Section {
@@ -639,6 +657,22 @@ struct SettingsView: View {
             .frame(minHeight: minHeight)
             .padding(4)
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
+    }
+
+    /// Bir katman satırı: aç/kapa anahtarı + altında ne yaptığının kısa açıklaması.
+    /// ``locked`` (Tier 1) ise anahtar açık ve devre dışıdır (kapatılamaz).
+    @ViewBuilder
+    private func tierRow(
+        title: String, detail: String, isOn: Binding<Bool>, locked: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Toggle(title, isOn: isOn)
+                .disabled(locked)
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
