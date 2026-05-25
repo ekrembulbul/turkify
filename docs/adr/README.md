@@ -26,3 +26,4 @@ verilir.
 | [0006](0006-cli-birinci-sinif-kalici.md) | CLI birinci-sınıf ve kalıcı arayüzdür | ✅ Kabul |
 | [0007](0007-ayar-saklama-gui-native.md) | Ayar saklama: GUI native, config.json Linux/CLI'ya özgü | ✅ Kabul |
 | [0008](0008-korumali-kelimeler-paylasilan-dosya.md) | Korumalı kelimeler: kullanıcı dosyası (paket listesi yalnızca örnek) | ✅ Kabul |
+| [0009](0009-paketleme-frozen-motor.md) | Paketleme: motoru donmuş yardımcı olarak .app içine göm | ✅ Kabul |

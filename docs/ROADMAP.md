@@ -129,10 +129,13 @@ Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzelti
 - Pano: X11 `xclip`/`xsel`, Wayland `wl-clipboard`. ⚠️ Wayland yapıştırma best-effort.
 
 ### 6.4 — Paketleme & dağıtım
-- ⚠️ Her native app'in içine **Python çalışma zamanı + bağımlılıklar** gömülür
-  (yaklaşım: `python-build-standalone`). Geliştirmede yerel venv yeterli.
-- macOS: `.app` + kod imzalama/notarization. Windows: kurulum paketi. Linux:
-  `.deb`/`.rpm`/AUR veya Flatpak.
+- ⚠️ Motor **donmuş bağımsız ikili** (PyInstaller) olarak native app'in içine gömülür;
+  kullanıcı Python/venv kurmaz ([ADR 0009](adr/0009-paketleme-frozen-motor.md)).
+  Geliştirmede yerel venv yeterli.
+- ✅ Hazırlık yapıldı: veri dosyaları (`tr_frequency.txt`, `rerank_prompt.txt`) pakete
+  taşındı ve `importlib.resources` ile okunuyor (frozen/wheel/dev uyumlu).
+- macOS: `.app` + Developer ID kod imzalama/notarization (App Sandbox kapalı).
+  Windows: kurulum paketi. Linux: `.deb`/`.rpm`/AUR veya Flatpak.
 
 **Faz 6 başarı kriteri:** macOS'ta kısayolla seçili metin düzeltilir; izinler
 arayüzden yönetilir; motor sıcak (`serve`) ve frontend'den bağımsız test edilebilir.

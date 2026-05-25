@@ -365,13 +365,13 @@ tasarlanmıştır.
 |---|---|---|
 | Korumalı kelimeler (etkin) | `~/.config/turkify/protected_words.txt` | **Yalnızca bu dosya** korunur; her satıra bir kelime, `#` yorum ([ADR 0008](adr/0008-korumali-kelimeler-paylasilan-dosya.md)). `protected_words_file` ile yol değiştirilebilir. |
 | Korumalı kelimeler (örnek) | `config/protected_words.example.txt` | Kopyalanacak başlangıç listesi; motor **otomatik yüklemez**. |
-| Frekans listesi | `data/tr_frequency.txt` | Tier 2 belirsizlik çözümü için (MIT, gömülü). `kelime sayı` biçimi. |
+| Frekans listesi | `src/turkify/data/tr_frequency.txt` | Tier 2 belirsizlik çözümü için (MIT, pakete gömülü). `kelime sayı` biçimi. |
 | Tercihler | `cache/preferences.json` | Faz 7 (devre dışı) — şu an kullanılmıyor. |
 | Ana ayarlar | `~/.config/turkify/config.json` | model, use_llm, timeout, … (bkz. [§6](#6-yapılandırma-config)) |
 | LLM modeli | config `model` / `--model` / `TURKIFY_MODEL` | Önerilen `qwen3.5:9b-mlx`. |
 | LLM zaman aşımı | config `timeout` / `TURKIFY_TIMEOUT` | Saniye; varsayılan 60. |
 | Kısayollar (macOS) | native uygulama ayarı | Düzeltme/iptal kısayolu uygulamadan atanır (config.json değil; bkz. [§7](#7-sistem-geneli-kısayol-native-uygulama)). |
-| Rerank prompt'u | `prompts/rerank_prompt.txt` | LLM'e verilen şablon. |
+| Rerank prompt'u | `src/turkify/prompts/rerank_prompt.txt` | LLM'e verilen şablon (pakete gömülü). |
 
 ---
 

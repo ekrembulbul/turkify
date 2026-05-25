@@ -293,11 +293,12 @@ ollama serve
 │   ├── frequency.py               # frekans sözlüğü
 │   ├── morphology.py              # Tier 2 Zemberek sarmalayıcı
 │   ├── reranker.py                # Tier 3 LLM (opsiyonel)
-│   └── reconstruct.py
-├── data/
-│   └── tr_frequency.txt           # Türkçe frekans listesi
-├── prompts/
-│   └── rerank_prompt.txt
+│   ├── reconstruct.py
+│   ├── resources.py               # pakete gömülü veri erişimi (importlib.resources)
+│   ├── data/
+│   │   └── tr_frequency.txt       # Türkçe frekans listesi (pakete gömülü)
+│   └── prompts/
+│       └── rerank_prompt.txt      # rerank prompt'u (pakete gömülü)
 ├── hammerspoon/
 │   └── turkify.lua
 ├── cache/
