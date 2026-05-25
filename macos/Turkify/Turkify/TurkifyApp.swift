@@ -560,15 +560,6 @@ struct OtherSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Durum") {
-                LabeledContent("Motor", value: state.engineRunning ? "çalışıyor" : "kapalı")
-                Button("Seçili metni düzelt (test)") {
-                    state.requestCorrection()
-                }
-                .disabled(state.busy)
-                LabeledContent("Son işlem", value: state.lastStatus)
-            }
-
             Section {
                 permissionRow("Erişilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
                     Permissions.promptAccessibility()
