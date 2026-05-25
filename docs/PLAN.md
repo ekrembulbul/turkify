@@ -283,7 +283,7 @@ ollama serve
 ├── ROADMAP.md
 ├── requirements.txt
 ├── config/
-│   └── protected_words.txt        # korumalı kelime listesi
+│   └── protected_words.example.txt  # korumalı kelime ÖRNEĞİ (kopyalanır; otomatik yüklenmez)
 ├── src/turkify/
 │   ├── __init__.py
 │   ├── engine.py                  # correct() orkestrasyonu

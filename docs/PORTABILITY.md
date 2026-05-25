@@ -86,13 +86,14 @@ katmanı → CLI override. Her ayar hem env hem CLI bayrağı olarak verilebilir
 ### Ortam değişkenleri
 Her config alanının bir `TURKIFY_*` karşılığı vardır: `TURKIFY_MODEL`,
 `TURKIFY_USE_LLM`, `TURKIFY_USE_MORPHOLOGY`, `TURKIFY_TIMEOUT`, `TURKIFY_BASE_URL`,
-`TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni), `TURKIFY_ASSISTANT_PREFILL`.
+`TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni), `TURKIFY_ASSISTANT_PREFILL`,
+`TURKIFY_PROTECTED_WORDS_FILE`.
 Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır ve uyarı yazılır.
 
 ### CLI bayrakları
 `--model`, `--llm`/`--no-llm`, `--morphology`/`--no-morphology`, `--timeout`,
 `--base-url`, `--api-key`, `--llm-options` (JSON), `--assistant-prefill`,
-`--verbose`/`-v`. Düzeltme ve `serve` komutları kabul eder.
+`--protected-words-file`, `--verbose`/`-v`. Düzeltme ve `serve` komutları kabul eder.
 
 ### Format & konum
 - **Format: JSON** (stdlib `json` ile bağımlılıksız okunur). JSON **yorum
@@ -113,10 +114,18 @@ Geçersiz bir env değeri (ör. sayı olmayan `TURKIFY_TIMEOUT`) yok sayılır v
   "base_url": "http://localhost:11434/v1",  // OpenAI-uyumlu sunucu (LM Studio: .../1234/v1)
   "api_key": null,                  // sunucu isterse (yerelde genelde gerekmez)
   "llm_options": {},                // /chat/completions gövdesine eklenecek ekstra ALANLAR
-  "assistant_prefill": null         // isteğe eklenecek asistan MESAJI (ör. "<think>\n\n</think>\n\n")
+  "assistant_prefill": null,        // isteğe eklenecek asistan MESAJI (ör. "<think>\n\n</think>\n\n")
+  "protected_words_file": null      // korumalı kelime dosyası; null → config dizini/protected_words.txt
 }
 ```
 Örnek: [`config/config.example.json`](../config/config.example.json).
+
+> **Korumalı kelimeler:** Yalnızca **kullanıcı dosyasındaki** kelimeler korunur.
+> Dosya `protected_words_file` ile verilir; yoksa config dizinindeki
+> `protected_words.txt` kullanılır. Paketle gelen `protected_words.example.txt`
+> **otomatik yüklenmez** — yalnızca kopyalanacak bir örnektir. Birleştirme yoktur;
+> tüm arayüzler (CLI/Linux/native GUI) aynı dosyayı paylaşır
+> ([ADR 0008](adr/0008-korumali-kelimeler-paylasilan-dosya.md)).
 
 > **Not:** Kısayollar config'te tutulmaz. Sistem geneli kısayol (düzeltme/iptal)
 > **native frontend'in** ayarıdır ve orada saklanır (macOS: UserDefaults —

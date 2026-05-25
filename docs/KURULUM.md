@@ -246,6 +246,7 @@ geçersiz kılar):
 | `--api-key ANAHTAR` | Sunucu API anahtarı |
 | `--llm-options JSON` | İsteğe eklenecek JSON gövdesi alanları, ör. `'{"chat_template_kwargs":{"enable_thinking":false}}'` |
 | `--assistant-prefill S` | İsteğe asistan prefill'i ekler; düşünmeyi atlatmak için `$'<think>\n\n</think>\n\n'` |
+| `--protected-words-file YOL` | Korumalı kelime dosyası (yalnızca bu dosyadaki kelimeler korunur) |
 | `--verbose` / `-v` | Hangi kelimenin hangi katmanda çözüldüğünü `stderr`'e yazar |
 
 Örnek (config'e dokunmadan, tamamen bayrakla):
@@ -274,7 +275,7 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
 - **Ortam değişkenleri** (config alanının karşılığı): `TURKIFY_MODEL`,
   `TURKIFY_USE_LLM`, `TURKIFY_USE_MORPHOLOGY`, `TURKIFY_TIMEOUT`,
   `TURKIFY_BASE_URL`, `TURKIFY_API_KEY`, `TURKIFY_LLM_OPTIONS` (JSON metni),
-  `TURKIFY_ASSISTANT_PREFILL`.
+  `TURKIFY_ASSISTANT_PREFILL`, `TURKIFY_PROTECTED_WORDS_FILE`.
 
 ```jsonc
 {
@@ -285,7 +286,8 @@ Tüm ayarlar tek bir JSON config dosyasında toplanır.
   "base_url": "http://localhost:11434/v1",  // OpenAI-uyumlu sunucu (LM Studio: .../1234/v1)
   "api_key": null,                  // yerel sunucular genelde istemez
   "llm_options": {},                // istek govdesine eklenecek alanlar ( or. chat_template_kwargs)
-  "assistant_prefill": null         // ust asistan prefill'i; dusunmeyi kapatmak icin "<think>\n\n</think>\n\n"
+  "assistant_prefill": null,        // ust asistan prefill'i; dusunmeyi kapatmak icin "<think>\n\n</think>\n\n"
+  "protected_words_file": null      // korumali kelime dosyasi; null -> config dizini/protected_words.txt (yalnizca bu dosya)
 }
 ```
 
@@ -361,7 +363,8 @@ tasarlanmıştır.
 
 | Ne | Nerede | Açıklama |
 |---|---|---|
-| Korumalı kelimeler | `config/protected_words.txt` | Her satıra bir kelime; `#` yorum. Dönüştürülmez. |
+| Korumalı kelimeler (etkin) | `~/.config/turkify/protected_words.txt` | **Yalnızca bu dosya** korunur; her satıra bir kelime, `#` yorum ([ADR 0008](adr/0008-korumali-kelimeler-paylasilan-dosya.md)). `protected_words_file` ile yol değiştirilebilir. |
+| Korumalı kelimeler (örnek) | `config/protected_words.example.txt` | Kopyalanacak başlangıç listesi; motor **otomatik yüklemez**. |
 | Frekans listesi | `data/tr_frequency.txt` | Tier 2 belirsizlik çözümü için (MIT, gömülü). `kelime sayı` biçimi. |
 | Tercihler | `cache/preferences.json` | Faz 7 (devre dışı) — şu an kullanılmıyor. |
 | Ana ayarlar | `~/.config/turkify/config.json` | model, use_llm, timeout, … (bkz. [§6](#6-yapılandırma-config)) |
@@ -407,9 +410,12 @@ Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik). İzin ve kısayol kay
 bkz. [`macos/README.md`](../macos/README.md) ve [Bölüm 7](#7-sistem-geneli-kısayol-native-uygulama).
 
 **Düzeltme bir kelimeyi yanlış değiştirdi**
-Sürekli yanlış dönüştürülen yabancı/teknik bir terimse
-`config/protected_words.txt`'e ekle (her satıra bir kelime). Kelime bazlı
-kullanıcı tercihi (Faz 7) şimdilik devre dışıdır.
+Sürekli yanlış dönüştürülen yabancı/teknik bir terimse korumalı-kelime dosyana
+ekle: `~/.config/turkify/protected_words.txt` (her satıra bir kelime). Yalnızca bu
+dosyadaki kelimeler korunur; başlangıç için örneği kopyalayabilirsin
+(`cp config/protected_words.example.txt ~/.config/turkify/protected_words.txt`).
+serve çalışıyorsa `{"cmd":"reload"}` ile tazelenir. Kelime bazlı kullanıcı tercihi
+(Faz 7) şimdilik devre dışıdır.
 
 ---
 
