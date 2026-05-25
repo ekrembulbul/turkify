@@ -20,7 +20,7 @@ struct TurkifyApp: App {
         Window("Turkify", id: AppState.mainWindowID) {
             MainView(state: state)
         }
-        .windowResizability(.contentSize)
+        .windowResizability(.contentMinSize)  // içerik min boyutu kadar küçülür, serbest büyür
     }
 }
 
@@ -221,74 +221,91 @@ struct MainView: View {
         TabView {
             SettingsView(state: state)
                 .tabItem { Label("Ayarlar", systemImage: "gearshape") }
+            StatusView(state: state)
+                .tabItem { Label("Durum", systemImage: "gauge") }
             // İleride buraya yeni sekmeler eklenebilir (ör. Geçmiş, Hakkında).
         }
-        .frame(width: 460, height: 620)
+        // Yeniden boyutlanabilir: küçük alt sınır, serbest büyüme.
+        .frame(minWidth: 440, idealWidth: 520, maxWidth: .infinity,
+               minHeight: 460, idealHeight: 600, maxHeight: .infinity)
         .onAppear { state.windowAppeared() }
         .onDisappear { state.windowDisappeared() }
     }
 }
 
-// MARK: - Ayarlar sekmesi (config düzenleme + izinler + test)
+// MARK: - Ayarlar sekmesi (üstte Kaydet; Kaydet-gerektiren ve anlık bölümler ayrı)
 
 struct SettingsView: View {
     @ObservedObject var state: AppState
 
     var body: some View {
-        Form {
-            Section("Motor / LLM") {
-                Toggle("LLM kullan (Tier 3)", isOn: $state.settings.useLLM)
-                Toggle("Morfoloji (Tier 2)", isOn: $state.settings.useMorphology)
-                TextField("Model", text: $state.settings.model)
-                TextField("Sunucu (base_url)", text: $state.settings.baseURL)
-                TextField("API anahtarı", text: $state.settings.apiKey)
-                TextField("Zaman aşımı (sn)", value: $state.settings.timeout, format: .number)
-                TextField("assistant_prefill", text: $state.settings.assistantPrefill)
-            }
-
-            Section("Kısayol") {
-                LabeledContent("Kısayol", value: state.settings.hotkeyDescription)
-                Text("Kısayol kaydedici sonraki adımda eklenecek.")
+        VStack(spacing: 0) {
+            // Sağ üstte belirgin Kaydet — yalnızca "Motor / LLM" ayarlarını uygular.
+            HStack {
+                Text(state.lastStatus)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-
-            Section("İzinler") {
-                permissionRow("Erişilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
-                    Permissions.promptAccessibility()
-                    Permissions.openAccessibilitySettings()
-                }
-                permissionRow("Girdi İzleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
-                    Permissions.requestInputMonitoring()
-                    Permissions.openInputMonitoringSettings()
-                }
-                Button("İzinleri yenile") { state.refreshPermissions() }
-            }
-
-            Section("Görünüm") {
-                Toggle("Dock'ta göster", isOn: Binding(
-                    get: { state.settings.showInDock },
-                    set: { state.setShowInDock($0) }
-                ))
-                Text("Kapalıyken uygulama yalnızca menü-bar'da durur. Ayarlar açıkken Dock'ta geçici görünür.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Durum / Test") {
-                LabeledContent("Motor", value: state.engineRunning ? "çalışıyor" : "kapalı")
-                Button("Seçili metni düzelt (test)") {
-                    Task { @MainActor in await state.correctSelection() }
-                }
-                Text(state.lastStatus).font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section {
+                    .lineLimit(1)
+                Spacer()
                 Button("Kaydet") { state.saveSettings() }
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            Form {
+                Section {
+                    Toggle("LLM kullan (Tier 3)", isOn: $state.settings.useLLM)
+                    Toggle("Morfoloji (Tier 2)", isOn: $state.settings.useMorphology)
+                    TextField("Model", text: $state.settings.model)
+                    TextField("Sunucu (base_url)", text: $state.settings.baseURL)
+                    TextField("API anahtarı", text: $state.settings.apiKey)
+                    TextField("Zaman aşımı (sn)", value: $state.settings.timeout, format: .number)
+                    TextField("assistant_prefill", text: $state.settings.assistantPrefill)
+                } header: {
+                    Text("Motor / LLM")
+                } footer: {
+                    Text("Bu bölümdeki değişiklikler **Kaydet** ile uygulanır (motor yeniden başlar).")
+                }
+
+                Section("Kısayol") {
+                    LabeledContent("Kısayol", value: state.settings.hotkeyDescription)
+                    Text("Kısayol kaydedici sonraki adımda eklenecek.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
+                Section {
+                    permissionRow("Erişilebilirlik (Accessibility)", granted: state.accessibilityGranted) {
+                        Permissions.promptAccessibility()
+                        Permissions.openAccessibilitySettings()
+                    }
+                    permissionRow("Girdi İzleme (Input Monitoring)", granted: state.inputMonitoringGranted) {
+                        Permissions.requestInputMonitoring()
+                        Permissions.openInputMonitoringSettings()
+                    }
+                    Button("İzinleri yenile") { state.refreshPermissions() }
+                } header: {
+                    Text("İzinler")
+                } footer: {
+                    Text("Anında etki eder; Kaydet gerekmez.")
+                }
+
+                Section {
+                    Toggle("Dock'ta göster", isOn: Binding(
+                        get: { state.settings.showInDock },
+                        set: { state.setShowInDock($0) }
+                    ))
+                } header: {
+                    Text("Görünüm")
+                } footer: {
+                    Text("Anında etki eder. Kapalıyken uygulama yalnızca menü-bar'da durur.")
+                }
+            }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
     }
 
     @ViewBuilder
@@ -301,5 +318,24 @@ struct SettingsView: View {
             Spacer()
             Button("Aç") { action() }
         }
+    }
+}
+
+// MARK: - Durum sekmesi (motor durumu + test)
+
+struct StatusView: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        Form {
+            Section("Motor") {
+                LabeledContent("Durum", value: state.engineRunning ? "çalışıyor" : "kapalı")
+                Button("Seçili metni düzelt (test)") {
+                    Task { @MainActor in await state.correctSelection() }
+                }
+                LabeledContent("Son işlem", value: state.lastStatus)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
