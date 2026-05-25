@@ -321,7 +321,16 @@ struct SettingsView: View {
                     TextField("Sunucu (base_url)", text: $state.settings.baseURL)
                         .disabled(state.settings.autoModelSelection)
                     TextField("API anahtarı", text: $state.settings.apiKey)
-                    TextField("Zaman aşımı (sn)", value: $state.settings.timeout, format: .number)
+                    LabeledContent("Zaman aşımı (sn)") {
+                        HStack(spacing: 8) {
+                            TextField("", value: $state.settings.timeout, format: .number)
+                                .labelsHidden()
+                                .frame(width: 60)
+                                .multilineTextAlignment(.trailing)
+                            Stepper("", value: $state.settings.timeout, in: 5...600, step: 5)
+                                .labelsHidden()
+                        }
+                    }
                 } header: {
                     Text("LLM bağlantısı (Tier 3)")
                 } footer: {

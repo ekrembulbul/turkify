@@ -10,7 +10,7 @@ struct AppSettings {
     var model: String
     var useLLM: Bool
     var useMorphology: Bool
-    var timeout: Double
+    var timeout: Int  // saniye (tam sayı)
     var baseURL: String
     var apiKey: String
     var assistantPrefill: String
@@ -46,7 +46,7 @@ struct AppSettings {
             model: d.string(forKey: "model") ?? "",
             useLLM: d.object(forKey: "useLLM") as? Bool ?? fallback.useLLM,
             useMorphology: d.object(forKey: "useMorphology") as? Bool ?? fallback.useMorphology,
-            timeout: d.object(forKey: "timeout") as? Double ?? fallback.timeout,
+            timeout: (d.object(forKey: "timeout") as? NSNumber)?.intValue ?? fallback.timeout,
             baseURL: d.string(forKey: "baseURL") ?? fallback.baseURL,
             apiKey: d.string(forKey: "apiKey") ?? "",
             assistantPrefill: d.string(forKey: "assistantPrefill") ?? "",
