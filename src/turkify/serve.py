@@ -22,12 +22,29 @@ sarmalayıcısıdır. CLI (``turkify``) bundan bağımsızdır ve in-process ça
 """
 
 import json
+import logging
 import os
 import socket
 import sys
+import time
 
 from turkify import config
 from turkify.engine import correct
+
+# Karar/istek günlüğü "turkify" logger'ına yazılır; --verbose ile stderr'e açılır
+# (bkz. __main__._enable_verbose). Native GUI bu çıktıyı Log sekmesine düşürür.
+_log = logging.getLogger("turkify")
+
+# Loglarda uzun metinleri kısaltma sınırı (satır taşmasını önler).
+_LOG_TEXT_LIMIT = 120
+
+
+def _short(text: str, limit: int = _LOG_TEXT_LIMIT) -> str:
+    """Çok satırlı/uzun metni tek satıra indirip kısaltarak repr'ini döner."""
+    collapsed = text.replace("\n", " ").replace("\r", " ")
+    if len(collapsed) > limit:
+        collapsed = collapsed[:limit] + "…"
+    return repr(collapsed)
 
 
 def _resolve_and_apply(overrides: dict | None = None) -> dict:
@@ -44,10 +61,21 @@ class EngineService:
         self._overrides = overrides or {}
         # ``settings`` testler için enjekte edilebilir; verilmezse config'ten çözülür.
         self._settings = settings if settings is not None else _resolve_and_apply(self._overrides)
+        self._log_active("hazir")
+
+    def _log_active(self, phase: str) -> None:
+        """Motorun o an etkin ayarlarını (model/katmanlar/sunucu) loglar."""
+        s = self._settings
+        _log.info(
+            "[Motor] %s: model=%r use_llm=%s use_morphology=%s base_url=%s timeout=%ss",
+            phase, s.get("model"), s.get("use_llm"), s.get("use_morphology"),
+            s.get("base_url"), s.get("timeout"),
+        )
 
     def reload(self) -> None:
         """config.json + env'i yeniden okur (CLI override'ları korunur)."""
         self._settings = _resolve_and_apply(self._overrides)
+        self._log_active("yeniden yuklendi")
 
     def _correct(self, text: str) -> str:
         s = self._settings
@@ -84,10 +112,18 @@ class EngineService:
         if text is None:
             response["error"] = "istekte 'text' veya 'cmd' bekleniyor"
             return response
+        _log.info("[Istek] alindi: %s", _short(text))
+        start = time.perf_counter()
         try:
-            response["corrected"] = self._correct(text)
+            corrected = self._correct(text)
         except Exception as exc:  # tek bir düzeltme hatası servisi düşürmesin
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            _log.info("[Istek] HATA (%.0f ms): %s", elapsed_ms, exc)
             response["error"] = str(exc)
+            return response
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        _log.info("[Istek] tamam (%.0f ms): %s -> %s", elapsed_ms, _short(text), _short(corrected))
+        response["corrected"] = corrected
         return response
 
 

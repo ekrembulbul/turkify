@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from functools import lru_cache
@@ -202,11 +203,14 @@ def _chat_completion(prompt: str, model: str, timeout: float) -> str | None:
         messages.append({"role": "assistant", "content": ASSISTANT_PREFILL})
     payload["messages"] = messages
     payload["stream"] = False
+    endpoint = _endpoint("chat/completions")
     request = urllib.request.Request(
-        _endpoint("chat/completions"),
+        endpoint,
         data=json.dumps(payload).encode("utf-8"),
         headers=_headers(),
     )
+    _log.info("[Tier3] LLM istegi gonderiliyor: model=%r -> %s", model, endpoint)
+    start = time.perf_counter()
     try:
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -242,6 +246,7 @@ def _chat_completion(prompt: str, model: str, timeout: float) -> str | None:
         _log.warning("[Tier3] Sunucu yaniti cozulemedi (gecersiz JSON)")
         return None
 
+    elapsed_ms = (time.perf_counter() - start) * 1000
     if data.get("error"):
         _log.warning("[Tier3] Sunucu hatasi: %s", data["error"])
         return None
@@ -249,7 +254,11 @@ def _chat_completion(prompt: str, model: str, timeout: float) -> str | None:
     if content is None:
         _log.warning("[Tier3] Yanitta icerik yok (beklenmeyen yanit bicimi)")
         return None
-    return _strip_thinking(content)
+    stripped = _strip_thinking(content)
+    # Modelin (think bloklari ayiklanmis) ham yanitini logla; uzunsa kisaltilir.
+    preview = stripped if len(stripped) <= 300 else stripped[:300] + "…"
+    _log.info("[Tier3] LLM yaniti alindi (%.0f ms): %r", elapsed_ms, preview)
+    return stripped
 
 
 @lru_cache(maxsize=512)
