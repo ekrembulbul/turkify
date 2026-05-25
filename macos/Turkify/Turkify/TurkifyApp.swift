@@ -366,7 +366,7 @@ final class AppState: ObservableObject {
         do {
             let result = try await corrector.run()
             lastStatus = "Düzeltildi: " + String(result.prefix(40))
-            Log.info("correctSelection: OK -> \(result.prefix(40))")
+            Log.info("correctSelection: OK -> '\(result.replacingOccurrences(of: "\n", with: "\\n"))'")
         } catch Corrector.CorrectorError.emptySelection {
             lastStatus = "Seçili metin bulunamadı"
             Log.info("correctSelection: secim bos")

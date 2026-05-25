@@ -40,14 +40,14 @@ struct Corrector {
     @discardableResult
     func run() async throws -> String {
         let original = Clipboard.read()
-        Log.info("akis: basladi; orijinal pano = \(snippet(original))")
+        Log.info("akis: basladi; orijinal pano = \(quoted(original))")
 
         Clipboard.copy()
         Log.info("akis: Cmd+C gonderildi (Accessibility yoksa sessizce etkisizdir)")
         try await Task.sleep(nanoseconds: 150_000_000)  // panonun güncellenmesi için
 
         let selected = Clipboard.read()
-        Log.info("akis: kopya sonrasi pano = \(snippet(selected))")
+        Log.info("akis: kopya sonrasi pano = \(quoted(selected))")
         guard let selected, !selected.isEmpty else {
             Log.info("akis: secim BOS -> durduruldu")
             throw CorrectorError.emptySelection
@@ -58,7 +58,7 @@ struct Corrector {
 
         Log.info("akis: motora gonderiliyor…")
         let corrected = try await engine.correct(selected)
-        Log.info("akis: motordan donen = \(snippet(corrected))")
+        Log.info("akis: motordan donen = \(quoted(corrected))")
 
         Clipboard.write(corrected)
         try await Task.sleep(nanoseconds: 50_000_000)
@@ -73,8 +73,10 @@ struct Corrector {
         return corrected
     }
 
-    private func snippet(_ text: String?) -> String {
+    /// Metni tek satıra indirip tırnak içinde döner (log için; kısaltma YOK —
+    /// düzeltilen metnin tamamı görünsün).
+    private func quoted(_ text: String?) -> String {
         guard let text else { return "nil" }
-        return "'" + text.prefix(40).replacingOccurrences(of: "\n", with: "\\n") + "'"
+        return "'" + text.replacingOccurrences(of: "\n", with: "\\n") + "'"
     }
 }
