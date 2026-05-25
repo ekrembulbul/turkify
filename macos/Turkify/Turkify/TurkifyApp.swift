@@ -332,6 +332,12 @@ struct MenuContent: View {
 
         Divider()
 
+        // Düzeltmeyi kısayol yanında menüden de başlatılabilir kıl. İşlem
+        // sürerken pasif. Kısayol etiketi config'ten gelir.
+        Button("Seçili metni düzelt") { state.requestCorrection() }
+            .keyboardShortcut(correctionShortcut.key, modifiers: correctionShortcut.modifiers)
+            .disabled(state.busy)
+
         // İptal seçeneği her zaman görünür; işlem yokken pasif (kullanıcıya
         // bu yeteneğin var olduğunu bildirir). Kısayol etiketi config'ten gelir.
         Button("İşlemi iptal et") { state.cancelCorrection() }
@@ -355,12 +361,22 @@ struct MenuContent: View {
         return state.engineRunning ? "Turkify — çalışıyor" : "Turkify — motor kapalı"
     }
 
-    /// İptal kısayolunu config'ten SwiftUI menü kısayoluna çevirir (menüde gösterim).
-    /// Global yakalama Carbon HotKey ile; bu yalnızca menüde etiketi gösterir.
+    /// Düzeltme ve iptal kısayollarını config'ten SwiftUI menü kısayoluna çevirir
+    /// (yalnızca menüde gösterim; global yakalama Carbon HotKey ile yapılır).
+    private var correctionShortcut: (key: KeyEquivalent, modifiers: EventModifiers) {
+        Self.shortcut(mods: state.settings.hotkeyMods, key: state.settings.hotkeyKey, fallback: "a")
+    }
+
     private var cancelShortcut: (key: KeyEquivalent, modifiers: EventModifiers) {
-        let character = Character(state.settings.cancelHotkeyKey.first.map(String.init) ?? "q")
+        Self.shortcut(mods: state.settings.cancelHotkeyMods, key: state.settings.cancelHotkeyKey, fallback: "q")
+    }
+
+    private static func shortcut(
+        mods: [String], key: String, fallback: Character
+    ) -> (key: KeyEquivalent, modifiers: EventModifiers) {
+        let character = Character(key.first.map(String.init) ?? String(fallback))
         var modifiers: EventModifiers = []
-        for mod in state.settings.cancelHotkeyMods {
+        for mod in mods {
             switch mod.lowercased() {
             case "ctrl", "control": modifiers.insert(.control)
             case "alt", "opt", "option": modifiers.insert(.option)
