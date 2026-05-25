@@ -183,11 +183,14 @@ final class AppState: ObservableObject {
 
     /// Ayarları native saklar (UserDefaults), motoru yeni bayraklarla yeniden
     /// başlatır ve kısayolu yeniden kaydeder. config.json kullanılmaz (ADR 0007).
-    func saveSettings() {
+    /// Kaydetme her zaman başarılıdır (UserDefaults); ``true`` döner.
+    @discardableResult
+    func saveSettings() -> Bool {
         settings.save()
         startEngine()
         registerHotKey()
-        if engineRunning { lastStatus = "Ayarlar kaydedildi" }
+        lastStatus = engineRunning ? "Ayarlar kaydedildi" : "Ayarlar kaydedildi (motor başlamadı)"
+        return true
     }
 
     // MARK: - Korumalı kelimeler (paylaşılan dosya — ADR 0008)
@@ -215,7 +218,9 @@ final class AppState: ObservableObject {
 
     /// Korumalı kelimeleri standart paylaşılan dosyaya yazar ve motora reload
     /// gönderir. Yalnızca bu dosyadaki kelimeler korunur (motor sıcak kalır; ADR 0008).
-    func saveProtectedWords(_ text: String) {
+    /// Başarılıysa ``true``, dosya yazılamazsa ``false`` döner.
+    @discardableResult
+    func saveProtectedWords(_ text: String) -> Bool {
         let url = Self.protectedWordsFileURL()
         do {
             try FileManager.default.createDirectory(
@@ -224,8 +229,10 @@ final class AppState: ObservableObject {
             try text.write(to: url, atomically: true, encoding: .utf8)
             engine.reload()
             lastStatus = "Korumalı kelimeler kaydedildi"
+            return true
         } catch {
             lastStatus = "Korumalı kelimeler kaydedilemedi: \(error.localizedDescription)"
+            return false
         }
     }
 
@@ -495,9 +502,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Spacer()
-                Button("Kaydet") { state.saveSettings() }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.defaultAction)
+                SaveButton(defaultAction: true) { state.saveSettings() }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -713,22 +718,18 @@ struct ProtectedWordsView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Bu kelimeler düzeltilmez (her satıra bir kelime). Yalnızca buradaki kelimeler korunur.")
+                Text("Bu kelimeler düzeltilmez (her satıra bir kelime). Yalnızca buradaki kelimeler korunur. Aramak için ⌘F.")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button("Kaydet") {
-                    state.saveProtectedWords(text)
-                }
-                .buttonStyle(.borderedProminent)
+                SaveButton { state.saveProtectedWords(text) }
             }
             .padding(.horizontal)
             .padding(.vertical, 6)
 
             Divider()
 
-            TextEditor(text: $text)
-                .font(.system(.body, design: .monospaced))
-                .padding(4)
+            // NSTextView tabanlı: ⌘F ile sistem arama çubuğu açılır.
+            FindableTextEditor(text: $text)
         }
         .onAppear {
             // Dosyayı yalnızca ilk açılışta yükle; kullanıcının düzenlemesini ezmesin.
@@ -737,6 +738,115 @@ struct ProtectedWordsView: View {
                 loaded = true
             }
         }
+    }
+}
+
+// MARK: - Kaydet butonu (geri bildirimli)
+
+/// Kaydet butonu: tıklanınca ``action`` çalışır; başarılıysa kısa süreli yeşil
+/// ✓, başarısızsa kırmızı uyarı gösterir, sonra normale döner.
+struct SaveButton: View {
+    var title: String = "Kaydet"
+    /// ``true`` döndürürse başarı, ``false`` döndürürse hata geri bildirimi gösterilir.
+    var defaultAction: Bool = false
+    let action: () -> Bool
+
+    private enum Phase { case idle, saved, failed }
+    @State private var phase: Phase = .idle
+
+    var body: some View {
+        let button = Button(action: run) {
+            switch phase {
+            case .idle: Text(title)
+            case .saved: Label("Kaydedildi", systemImage: "checkmark.circle.fill")
+            case .failed: Label("Kaydedilemedi", systemImage: "exclamationmark.triangle.fill")
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(phase == .saved ? .green : (phase == .failed ? .red : .accentColor))
+        .animation(.easeInOut(duration: 0.15), value: phase)
+
+        // Motor Ayarları'nda Enter ile tetiklenebilsin (varsayılan eylem).
+        if defaultAction {
+            button.keyboardShortcut(.defaultAction)
+        } else {
+            button
+        }
+    }
+
+    private func run() {
+        let ok = action()
+        phase = ok ? .saved : .failed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            if phase != .idle { phase = .idle }
+        }
+    }
+}
+
+// MARK: - Aranabilir metin editörü (NSTextView; ⌘F ile sistem arama çubuğu)
+
+/// SwiftUI ``TextEditor`` ⌘F arama çubuğunu desteklemez; bu yüzden NSTextView'i
+/// (bul çubuğu açık) sarıyoruz. ⌘F basınca sistemin yerleşik arama çubuğu açılır.
+struct FindableTextEditor: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let textView = FindableTextView()
+        textView.delegate = context.coordinator
+        textView.isRichText = false
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.allowsUndo = true
+        textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        textView.textContainerInset = NSSize(width: 4, height: 6)
+        textView.usesFindBar = true                       // bul çubuğu (panel değil)
+        textView.isIncrementalSearchingEnabled = true     // yazdıkça eşleşmeleri vurgula
+        textView.autoresizingMask = [.width]
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        textView.string = text
+
+        let scroll = NSScrollView()
+        scroll.documentView = textView
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.borderType = .noBorder
+        return scroll
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let textView = nsView.documentView as? FindableTextView else { return }
+        // Sonsuz döngüyü önle: yalnızca dışarıdan gerçekten değiştiyse yaz.
+        if textView.string != text {
+            textView.string = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        private let text: Binding<String>
+        init(text: Binding<String>) { self.text = text }
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text.wrappedValue = textView.string
+        }
+    }
+}
+
+/// ⌘F'yi yakalayıp yerleşik bul çubuğunu açan NSTextView (menüye bağımlı değil).
+final class FindableTextView: NSTextView {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags == .command, event.charactersIgnoringModifiers == "f" {
+            let item = NSMenuItem()
+            item.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
+            performTextFinderAction(item)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }
 
