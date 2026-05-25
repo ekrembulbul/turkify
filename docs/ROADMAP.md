@@ -106,14 +106,18 @@ Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzelti
 - ✅ `correct()` + config + serve protokolü = kararlı sözleşme.
 - Testler: serve protokolü (istek/yanıt, hata, reload, EOF davranışı).
 
-### 6.1 — macOS (Swift) — **MVP, ilk hedef**
+### 6.1 — macOS (Swift) — **MVP, ilk hedef** 🚧 iskelet yazıldı
 - Menü-bar app (SwiftUI `MenuBarExtra`).
-- Global kısayol (CGEvent) + pano (NSPasteboard) → seç, motora gönder, yapıştır.
+- Global kısayol (Carbon `RegisterEventHotKey`) + pano (NSPasteboard) + tuş
+  simülasyonu (CGEvent) → seç, motora gönder, yapıştır.
 - Python motor köprüsü: sıcak `serve --stdio` süreci, stdio JSON.
 - **İzinler:** Accessibility + Input Monitoring canlı durum (✅/❌) + ilgili System
   Settings panelini açan butonlar. İmzalı `.app` → temiz TCC.
 - İşlem göstergesi: LLM çalışırken ikon döner.
 - Model seçimi (`/v1/models`) + temel ayarlar (`config.json`'a yazar).
+- ✅ `macos/` Swift Package iskeleti yazıldı (EngineClient, Corrector, Permissions,
+  HotKey, AppConfig, MenuBarExtra). ⏳ Xcode'da derleme/test + iterasyon bekliyor
+  (bkz. [macos/README.md](../macos/README.md)). Model seçimi/işlem göstergesi sonraki tur.
 
 ### 6.2 — Windows (C#/.NET + WPF)
 - Tray app (NotifyIcon), `RegisterHotKey`, `Clipboard`.
