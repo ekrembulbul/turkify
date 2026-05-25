@@ -5,15 +5,11 @@ Komutlar:
         Metni düzeltir (in-process). DOSYA verilmezse stdin okunur.
         Ayarlar config'ten okunur; env ve bayraklar onları geçersiz kılar.
         Öncelik: CLI bayrağı > TURKIFY_* env > config > varsayılan.
-    python -m turkify agent [SECENEKLER]
-        Çok-platform kısayol ajanını başlatır: config'teki kısayolu dinler,
-        seçili metni kopyala→düzelt→yapıştır yapar (pynput + pyperclip gerekir).
     python -m turkify serve [--stdio | --socket YOL] [SECENEKLER]
         Sıcak motoru JSON protokolüyle sunar (native frontend'ler/Linux servisi
         için). --stdio (varsayılan): stdin/stdout; --socket: Unix soketi.
 
-Tüm config ayarları bayrak olarak verilebilir (hotkey hariç — yapısı bileşik
-olduğundan config'ten okunur):
+Tüm config ayarları bayrak olarak verilebilir:
     --model AD             Tier 3 modeli
     --llm / --no-llm       Tier 3'ü aç / kapat
     --morphology /         Tier 2 morfolojiyi aç / kapat
@@ -53,10 +49,8 @@ def _force_utf8_io() -> None:
     Python yerel ANSI kod sayfasına (ör. cp1254) düşer; bu, Türkçe karakterleri
     bozar. macOS/Linux'ta zaten UTF-8 olduğundan bu çağrı etkisizdir.
 
-    NOT: ``sys.stdin`` BİLEREK hariç. Windows'ta stdin'i reconfigure etmek,
-    ``agent`` komutunda pynput'un global klavye hook'unu bozuyor (ajan tuş
-    olaylarını almıyor). stdin yalnızca CLI metin okurken gerekir; orada
-    ``_read_input`` ayrıca UTF-8'e geçer.
+    NOT: ``sys.stdin`` BİLEREK hariç; yalnızca CLI metin okurken gerekir ve
+    orada ``_read_input`` UTF-8'e geçer.
     """
     _reconfigure_utf8(sys.stdout)
     _reconfigure_utf8(sys.stderr)
@@ -66,8 +60,7 @@ def _read_input(path: str | None) -> str:
     if path:
         with open(path, encoding="utf-8") as handle:
             return handle.read()
-    # stdin UTF-8'e burada (yalnızca okumadan hemen önce) geçilir; _force_utf8_io
-    # stdin'e dokunmaz çünkü bu, ajanın klavye hook'unu bozuyor (bkz. _force_utf8_io).
+    # stdin UTF-8'e burada (yalnızca okumadan hemen önce) geçilir.
     _reconfigure_utf8(sys.stdin)
     return sys.stdin.read()
 
@@ -187,22 +180,6 @@ def _cmd_serve(args: list[str]) -> int:
     return 0
 
 
-def _cmd_agent(args: list[str]) -> int:
-    if _is_verbose(args):
-        _enable_verbose()
-    try:
-        overrides, _remaining = _parse_settings_args(args)
-    except (ValueError, json.JSONDecodeError) as exc:
-        sys.stderr.write(f"Gecersiz secenek degeri: {exc}\n")
-        return 2
-
-    settings = config.resolve(overrides)
-    from turkify import agent
-
-    agent.run(settings)
-    return 0
-
-
 # Faz 7 devre dışı: _cmd_learn ve _cmd_forget korunur ama _COMMANDS'a kayıtlı değildir.
 def _cmd_learn(args: list[str]) -> int:
     if len(args) < 2:
@@ -225,7 +202,6 @@ def _cmd_forget(args: list[str]) -> int:
 
 
 _COMMANDS = {
-    "agent": _cmd_agent,
     "serve": _cmd_serve,
     # Faz 7 devre dışı — yeniden açmak için yorumu kaldır:
     # "learn": _cmd_learn,
