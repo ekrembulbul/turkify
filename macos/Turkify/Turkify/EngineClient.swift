@@ -56,7 +56,7 @@ final class EngineClient {
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
             for line in text.split(whereSeparator: \.isNewline) where !line.isEmpty {
-                Log.info("[motor] " + String(line))
+                Log.engine(String(line))
             }
         }
 

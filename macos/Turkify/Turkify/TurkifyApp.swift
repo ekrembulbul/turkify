@@ -89,10 +89,11 @@ final class AppState: ObservableObject {
         return f
     }()
 
-    /// Log satırını (zaman damgalı) UI deposuna ekler; son 1000 satır tutulur.
-    func appendLog(_ message: String) {
-        let stamped = "\(Self.logTimeFormatter.string(from: Date())) \(message)"
-        logLines.append(LogLine(text: stamped))
+    /// Log satırını (zaman damgalı, kaynak etiketli) UI deposuna ekler; son 1000
+    /// satır tutulur.
+    func appendLog(_ source: Log.Source, _ message: String) {
+        let stamp = Self.logTimeFormatter.string(from: Date())
+        logLines.append(LogLine(time: stamp, source: source, text: message))
         if logLines.count > 1000 { logLines.removeFirst(logLines.count - 1000) }
     }
 
@@ -103,8 +104,8 @@ final class AppState: ObservableObject {
 
     func startup() {
         // Log'ları UI'ya yönlendir (her thread'den çağrılabilir → main'e geç).
-        Log.sink = { message in
-            Task { @MainActor in AppState.shared.appendLog(message) }
+        Log.sink = { source, message in
+            Task { @MainActor in AppState.shared.appendLog(source, message) }
         }
         applyActivationPolicy()
         refreshPermissions()
@@ -548,18 +549,53 @@ struct OtherSettingsView: View {
 
 struct LogLine: Identifiable {
     let id = UUID()
+    let time: String
+    let source: Log.Source
     let text: String
+
+    /// Kaynak etiketi rengi: sistem (native app) mavi, motor (Python) mor.
+    var sourceColor: Color {
+        switch source {
+        case .system: return .blue
+        case .engine: return .purple
+        }
+    }
 }
 
 struct LogView: View {
     @ObservedObject var state: AppState
 
+    /// Kaynak filtresi: tümü / yalnızca sistem (native app) / yalnızca motor.
+    enum Filter: String, CaseIterable, Identifiable {
+        case all = "Tümü"
+        case system = "Sistem"
+        case engine = "Motor"
+        var id: String { rawValue }
+    }
+    @State private var filter: Filter = .all
+
+    private var visibleLines: [LogLine] {
+        switch filter {
+        case .all: return state.logLines
+        case .system: return state.logLines.filter { $0.source == .system }
+        case .engine: return state.logLines.filter { $0.source == .engine }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("\(state.logLines.count) satır")
-                    .font(.caption).foregroundStyle(.secondary)
+                Picker("Kaynak", selection: $filter) {
+                    ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(maxWidth: 240)
+
                 Spacer()
+
+                Text("\(visibleLines.count) satır")
+                    .font(.caption).foregroundStyle(.secondary)
                 Button("Temizle") { state.logLines.removeAll() }
             }
             .padding(.horizontal)
@@ -570,19 +606,25 @@ struct LogView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 1) {
-                        ForEach(state.logLines) { line in
-                            Text(line.text)
-                                .font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .id(line.id)
+                        ForEach(visibleLines) { line in
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(line.time)
+                                    .foregroundStyle(.secondary)
+                                Text("[\(line.source.rawValue)]")
+                                    .foregroundStyle(line.sourceColor)
+                                Text(line.text)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .id(line.id)
                         }
                     }
                     .padding(8)
                 }
-                .onChange(of: state.logLines.count) { _ in
+                .onChange(of: visibleLines.count) { _ in
                     // Yeni satır gelince en alta kaydır (canlı akış).
-                    if let last = state.logLines.last {
+                    if let last = visibleLines.last {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
