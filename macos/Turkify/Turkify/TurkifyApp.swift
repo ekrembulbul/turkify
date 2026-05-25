@@ -667,13 +667,8 @@ struct CorrectionView: View {
                     Label("Düzeltilmiş metin", systemImage: "checkmark.seal")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
-                    Button {
-                        state.copyToClipboard(state.correctionOutput)
-                    } label: {
-                        Label("Kopyala", systemImage: "doc.on.doc")
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(outputEmpty)
+                    CopyButton { state.copyToClipboard(state.correctionOutput) }
+                        .disabled(outputEmpty)
                 }
                 outputCard
                     .frame(minHeight: 120, maxHeight: .infinity)
@@ -1095,6 +1090,34 @@ struct SaveButton: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             if phase != .idle { phase = .idle }
         }
+    }
+}
+
+// MARK: - Kopyala butonu (geri bildirimli)
+
+/// Borderless kopyala butonu: basınca ``action`` çalışır ve kısa süre yeşil
+/// "Kopyalandı" gösterir, sonra normale döner.
+struct CopyButton: View {
+    let action: () -> Void
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            action()
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+        } label: {
+            HStack(spacing: 4) {
+                // Sabit ikon kutusu: farklı sembollerin dikey metrik farkı satır
+                // yüksekliğini değiştirmesin (aksi halde alttaki kart ~1px kayıyordu).
+                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                    .frame(width: 14, height: 14)
+                Text(copied ? "Kopyalandı" : "Kopyala")
+            }
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(copied ? .green : .secondary)
+        .animation(.easeInOut(duration: 0.15), value: copied)
     }
 }
 
