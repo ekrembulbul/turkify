@@ -5,6 +5,9 @@ __pycache__/
 cache/*
 !cache/.gitkeep
 *.egg-info/
+# setuptools/build & pip artefaktlari (repo kokunde)
+/build/
+/dist/
 .DS_Store
 .vscode/
 
