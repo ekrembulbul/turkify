@@ -55,6 +55,25 @@ Ayrıntılı kurulum, yapılandırma ve sorun giderme için **[docs/KURULUM.md](
 
 ---
 
+## macOS uygulaması (indir & çalıştır)
+
+Hazır `.app`'i [**Releases**](https://github.com/ekrembulbul/turkify/releases) sayfasından
+indirebilirsin (menü-bar uygulaması; Python kurmana gerek yok — motor gömülüdür).
+
+> ⚠️ **Bu sürüm imzasız/notarize edilmemiş** (henüz Apple Developer hesabı yok). Bu
+> yüzden indirince macOS Gatekeeper engeller ("hasarlı/açılamıyor"). Açmak için indirdikten
+> sonra **bir kez** karantinayı kaldır:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/Turkify.app
+> open /Applications/Turkify.app
+> ```
+> İlk açılışta **Erişilebilirlik** izni iste (Cmd+C/Cmd+V ile düzeltme için). İmzalı/notarize
+> "indir-çift tıkla-çalış" sürümü ileride gelecek (bkz. [macos/packaging/README.md](macos/packaging/README.md)).
+
+Kaynaktan derleme/paketleme: **[macos/packaging/README.md](macos/packaging/README.md)**.
+
+---
+
 ## Dokümantasyon
 
 | Doküman | İçerik |

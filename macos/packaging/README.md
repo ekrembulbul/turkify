@@ -20,6 +20,33 @@ PyInstaller (motor → turkify-engine)  →  .app Resources'a kopyala
 
 ---
 
+## Şimdilik: ücretsiz (geliştirme imzası) ile yerel kullanım
+
+Ücretli Apple Developer hesabı olmadan da uygulamayı **kendi Mac'inde** çalıştırabilirsin
+(gerçek dağıtım/notarization sonraya). Adımlar:
+
+1. **Motoru dondur:** `macos/packaging/build_engine.sh` (bkz. §1).
+2. **Xcode imza:** Signing & Capabilities → **Automatically manage signing** açık,
+   **Team** olarak kendi (ücretsiz) Apple ID / Personal Team. Developer ID gerekmez.
+3. **Derle (Distribute KULLANMA):** Personal Team, **Distribute App** akışını
+   yapamaz ("not enrolled in the Apple Developer Program" hatası verir). Bunun
+   yerine **Product → Build** (⌘B) → **Product → Show Build Folder in Finder** →
+   `Products/Debug/` (veya `Release/`) içindeki **`Turkify.app`**.
+4. **Çalıştır:** `Turkify.app`'i **Finder'dan çift tıkla.**
+   - ⚠️ Xcode'dan **⌘R ile açma**: scheme'de `TURKIFY_PYTHON` env'i ayarlı olduğundan
+     ⌘R venv'i kullanır, gömülü motoru test etmez. Finder'dan açınca o env olmadığı
+     için **gömülü motor** devreye girer (gerçek paketi test edersin).
+5. Menü-bar'da Turkify görünür → **Erişilebilirlik** iznini ver → kullan. Motor
+   gömülüdür; Python/venv kurman **gerekmez**.
+
+> Yerelde derlenen `.app` karantinalı olmadığından `xattr` gerekmez; doğrudan açılır.
+> Sadece `.app`'i **başka bir Mac'e taşırsan/indirisen** Gatekeeper devreye girer
+> (`xattr -dr com.apple.quarantine Turkify.app`) — ve imzasız + gömülü motor yüzünden
+> çoğu zaman "hasarlı" der. "İndir-çalıştır" dağıtımı için ücretli **Developer ID +
+> notarization** şart (§3–§6).
+
+---
+
 ## 1. Motoru dondur (her sürümde)
 ```bash
 macos/packaging/build_engine.sh
@@ -43,6 +70,11 @@ fi
 ```
 > `$SRCROOT` Xcode projesinin (`macos/Turkify`) köküdür; `../packaging` bu klasördür.
 > Bu faz Run Script olduğundan derlemeye dahildir; önce `build_engine.sh`'i çalıştırmış olmalısın.
+>
+> ⚠️ **User Script Sandboxing:** Bu betik app bundle'ına yazdığından, Xcode 15+'in
+> **User Script Sandboxing** ayarı açıkken `Sandbox: mkdir/cp deny` hatası alırsın.
+> Build Settings → **User Script Sandboxing → No** yap. (Bu, App Sandbox'tan ayrıdır;
+> yalnızca build betiği kum havuzudur.)
 
 Geliştirmede (scheme'de `TURKIFY_PYTHON` ayarlıysa) uygulama yine venv'i kullanır;
 gömülü ikili yalnızca o env yokken (release) devreye girer — `AppSettings.engineExecutable()`.
