@@ -23,3 +23,7 @@ xcuserdata/
 macos/packaging/.build-venv/
 macos/packaging/build/
 macos/packaging/dist/
+
+# Derlenmis uygulama paketi ve release zip'leri (git'e degil, GitHub Release ekine)
+*.app/
+Turkify-*.zip
