@@ -29,7 +29,8 @@ Hızlı test: `'{"text":"bugun"}' | <python> -m turkify serve --stdio` bir satı
 yanıt vermeli.
 
 Release'te motor PyInstaller ile dondurulup uygulama klasörüne gömülür
-(`turkify-engine.exe`; Aşama 3 / [ADR 0009](../docs/adr/0009-paketleme-frozen-motor.md)).
+(`turkify-engine.exe`; bkz. [packaging/README.md](packaging/README.md) /
+[ADR 0009](../docs/adr/0009-paketleme-frozen-motor.md)).
 
 ## Çalıştırma (geliştirme)
 ```powershell
