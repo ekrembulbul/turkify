@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- Tray icon (NotifyIcon) WPF'te yok; in-box WinForms'tan gelir (ek bağımlılık yok). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Turkify</AssemblyName>
+    <RootNamespace>Turkify</RootNamespace>
+    <ApplicationIcon></ApplicationIcon>
+  </PropertyGroup>
+
+</Project>

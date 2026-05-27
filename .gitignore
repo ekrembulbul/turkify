@@ -24,6 +24,15 @@ macos/packaging/.build-venv/
 macos/packaging/build/
 macos/packaging/dist/
 
+# .NET / WPF (windows/)
+windows/**/bin/
+windows/**/obj/
+windows/**/.vs/
+.vs/
+windows/packaging/.build-venv/
+windows/packaging/build/
+windows/packaging/dist/
+
 # Derlenmis uygulama paketi ve release zip'leri (git'e degil, GitHub Release ekine)
 *.app/
 Turkify-*.zip
