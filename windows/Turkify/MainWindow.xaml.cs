@@ -1,13 +1,61 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
+using Microsoft.Win32;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using Brush = System.Windows.Media.Brush;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace Turkify;
 
+/// Log satırının görünüm temsili (kaynak etiketi + renk).
+public sealed class LogRow(LogLine line)
+{
+    public string Time { get; } = line.Time;
+    public LogSource Source { get; } = line.Source;
+    public string Text { get; } = line.Text;
+    public string SourceLabel { get; } = line.Source == LogSource.System ? "[sistem]" : "[motor]";
+    public Brush SourceColor { get; } =
+        line.Source == LogSource.System ? Brushes.SteelBlue : Brushes.MediumPurple;
+}
+
 public partial class MainWindow : Window
 {
-    public MainWindow()
+    private const string StartupRegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string StartupValueName = "Turkify";
+
+    private readonly AppState _state;
+    private readonly ObservableCollection<LogRow> _logs = new();
+    private ICollectionView? _logsView;
+    private string _logFilter = "Tümü";
+
+    private bool _recording;
+    private bool _recordingCancelTarget;
+
+    public MainWindow(AppState state)
     {
+        _state = state;
         InitializeComponent();
+        DataContext = state;
+
+        _logsView = CollectionViewSource.GetDefaultView(_logs);
+        _logsView.Filter = LogFilterPredicate;
+        LogList.ItemsSource = _logsView;
+
+        // Mevcut log birikimini al, sonra canlı akışa abone ol.
+        foreach (LogLine line in state.LogLines)
+        {
+            _logs.Add(new LogRow(line));
+        }
+
+        state.LogAdded += OnLogAdded;
+
+        Loaded += OnLoaded;
+        Closed += (_, _) => state.LogAdded -= OnLogAdded;
     }
 
     /// Tray uygulaması: pencere kapatılınca uygulama sonlanmaz, yalnızca gizlenir.
@@ -18,4 +66,344 @@ public partial class MainWindow : Window
         Hide();
         base.OnClosing(e);
     }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // Model modu radyolarını ayara göre işaretle (Checked handler enable durumunu kurar).
+        AutoRadio.IsChecked = _state.Settings.AutoModelSelection;
+        ManualRadio.IsChecked = !_state.Settings.AutoModelSelection;
+
+        RefreshHotkeyLabels();
+        ValidateLlmOptions();
+        StartupCheck.IsChecked = IsStartupEnabled();
+        ProtectedWordsBox.Text = _state.LoadProtectedWords();
+        LogFilterCombo.SelectedIndex = 0; // varsayılan "Tümü" (controls hazırken)
+        UpdateLogCount();
+
+        if (_state.Settings.AutoModelSelection)
+        {
+            _ = RefreshModelsAsync();
+        }
+    }
+
+    // ============ Düzeltme ============
+
+    private void OnInputKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+            {
+                return; // ⇧Enter: alt satır (varsayılan davranış)
+            }
+
+            e.Handled = true;
+            bool copy = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
+            _state.RunTextCorrection(copy);
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            _state.CancelTextCorrection();
+        }
+    }
+
+    private void OnCorrect(object sender, RoutedEventArgs e) => _state.RunTextCorrection(copy: false);
+
+    private void OnCorrectAndCopy(object sender, RoutedEventArgs e) => _state.RunTextCorrection(copy: true);
+
+    private void OnCancelTextCorrection(object sender, RoutedEventArgs e) => _state.CancelTextCorrection();
+
+    private void OnClearCorrection(object sender, RoutedEventArgs e) => _state.ClearCorrection();
+
+    private void OnCopyOutput(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(OutputBox.Text))
+        {
+            ClipboardBridge.Write(Dispatcher, OutputBox.Text);
+        }
+    }
+
+    // ============ Motor Ayarları ============
+
+    private void OnSaveSettings(object sender, RoutedEventArgs e) => _state.SaveSettings();
+
+    private void OnModelModeChanged(object sender, RoutedEventArgs e)
+    {
+        bool auto = AutoRadio.IsChecked == true;
+        _state.Settings.AutoModelSelection = auto;
+
+        // Otomatik modda model/sunucu salt-okunur (combobox doldurur).
+        ModelBox.IsEnabled = !auto;
+        BaseUrlBox.IsEnabled = !auto;
+        if (AutoPanel is not null)
+        {
+            AutoPanel.IsEnabled = auto;
+        }
+
+        if (auto && ModelCombo.Items.Count == 0)
+        {
+            _ = RefreshModelsAsync();
+        }
+    }
+
+    private void OnModelSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (ModelCombo.SelectedItem is ModelItem item)
+        {
+            _state.Settings.Model = item.Model;
+            _state.Settings.BaseURL = item.BaseURL;
+            ModelBox.Text = item.Model;
+            BaseUrlBox.Text = item.BaseURL;
+        }
+    }
+
+    private async void OnRefreshModels(object sender, RoutedEventArgs e) => await RefreshModelsAsync();
+
+    private async Task RefreshModelsAsync()
+    {
+        IReadOnlyList<DiscoveredBackend> backends = await _state.DiscoverModelsAsync();
+        ModelCombo.Items.Clear();
+        foreach (DiscoveredBackend backend in backends)
+        {
+            foreach (string model in backend.Models)
+            {
+                ModelCombo.Items.Add(new ModelItem(model, backend.BaseURL, $"{model}  ({backend.Name})"));
+            }
+        }
+
+        if (ModelCombo.Items.Count == 0)
+        {
+            ModelCombo.Items.Add(new ModelItem("", "", "Model bulunamadı"));
+        }
+    }
+
+    private void OnLlmOptionsChanged(object sender, TextChangedEventArgs e) => ValidateLlmOptions();
+
+    private void ValidateLlmOptions()
+    {
+        if (JsonWarning is null || LlmOptionsBox is null)
+        {
+            return;
+        }
+
+        bool valid = AppSettings.IsValidJson(LlmOptionsBox.Text);
+        JsonWarning.Visibility = valid ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    // ============ Diğer Ayarlar (kısayollar + başlangıç) ============
+
+    private void OnRecordCorrectionHotkey(object sender, RoutedEventArgs e) => ToggleRecording(cancelTarget: false);
+
+    private void OnRecordCancelHotkey(object sender, RoutedEventArgs e) => ToggleRecording(cancelTarget: true);
+
+    private void ToggleRecording(bool cancelTarget)
+    {
+        if (_recording)
+        {
+            StopRecording();
+            return;
+        }
+
+        _recording = true;
+        _recordingCancelTarget = cancelTarget;
+        PreviewKeyDown += OnRecordingKeyDown;
+        RecordCorrectionButton.Content = cancelTarget ? "Değiştir" : "İptal";
+        RecordCancelButton.Content = cancelTarget ? "İptal" : "Değiştir";
+        HotkeyHint.Text = "Yeni kombinasyona basın. En az bir Ctrl/Alt/Win ve bir harf/rakam. (Esc: iptal)";
+        (cancelTarget ? CancelHotkeyText : CorrectionHotkeyText).Text = "Tuşa basın…";
+    }
+
+    private void StopRecording()
+    {
+        _recording = false;
+        PreviewKeyDown -= OnRecordingKeyDown;
+        RecordCorrectionButton.Content = "Değiştir";
+        RecordCancelButton.Content = "Değiştir";
+        HotkeyHint.Text = "“Değiştir”e basıp istediğiniz kombinasyona basın. En az bir Ctrl/Alt/Win ve bir harf/rakam. (Esc: iptal)";
+        RefreshHotkeyLabels();
+    }
+
+    private void OnRecordingKeyDown(object sender, KeyEventArgs e)
+    {
+        e.Handled = true;
+        Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key == Key.Escape)
+        {
+            StopRecording();
+            return;
+        }
+
+        // Yalnızca modifier basıldıysa gerçek tuşu beklemeye devam et.
+        if (IsModifierKey(key))
+        {
+            return;
+        }
+
+        string? keyName = KeyName(key);
+        if (keyName is null)
+        {
+            HotkeyHint.Text = "Bu tuş desteklenmiyor (harf veya rakam seçin).";
+            return;
+        }
+
+        var mods = new List<string>();
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) mods.Add("ctrl");
+        if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0) mods.Add("alt");
+        if (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin)) mods.Add("win");
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) mods.Add("shift");
+
+        // Shift tek başına yeterli değil; en az bir Ctrl/Alt/Win gerekir.
+        if (!mods.Any(m => m != "shift"))
+        {
+            HotkeyHint.Text = "En az bir Ctrl, Alt veya Win gerekli.";
+            return;
+        }
+
+        if (_recordingCancelTarget)
+        {
+            _state.Settings.CancelHotkeyMods = mods.ToArray();
+            _state.Settings.CancelHotkeyKey = keyName;
+        }
+        else
+        {
+            _state.Settings.HotkeyMods = mods.ToArray();
+            _state.Settings.HotkeyKey = keyName;
+        }
+
+        _state.Settings.Save();
+        _state.RegisterHotKeys();
+        StopRecording();
+    }
+
+    private void RefreshHotkeyLabels()
+    {
+        CorrectionHotkeyText.Text = _state.Settings.HotkeyDescription;
+        CancelHotkeyText.Text = _state.Settings.CancelHotkeyDescription;
+    }
+
+    private static bool IsModifierKey(Key key) => key is
+        Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or
+        Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin or Key.System;
+
+    /// WPF Key → harf/rakam adı (kısayol için). Bilinmiyorsa null.
+    private static string? KeyName(Key key)
+    {
+        if (key is >= Key.A and <= Key.Z)
+        {
+            return ((char)('a' + (key - Key.A))).ToString();
+        }
+
+        if (key is >= Key.D0 and <= Key.D9)
+        {
+            return ((char)('0' + (key - Key.D0))).ToString();
+        }
+
+        if (key is >= Key.NumPad0 and <= Key.NumPad9)
+        {
+            return ((char)('0' + (key - Key.NumPad0))).ToString();
+        }
+
+        return null;
+    }
+
+    private void OnToggleStartup(object sender, RoutedEventArgs e)
+    {
+        bool enable = StartupCheck.IsChecked == true;
+        try
+        {
+            using RegistryKey key = Registry.CurrentUser.CreateSubKey(StartupRegistryPath);
+            if (enable)
+            {
+                string exe = Environment.ProcessPath ?? "";
+                key.SetValue(StartupValueName, $"\"{exe}\"");
+            }
+            else
+            {
+                key.DeleteValue(StartupValueName, throwOnMissingValue: false);
+            }
+        }
+        catch
+        {
+            // Registry yazılamadı: checkbox'ı gerçek duruma geri al.
+            StartupCheck.IsChecked = IsStartupEnabled();
+        }
+    }
+
+    private static bool IsStartupEnabled()
+    {
+        using RegistryKey? key = Registry.CurrentUser.OpenSubKey(StartupRegistryPath);
+        return key?.GetValue(StartupValueName) is not null;
+    }
+
+    // ============ Korumalı Kelimeler ============
+
+    private void OnSaveProtectedWords(object sender, RoutedEventArgs e) =>
+        _state.SaveProtectedWords(ProtectedWordsBox.Text);
+
+    // ============ Log ============
+
+    private void OnLogAdded(LogLine line)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            _logs.Add(new LogRow(line));
+            if (_logs.Count > 1000)
+            {
+                _logs.RemoveAt(0);
+            }
+
+            UpdateLogCount();
+            AutoScrollLog();
+        });
+    }
+
+    private void OnLogFilterChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // XAML yüklenirken (controls henüz oluşmadan) tetiklenebilir; güvenli çık.
+        if (_logsView is null || LogList is null)
+        {
+            return;
+        }
+
+        _logFilter = (LogFilterCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Tümü";
+        _logsView.Refresh();
+        UpdateLogCount();
+        AutoScrollLog();
+    }
+
+    private bool LogFilterPredicate(object item) => _logFilter switch
+    {
+        "Sistem" => item is LogRow { Source: LogSource.System },
+        "Motor" => item is LogRow { Source: LogSource.Engine },
+        _ => true,
+    };
+
+    private void OnClearLog(object sender, RoutedEventArgs e)
+    {
+        _logs.Clear();
+        UpdateLogCount();
+    }
+
+    private void UpdateLogCount()
+    {
+        if (LogCountText is null || _logsView is null)
+        {
+            return;
+        }
+
+        int count = _logsView.Cast<object>().Count();
+        LogCountText.Text = $"{count} satır";
+    }
+
+    private void AutoScrollLog()
+    {
+        if (LogList is not null && LogList.Items.Count > 0)
+        {
+            LogList.ScrollIntoView(LogList.Items[^1]);
+        }
+    }
+
+    private sealed record ModelItem(string Model, string BaseURL, string Display);
 }

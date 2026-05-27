@@ -33,8 +33,14 @@ public partial class App : Application
         _appState = new AppState(Dispatcher);
         _appState.Startup();
 
-        _mainWindow = new MainWindow();
+        _mainWindow = new MainWindow(_appState);
         SetUpTrayIcon();
+
+        // --show: doğrudan ana pencereye aç (aksi halde yalnızca tray'de başlar).
+        if (e.Args.Contains("--show"))
+        {
+            ShowMainWindow();
+        }
     }
 
     private void SetUpTrayIcon()
@@ -60,7 +66,7 @@ public partial class App : Application
 
     private void ShowMainWindow()
     {
-        _mainWindow ??= new MainWindow();
+        _mainWindow ??= new MainWindow(_appState!);
         _mainWindow.Show();
         if (_mainWindow.WindowState == WindowState.Minimized)
         {
