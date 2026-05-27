@@ -142,8 +142,12 @@ Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzelti
   Geliştirmede yerel venv yeterli.
 - ✅ Hazırlık yapıldı: veri dosyaları (`tr_frequency.txt`, `rerank_prompt.txt`) pakete
   taşındı ve `importlib.resources` ile okunuyor (frozen/wheel/dev uyumlu).
+- ✅ **Windows:** `windows/packaging` — PyInstaller (`turkify-engine.exe`, onedir,
+  zeyrek dahil) + `dotnet publish` (self-contained) + motoru gömme + Inno Setup
+  (`turkify.iss`). Uçtan uca doğrulandı: yayınlanmış app Python'suz açılıyor ve
+  **gömülü** motoru başlatıyor.
 - macOS: `.app` + Developer ID kod imzalama/notarization (App Sandbox kapalı).
-  Windows: kurulum paketi. Linux: `.deb`/`.rpm`/AUR veya Flatpak.
+  Linux: `.deb`/`.rpm`/AUR veya Flatpak.
 
 **Faz 6 başarı kriteri:** macOS'ta kısayolla seçili metin düzeltilir; izinler
 arayüzden yönetilir; motor sıcak (`serve`) ve frontend'den bağımsız test edilebilir.
