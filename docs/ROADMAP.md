@@ -119,9 +119,17 @@ Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzelti
   HotKey, AppConfig, MenuBarExtra). ⏳ Xcode'da derleme/test + iterasyon bekliyor
   (bkz. [macos/README.md](../macos/README.md)). Model seçimi/işlem göstergesi sonraki tur.
 
-### 6.2 — Windows (C#/.NET + WPF)
-- Tray app (NotifyIcon), `RegisterHotKey`, `Clipboard`.
+### 6.2 — Windows (C#/.NET 8 + WPF) 🚧 iskele + sekmeler yazıldı
+- Tray app (NotifyIcon), `RegisterHotKey` + `WM_HOTKEY`, `SendInput` (Ctrl+C/V) + pano.
 - Aynı `serve --stdio` köprüsü; aynı ayar/model akışı. (İzin sorunu yok.)
+- ✅ `windows/Turkify` WPF projesi: EngineClient (stdio JSON), AppSettings (Registry —
+  ADR 0007), HotKey, Clipboard/Corrector, AppState koordinatör, ModelDiscovery.
+- ✅ Ana pencere 5 sekme: Düzeltme, Motor Ayarları, Diğer Ayarlar (kısayol kaydedici +
+  "Windows ile başlat"), Korumalı Kelimeler (`%APPDATA%\turkify\protected_words.txt` —
+  ADR 0008), Log (sistem/motor filtresi).
+- ✅ Doğrulandı: motor köprüsü uçtan uca (UTF-8 JSON turu), pencere yüklenip render
+  oluyor. ⏳ Etkileşimli akış (gerçek seçimle kısayol→pano) elle test bekliyor.
+- ⏳ Varsayılan kısayol Hyper+A/Hyper+Q (Ctrl+Alt+Win).
 
 ### 6.3 — Linux (Python, terminal + servis)
 - Native GUI yok; `systemd --user` servisi motoru sıcak tutar (`serve --socket`).
