@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
     private bool _themeInitialized;
     private bool _discovering;            // eşzamanlı model keşfini önler (yükleme + radyo init yarışı)
     private bool _suppressModelSelection; // programatik combobox doldurması ayarları ezmesin
+    private DispatcherTimer? _copyFeedbackTimer; // "Kopyalandı" geri bildirimini geri alır
 
     public MainWindow(AppState state)
     {
@@ -139,10 +141,37 @@ public partial class MainWindow : Window
 
     private void OnCopyOutput(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(OutputBox.Text))
+        if (string.IsNullOrEmpty(OutputBox.Text))
         {
-            ClipboardBridge.Write(Dispatcher, OutputBox.Text);
+            return;
         }
+
+        ClipboardBridge.Write(Dispatcher, OutputBox.Text);
+        FlashCopied();
+    }
+
+    /// Kopyala butonunda kısa süreli görsel geri bildirim: "✓ Kopyalandı" + yeşil,
+    /// 1.5 sn sonra normale döner. (macOS CopyButton'ın karşılığı.)
+    private void FlashCopied()
+    {
+        CopyOutputButton.Content = "✓ Kopyalandı";
+        CopyOutputButton.SetResourceReference(ForegroundProperty, "App.Success");
+
+        _copyFeedbackTimer ??= CreateCopyFeedbackTimer();
+        _copyFeedbackTimer.Stop();
+        _copyFeedbackTimer.Start();
+    }
+
+    private DispatcherTimer CreateCopyFeedbackTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            CopyOutputButton.Content = "Kopyala";
+            CopyOutputButton.ClearValue(ForegroundProperty); // stil varsayılanına (App.Text.Primary) dön
+        };
+        return timer;
     }
 
     // ============ Motor Ayarları ============

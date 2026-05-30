@@ -25,14 +25,28 @@
                 <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,10">
                     <TextBlock DockPanel.Dock="Left" Style="{StaticResource Text.Status}"
                                Text="{Binding CorrectionStatus}" />
-                    <Button DockPanel.Dock="Right" x:Name="CorrectAndCopyButton" Content="Düzelt ve Kopyala"
-                            Style="{StaticResource Button.Primary}" Margin="8,0,0,0" Click="OnCorrectAndCopy" />
-                    <Button DockPanel.Dock="Right" x:Name="CorrectButton" Content="Düzelt"
-                            Margin="8,0,0,0" Click="OnCorrect" />
+                    <Button DockPanel.Dock="Right" x:Name="CorrectAndCopyButton"
+                            Style="{StaticResource Button.Primary}" Margin="8,0,0,0" Click="OnCorrectAndCopy">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Düzelt ve Kopyala" VerticalAlignment="Center" />
+                            <ContentControl Style="{StaticResource Keycap}" Content="Ctrl" />
+                            <ContentControl Style="{StaticResource Keycap}" Content="↵" />
+                        </StackPanel>
+                    </Button>
+                    <Button DockPanel.Dock="Right" x:Name="CorrectButton" Margin="8,0,0,0" Click="OnCorrect">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Düzelt" VerticalAlignment="Center" />
+                            <ContentControl Style="{StaticResource Keycap}" Content="↵" />
+                        </StackPanel>
+                    </Button>
                     <Button DockPanel.Dock="Right" Content="Temizle"
                             Margin="8,0,0,0" Click="OnClearCorrection" />
-                    <Button DockPanel.Dock="Right" x:Name="CancelTextButton" Content="İptal"
-                            Margin="8,0,0,0" Click="OnCancelTextCorrection" />
+                    <Button DockPanel.Dock="Right" x:Name="CancelTextButton" Margin="8,0,0,0" Click="OnCancelTextCorrection">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="İptal" VerticalAlignment="Center" />
+                            <ContentControl Style="{StaticResource Keycap}" Content="Esc" />
+                        </StackPanel>
+                    </Button>
                 </DockPanel>
 
                 <DockPanel Grid.Row="1">
@@ -48,7 +62,8 @@
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
                         <TextBlock Text="Düzeltilmiş metin" Style="{StaticResource Text.SectionHeader}"
                                    Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                        <Button Content="Kopyala" HorizontalAlignment="Right" Padding="12,4" Click="OnCopyOutput" />
+                        <Button x:Name="CopyOutputButton" Content="Kopyala" HorizontalAlignment="Right"
+                                MinWidth="104" Padding="12,4" Click="OnCopyOutput" />
                     </Grid>
                     <TextBox x:Name="OutputBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"

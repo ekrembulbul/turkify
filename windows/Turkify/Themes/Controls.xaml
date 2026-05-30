@@ -200,6 +200,30 @@
     </Style>
 
     <!-- ============================================================
+         Keycap — buton içi kısayol rozeti (ör. Esc, Ctrl, ↵)
+         Metin rengini buton içeriğinden miras alır (TextElement.Foreground),
+         böylece hem birincil (beyaz) hem ikincil butonda okunur kalır.
+         ============================================================ -->
+    <Style x:Key="Keycap" TargetType="ContentControl">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Margin" Value="5,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Opacity" Value="0.85" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Border CornerRadius="4" MinWidth="21" Height="18" Padding="5,0"
+                            Background="#2E808080" BorderBrush="#40808080" BorderThickness="1"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============================================================
          TextBox
          ============================================================ -->
     <Style TargetType="TextBox">
