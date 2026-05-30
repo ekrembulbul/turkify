@@ -33,6 +33,8 @@ public partial class MainWindow : Window
     private bool _recording;
     private bool _recordingCancelTarget;
     private bool _themeInitialized;
+    private bool _discovering;            // eşzamanlı model keşfini önler (yükleme + radyo init yarışı)
+    private bool _suppressModelSelection; // programatik combobox doldurması ayarları ezmesin
 
     public MainWindow(AppState state)
     {
@@ -160,7 +162,9 @@ public partial class MainWindow : Window
             AutoPanel.IsEnabled = auto;
         }
 
-        if (auto && ModelCombo.Items.Count == 0)
+        // Otomatiğe geçince yerel modelleri tara. (Yükleme anında radyo init ile
+        // tetiklenen çağrıyla yarışı _discovering bayrağı engeller.)
+        if (auto)
         {
             _ = RefreshModelsAsync();
         }
@@ -168,7 +172,14 @@ public partial class MainWindow : Window
 
     private void OnModelSelected(object sender, SelectionChangedEventArgs e)
     {
-        if (ModelCombo.SelectedItem is ModelItem item)
+        // Programatik doldurma (Clear/Add/SelectedItem) ayarları ezmesin; ayrıca
+        // "Model bulunamadı" placeholder'ı (boş Model) seçilirse ayarları silmesin.
+        if (_suppressModelSelection)
+        {
+            return;
+        }
+
+        if (ModelCombo.SelectedItem is ModelItem { Model.Length: > 0 } item)
         {
             _state.Settings.Model = item.Model;
             _state.Settings.BaseURL = item.BaseURL;
@@ -179,21 +190,62 @@ public partial class MainWindow : Window
 
     private async void OnRefreshModels(object sender, RoutedEventArgs e) => await RefreshModelsAsync();
 
+    /// Yerel LLM sunucularını tarar ve combobox'ı doldurur. macOS davranışıyla aynı:
+    /// kayıtlı model her zaman görünür kalır (keşifte yoksa "(kayıtlı)" olarak eklenir);
+    /// "Model bulunamadı" yalnızca hiç model VE kayıtlı model yokken gösterilir ve
+    /// seçilse bile ayarları ezmez.
     private async Task RefreshModelsAsync()
     {
-        IReadOnlyList<DiscoveredBackend> backends = await _state.DiscoverModelsAsync();
-        ModelCombo.Items.Clear();
-        foreach (DiscoveredBackend backend in backends)
+        if (_discovering)
         {
-            foreach (string model in backend.Models)
-            {
-                ModelCombo.Items.Add(new ModelItem(model, backend.BaseURL, $"{model}  ({backend.Name})"));
-            }
+            return;
         }
 
-        if (ModelCombo.Items.Count == 0)
+        _discovering = true;
+        try
         {
-            ModelCombo.Items.Add(new ModelItem("", "", "Model bulunamadı"));
+            IReadOnlyList<DiscoveredBackend> backends = await _state.DiscoverModelsAsync();
+
+            var items = new List<ModelItem>();
+            foreach (DiscoveredBackend backend in backends)
+            {
+                foreach (string model in backend.Models)
+                {
+                    items.Add(new ModelItem(model, backend.BaseURL, $"{model}  ({backend.Name})"));
+                }
+            }
+
+            string savedModel = _state.Settings.Model;
+
+            // Kayıtlı model keşifte yoksa (sunucu kapalı/uzak) yine de görünür kalsın.
+            if (savedModel.Length > 0 && items.All(i => i.Model != savedModel))
+            {
+                items.Insert(0, new ModelItem(savedModel, _state.Settings.BaseURL, $"{savedModel}  (kayıtlı)"));
+            }
+
+            // Seçilecek: kayıtlı modele karşılık gelen öğe (varsa). Hiç aday yoksa
+            // bilgilendirici, seçilse de ayar ezmeyen placeholder göster.
+            ModelItem? toSelect = items.FirstOrDefault(i => i.Model == savedModel);
+            if (items.Count == 0)
+            {
+                var placeholder = new ModelItem("", "", "Model bulunamadı");
+                items.Add(placeholder);
+                toSelect = placeholder;
+            }
+
+            _suppressModelSelection = true;
+            ModelCombo.Items.Clear();
+            foreach (ModelItem item in items)
+            {
+                ModelCombo.Items.Add(item);
+            }
+
+            ModelCombo.SelectedItem = toSelect;
+        }
+        finally
+        {
+            _suppressModelSelection = false;
+            _discovering = false;
         }
     }
 
@@ -442,5 +494,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private sealed record ModelItem(string Model, string BaseURL, string Display);
+    /// ToString, combobox seçim kutusunda gösterilen metni belirler. Özel ComboBox
+    /// şablonunda seçili öğe ContentPresenter ile çizilir; DisplayMemberPath seçim
+    /// kutusuna uygulanmaz, bu yüzden okunur metni ToString üzerinden veririz
+    /// (aksi halde record'un varsayılan "ModelItem { … }" çıktısı görünür).
+    private sealed record ModelItem(string Model, string BaseURL, string Display)
+    {
+        public override string ToString() => Display;
+    }
 }

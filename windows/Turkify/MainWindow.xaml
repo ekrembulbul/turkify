@@ -88,7 +88,7 @@
                                          Checked="OnModelModeChanged" />
                         </StackPanel>
                         <StackPanel x:Name="AutoPanel" Orientation="Horizontal" Margin="0,0,0,6">
-                            <ComboBox x:Name="ModelCombo" Width="340" DisplayMemberPath="Display"
+                            <ComboBox x:Name="ModelCombo" Width="340"
                                       SelectionChanged="OnModelSelected" />
                             <Button Content="↻" Width="34" Padding="0" Margin="8,0,0,0" Click="OnRefreshModels"
                                     ToolTip="Yerel modelleri yeniden tara" />
