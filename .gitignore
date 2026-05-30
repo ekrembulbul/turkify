@@ -28,6 +28,7 @@ macos/packaging/dist/
 windows/**/bin/
 windows/**/obj/
 windows/**/.vs/
+windows/**/.idea/
 .vs/
 windows/packaging/.build-venv/
 windows/packaging/build/
