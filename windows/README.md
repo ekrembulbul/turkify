@@ -11,7 +11,11 @@ Windows'ta kısayol/pano için **ek izin gerekmez** (macOS Accessibility derdi y
 windows/Turkify/
 ├── Turkify.csproj      # WPF (.NET 8) projesi (net8.0-windows, WinExe)
 ├── App.xaml(.cs)       # tray (NotifyIcon) + tek-instance + giriş noktası
-└── MainWindow.xaml(.cs)# ana pencere (kapatınca gizlenir; çıkış tray menüsünden)
+├── MainWindow.xaml(.cs)# ana pencere (kapatınca gizlenir; çıkış tray menüsünden)
+├── ThemeManager.cs     # açık/koyu/otomatik tema + native başlık çubuğu (DWM)
+└── Themes/             # tasarım dili: renk paletleri + kontrol stilleri
+    ├── Palette.Light.xaml / Palette.Dark.xaml  # aynı anahtarlar, farklı renkler
+    └── Controls.xaml                           # tema-bağımsız kontrol şablonları
 ```
 
 ## Ön koşul: .NET 8 SDK
@@ -45,6 +49,13 @@ Ayarlar **Registry**'de tutulur (`HKCU\Software\Turkify`); `config.json`
 **kullanılmaz** ([ADR 0007](../docs/adr/0007-ayar-saklama-gui-native.md)). Korumalı
 kelimeler motorun Windows'ta okuduğu yere yazılır:
 `%APPDATA%\turkify\protected_words.txt` ([ADR 0008](../docs/adr/0008-korumali-kelimeler-paylasilan-dosya.md)).
+
+## Görünüm (tema)
+**Diğer Ayarlar → Görünüm**'den açık/koyu/otomatik seçilir (Registry'de `Theme`).
+**Otomatik** (varsayılan) Windows sistem temasını izler ve sistem teması değişince
+UI'yı canlı günceller (`AppsUseLightTheme`). İçerik alanı WPF ile, native başlık
+çubuğu DWM ile temaya uyarlanır. Renkler `Themes/`'ten gelir; aksan rengi tek
+yerden (palet) değiştirilebilir.
 
 ## Mimari hatırlatma
 - Bu app metni **düzeltmez**; seçimi alır, `serve`'e gönderir, sonucu yapıştırır.
