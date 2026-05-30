@@ -326,6 +326,9 @@ public partial class MainWindow : Window
 
         _recording = true;
         _recordingCancelTarget = cancelTarget;
+        // Kayıt boyunca global kısayolları kaldır; yoksa basılan kombinasyon (mevcut
+        // kısayolla aynıysa) WM_HOTKEY'e dönüşüp yutulur ve kaydediciye ulaşmaz.
+        _state.UnregisterHotKeys();
         PreviewKeyDown += OnRecordingKeyDown;
         RecordCorrectionButton.Content = cancelTarget ? "Değiştir" : "İptal";
         RecordCancelButton.Content = cancelTarget ? "İptal" : "Değiştir";
@@ -340,6 +343,8 @@ public partial class MainWindow : Window
         RecordCorrectionButton.Content = "Değiştir";
         RecordCancelButton.Content = "Değiştir";
         HotkeyHint.Text = "“Değiştir”e basıp istediğiniz kombinasyona basın. En az bir Ctrl/Alt/Win ve bir harf/rakam. (Esc: iptal)";
+        // Global kısayolları geri yükle: başarıda yeni değer, iptalde eski değer geçerli olur.
+        _state.RegisterHotKeys();
         RefreshHotkeyLabels();
     }
 
@@ -404,8 +409,7 @@ public partial class MainWindow : Window
         }
 
         _state.Settings.Save();
-        _state.RegisterHotKeys();
-        StopRecording();
+        StopRecording(); // global kısayolları yeni değerle yeniden kaydeder
     }
 
     private void RefreshHotkeyLabels()

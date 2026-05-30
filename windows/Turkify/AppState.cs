@@ -348,6 +348,13 @@ public sealed class AppState : INotifyPropertyChanged, IDisposable
         }
     }
 
+    /// Global kısayolları geçici olarak kaldırır. Kısayol KAYDI (recording) sırasında
+    /// çağrılır: aksi halde kullanıcının bastığı kombinasyon (özellikle mevcut kısayolla
+    /// AYNIysa) OS tarafından WM_HOTKEY'e dönüştürülüp yutulur ve kaydediciye hiç ulaşmaz.
+    /// Kayıt bitince <see cref="RegisterHotKeys"/> ile yeniden kurulur. (macOS'ta kayıt
+    /// başında hotKey=nil yapmanın karşılığı.)
+    public void UnregisterHotKeys() => _hotKeys.UnregisterAll();
+
     private void AppendLog(LogSource source, string message)
     {
         var line = new LogLine(DateTime.Now.ToString("HH:mm:ss.fff"), source, message);
