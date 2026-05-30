@@ -34,6 +34,10 @@ public sealed class AppSettings
     /// yoksa manuel mi (elle yazılır)?
     public bool AutoModelSelection { get; set; } = true;
 
+    /// Görünüm modu: "Auto" (Windows sistem temasını izle), "Light" veya "Dark".
+    /// Varsayılan "Auto" — PC'de hangi mod aktifse o uygulanır. Bkz. <see cref="ThemeManager"/>.
+    public string Theme { get; set; } = "Auto";
+
     private const string RegistryKeyPath = @"Software\Turkify";
 
     public static AppSettings Load()
@@ -60,6 +64,7 @@ public sealed class AppSettings
             CancelHotkeyMods = GetMods(key, "CancelHotkeyMods", fallback.CancelHotkeyMods),
             CancelHotkeyKey = GetString(key, "CancelHotkeyKey", fallback.CancelHotkeyKey),
             AutoModelSelection = GetBool(key, "AutoModelSelection", fallback.AutoModelSelection),
+            Theme = GetString(key, "Theme", fallback.Theme),
         };
     }
 
@@ -79,6 +84,16 @@ public sealed class AppSettings
         key.SetValue("CancelHotkeyMods", string.Join(' ', CancelHotkeyMods));
         key.SetValue("CancelHotkeyKey", CancelHotkeyKey);
         key.SetValue("AutoModelSelection", AutoModelSelection ? "1" : "0");
+        key.SetValue("Theme", Theme);
+    }
+
+    /// Yalnızca görünüm modunu (Theme) saklar. Tema değişimi motoru yeniden
+    /// başlatmamalı ve kaydedilmemiş model/sunucu düzenlemelerini erkenden
+    /// persist etmemeli; bu yüzden tam <see cref="Save"/> yerine bu kullanılır.
+    public void SaveTheme()
+    {
+        using RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryKeyPath);
+        key.SetValue("Theme", Theme);
     }
 
     /// Motoru bu ayarlarla başlatacak <c>serve</c> argümanları (CLI bayrakları).

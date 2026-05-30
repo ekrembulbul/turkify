@@ -1,61 +1,58 @@
 <Window x:Class="Turkify.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Turkify"
         Title="Turkify"
-        Width="920" Height="660"
-        MinWidth="680" MinHeight="480"
-        WindowStartupLocation="CenterScreen">
-    <Window.Resources>
-        <Style TargetType="TextBlock" x:Key="SectionHeader">
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,12,0,4" />
-        </Style>
-        <Style TargetType="TextBlock" x:Key="Hint">
-            <Setter Property="Foreground" Value="#777" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="0,2,0,8" />
-        </Style>
-    </Window.Resources>
+        Width="960" Height="680"
+        MinWidth="720" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        TextOptions.TextFormattingMode="Ideal"
+        Background="{DynamicResource App.Bg.Window}"
+        Foreground="{DynamicResource App.Text.Primary}">
 
-    <TabControl TabStripPlacement="Left" Margin="6">
+    <TabControl TabStripPlacement="Left">
         <!-- ============ Düzeltme ============ -->
         <TabItem Header="Düzeltme">
-            <Grid Margin="10">
+            <Grid Margin="22,18,22,20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,8">
-                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
-                               Text="{Binding CorrectionStatus}" Foreground="#555" />
+                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,10">
+                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource Text.Status}"
+                               Text="{Binding CorrectionStatus}" />
                     <Button DockPanel.Dock="Right" x:Name="CorrectAndCopyButton" Content="Düzelt ve Kopyala"
-                            Margin="6,0,0,0" Padding="10,4" Click="OnCorrectAndCopy" />
+                            Style="{StaticResource Button.Primary}" Margin="8,0,0,0" Click="OnCorrectAndCopy" />
                     <Button DockPanel.Dock="Right" x:Name="CorrectButton" Content="Düzelt"
-                            Margin="6,0,0,0" Padding="10,4" Click="OnCorrect" />
+                            Margin="8,0,0,0" Click="OnCorrect" />
                     <Button DockPanel.Dock="Right" Content="Temizle"
-                            Margin="6,0,0,0" Padding="10,4" Click="OnClearCorrection" />
+                            Margin="8,0,0,0" Click="OnClearCorrection" />
                     <Button DockPanel.Dock="Right" x:Name="CancelTextButton" Content="İptal"
-                            Margin="6,0,0,0" Padding="10,4" Click="OnCancelTextCorrection" />
+                            Margin="8,0,0,0" Click="OnCancelTextCorrection" />
                 </DockPanel>
 
                 <DockPanel Grid.Row="1">
-                    <TextBlock DockPanel.Dock="Top" Text="Metin" Style="{StaticResource SectionHeader}" />
+                    <TextBlock DockPanel.Dock="Top" Text="Metin" Style="{StaticResource Text.SectionHeader}"
+                               Margin="0,0,0,6" />
                     <TextBox x:Name="InputBox" AcceptsReturn="True" TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
                              Text="{Binding CorrectionInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              PreviewKeyDown="OnInputKeyDown" />
                 </DockPanel>
 
-                <DockPanel Grid.Row="2" Margin="0,8,0,0">
-                    <Grid DockPanel.Dock="Top">
-                        <TextBlock Text="Düzeltilmiş metin" Style="{StaticResource SectionHeader}" HorizontalAlignment="Left" />
-                        <Button Content="Kopyala" HorizontalAlignment="Right" Padding="10,2" Click="OnCopyOutput" />
+                <DockPanel Grid.Row="2" Margin="0,12,0,0">
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <TextBlock Text="Düzeltilmiş metin" Style="{StaticResource Text.SectionHeader}"
+                                   Margin="0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <Button Content="Kopyala" HorizontalAlignment="Right" Padding="12,4" Click="OnCopyOutput" />
                     </Grid>
                     <TextBox x:Name="OutputBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto" Background="#FAFAFA"
+                             VerticalScrollBarVisibility="Auto"
+                             Background="{DynamicResource App.Bg.SurfaceAlt}"
                              Text="{Binding CorrectionOutput, Mode=OneWay}" />
                 </DockPanel>
             </Grid>
@@ -63,64 +60,64 @@
 
         <!-- ============ Motor Ayarları ============ -->
         <TabItem Header="Motor Ayarları">
-            <DockPanel Margin="10">
-                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0,0,0,8">
-                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
-                               Text="{Binding LastStatus}" Foreground="#555" />
-                    <Button DockPanel.Dock="Right" Content="Kaydet" Padding="14,5"
+            <DockPanel Margin="22,18,22,20">
+                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0,0,0,10">
+                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource Text.Status}"
+                               Text="{Binding LastStatus}" />
+                    <Button DockPanel.Dock="Right" Content="Kaydet" Style="{StaticResource Button.Primary}"
                             Click="OnSaveSettings" />
                 </DockPanel>
 
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
                     <StackPanel>
-                        <TextBlock Text="Katmanlar" Style="{StaticResource SectionHeader}" />
+                        <TextBlock Text="Katmanlar" Style="{StaticResource Text.SectionHeader}" Margin="0,0,0,6" />
                         <CheckBox IsChecked="True" IsEnabled="False" Content="Tier 1 — Deterministik (her zaman açık)" />
-                        <TextBlock Style="{StaticResource Hint}" Text="Şapkaları kalıp tabanlı geri ekler. Hızlı, çevrimdışı temel düzeltme." />
+                        <TextBlock Style="{StaticResource Text.Hint}" Text="Şapkaları kalıp tabanlı geri ekler. Hızlı, çevrimdışı temel düzeltme." />
                         <CheckBox x:Name="Tier2Check" Content="Tier 2 — Morfoloji + frekans"
                                   IsChecked="{Binding Settings.UseMorphology, Mode=TwoWay}" />
-                        <TextBlock Style="{StaticResource Hint}" Text="Geçersiz/belirsiz kelimeleri biçimbilim (zeyrek) ve sıklıkla çözer." />
+                        <TextBlock Style="{StaticResource Text.Hint}" Text="Geçersiz/belirsiz kelimeleri biçimbilim (zeyrek) ve sıklıkla çözer." />
                         <CheckBox x:Name="Tier3Check" Content="Tier 3 — LLM (bağlam)"
                                   IsChecked="{Binding Settings.UseLLM, Mode=TwoWay}" />
-                        <TextBlock Style="{StaticResource Hint}" Text="Birden çok geçerli aday bağlam gerektirdiğinde LLM seçer. OpenAI-uyumlu sunucu + model gerekir." />
+                        <TextBlock Style="{StaticResource Text.Hint}" Text="Birden çok geçerli aday bağlam gerektirdiğinde LLM seçer. OpenAI-uyumlu sunucu + model gerekir." />
 
-                        <TextBlock Text="LLM bağlantısı (Tier 3)" Style="{StaticResource SectionHeader}" />
+                        <TextBlock Text="LLM bağlantısı (Tier 3)" Style="{StaticResource Text.SectionHeader}" />
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                             <RadioButton x:Name="AutoRadio" Content="Otomatik" GroupName="ModelMode"
-                                         Margin="0,0,16,0" Checked="OnModelModeChanged" />
+                                         Margin="0,5,18,5" Checked="OnModelModeChanged" />
                             <RadioButton x:Name="ManualRadio" Content="Manuel" GroupName="ModelMode"
                                          Checked="OnModelModeChanged" />
                         </StackPanel>
                         <StackPanel x:Name="AutoPanel" Orientation="Horizontal" Margin="0,0,0,6">
-                            <ComboBox x:Name="ModelCombo" Width="320" DisplayMemberPath="Display"
+                            <ComboBox x:Name="ModelCombo" Width="340" DisplayMemberPath="Display"
                                       SelectionChanged="OnModelSelected" />
-                            <Button Content="↻" Width="30" Margin="6,0,0,0" Click="OnRefreshModels"
+                            <Button Content="↻" Width="34" Padding="0" Margin="8,0,0,0" Click="OnRefreshModels"
                                     ToolTip="Yerel modelleri yeniden tara" />
                         </StackPanel>
 
-                        <TextBlock Text="Model" Margin="0,4,0,2" />
+                        <TextBlock Text="Model" Style="{StaticResource Text.FieldLabel}" />
                         <TextBox x:Name="ModelBox" Text="{Binding Settings.Model, Mode=TwoWay}" />
-                        <TextBlock Text="Sunucu (base_url)" Margin="0,6,0,2" />
+                        <TextBlock Text="Sunucu (base_url)" Style="{StaticResource Text.FieldLabel}" />
                         <TextBox x:Name="BaseUrlBox" Text="{Binding Settings.BaseURL, Mode=TwoWay}" />
-                        <TextBlock Text="API anahtarı" Margin="0,6,0,2" />
+                        <TextBlock Text="API anahtarı" Style="{StaticResource Text.FieldLabel}" />
                         <TextBox Text="{Binding Settings.ApiKey, Mode=TwoWay}" />
-                        <TextBlock Text="Zaman aşımı (sn)" Margin="0,6,0,2" />
-                        <TextBox Width="80" HorizontalAlignment="Left"
+                        <TextBlock Text="Zaman aşımı (sn)" Style="{StaticResource Text.FieldLabel}" />
+                        <TextBox Width="90" HorizontalAlignment="Left"
                                  Text="{Binding Settings.Timeout, Mode=TwoWay}" />
 
-                        <TextBlock Text="assistant_prefill" Style="{StaticResource SectionHeader}" />
-                        <TextBlock Style="{StaticResource Hint}" Text="İsteğe eklenecek asistan metni. Düşünmeyi kapatmak için: &lt;think&gt;\n\n&lt;/think&gt;\n\n" />
-                        <TextBox Height="50" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas"
+                        <TextBlock Text="assistant_prefill" Style="{StaticResource Text.SectionHeader}" />
+                        <TextBlock Style="{StaticResource Text.Hint}" Text="İsteğe eklenecek asistan metni. Düşünmeyi kapatmak için: &lt;think&gt;\n\n&lt;/think&gt;\n\n" />
+                        <TextBox Height="54" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas"
                                  VerticalScrollBarVisibility="Auto"
                                  Text="{Binding Settings.AssistantPrefill, Mode=TwoWay}" />
 
-                        <TextBlock Text="llm_options (JSON)" Style="{StaticResource SectionHeader}" />
-                        <TextBlock Style="{StaticResource Hint}" Text="İsteğin gövdesine eklenecek JSON. Ör: {&quot;chat_template_kwargs&quot;:{&quot;enable_thinking&quot;:false}}" />
-                        <TextBox x:Name="LlmOptionsBox" Height="70" AcceptsReturn="True" TextWrapping="Wrap"
+                        <TextBlock Text="llm_options (JSON)" Style="{StaticResource Text.SectionHeader}" />
+                        <TextBlock Style="{StaticResource Text.Hint}" Text="İsteğin gövdesine eklenecek JSON. Ör: {&quot;chat_template_kwargs&quot;:{&quot;enable_thinking&quot;:false}}" />
+                        <TextBox x:Name="LlmOptionsBox" Height="74" AcceptsReturn="True" TextWrapping="Wrap"
                                  FontFamily="Consolas" VerticalScrollBarVisibility="Auto"
                                  TextChanged="OnLlmOptionsChanged"
                                  Text="{Binding Settings.LlmOptions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock x:Name="JsonWarning" Foreground="#C97A00" FontSize="11"
-                                   Visibility="Collapsed"
+                        <TextBlock x:Name="JsonWarning" Foreground="{DynamicResource App.Warning}" FontSize="11"
+                                   Margin="0,4,0,0" Visibility="Collapsed"
                                    Text="Geçersiz JSON — kaydedilse de motora gönderilmez." />
                     </StackPanel>
                 </ScrollViewer>
@@ -129,50 +126,66 @@
 
         <!-- ============ Diğer Ayarlar ============ -->
         <TabItem Header="Diğer Ayarlar">
-            <StackPanel Margin="14">
-                <TextBlock Text="Kısayollar" Style="{StaticResource SectionHeader}" />
-                <Grid Margin="0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Düzeltme" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" x:Name="CorrectionHotkeyText" VerticalAlignment="Center"
-                               FontFamily="Consolas" />
-                    <Button Grid.Column="2" x:Name="RecordCorrectionButton" Content="Değiştir"
-                            Padding="10,3" Click="OnRecordCorrectionHotkey" />
-                </Grid>
-                <Grid Margin="0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="İşlemi iptal" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" x:Name="CancelHotkeyText" VerticalAlignment="Center"
-                               FontFamily="Consolas" />
-                    <Button Grid.Column="2" x:Name="RecordCancelButton" Content="Değiştir"
-                            Padding="10,3" Click="OnRecordCancelHotkey" />
-                </Grid>
-                <TextBlock x:Name="HotkeyHint" Style="{StaticResource Hint}"
-                           Text="“Değiştir”e basıp istediğiniz kombinasyona basın. En az bir Ctrl/Alt/Win ve bir harf/rakam. (Esc: iptal)" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
+                <StackPanel Margin="22,4,22,20">
+                    <TextBlock Text="Görünüm" Style="{StaticResource Text.SectionHeader}" />
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="ThemeAutoRadio" Content="Otomatik" GroupName="ThemeMode"
+                                     Margin="0,5,18,5" Checked="OnThemeChanged" />
+                        <RadioButton x:Name="ThemeLightRadio" Content="Açık" GroupName="ThemeMode"
+                                     Margin="0,5,18,5" Checked="OnThemeChanged" />
+                        <RadioButton x:Name="ThemeDarkRadio" Content="Koyu" GroupName="ThemeMode"
+                                     Margin="0,5" Checked="OnThemeChanged" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Text.Hint}"
+                               Text="“Otomatik” seçiliyse Windows’ta hangi mod aktifse (açık/koyu) o uygulanır ve sistem teması değişince anında güncellenir." />
 
-                <TextBlock Text="Başlangıç" Style="{StaticResource SectionHeader}" />
-                <CheckBox x:Name="StartupCheck" Content="Windows ile başlat"
-                          Click="OnToggleStartup" />
-                <TextBlock Style="{StaticResource Hint}"
-                           Text="Oturum açılışında Turkify tray'de otomatik başlar." />
-            </StackPanel>
+                    <TextBlock Text="Kısayollar" Style="{StaticResource Text.SectionHeader}" />
+                    <Grid Margin="0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Düzeltme" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" x:Name="CorrectionHotkeyText" VerticalAlignment="Center"
+                                   FontFamily="Consolas" />
+                        <Button Grid.Column="2" x:Name="RecordCorrectionButton" Content="Değiştir"
+                                Padding="12,4" Click="OnRecordCorrectionHotkey" />
+                    </Grid>
+                    <Grid Margin="0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="İşlemi iptal" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" x:Name="CancelHotkeyText" VerticalAlignment="Center"
+                                   FontFamily="Consolas" />
+                        <Button Grid.Column="2" x:Name="RecordCancelButton" Content="Değiştir"
+                                Padding="12,4" Click="OnRecordCancelHotkey" />
+                    </Grid>
+                    <TextBlock x:Name="HotkeyHint" Style="{StaticResource Text.Hint}"
+                               Text="“Değiştir”e basıp istediğiniz kombinasyona basın. En az bir Ctrl/Alt/Win ve bir harf/rakam. (Esc: iptal)" />
+
+                    <TextBlock Text="Başlangıç" Style="{StaticResource Text.SectionHeader}" />
+                    <CheckBox x:Name="StartupCheck" Content="Windows ile başlat"
+                              Click="OnToggleStartup" />
+                    <TextBlock Style="{StaticResource Text.Hint}"
+                               Text="Oturum açılışında Turkify tray’de otomatik başlar." />
+                </StackPanel>
+            </ScrollViewer>
         </TabItem>
 
         <!-- ============ Korumalı Kelimeler ============ -->
         <TabItem Header="Korumalı Kelimeler">
-            <DockPanel Margin="10">
-                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0,0,0,8">
-                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Style="{StaticResource Hint}"
+            <DockPanel Margin="22,18,22,20">
+                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0,0,0,10">
+                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" MaxWidth="520"
+                               Style="{StaticResource Text.Hint}" Margin="0"
                                Text="Bu kelimeler düzeltilmez (her satıra bir kelime). Yalnızca buradaki kelimeler korunur." />
-                    <Button DockPanel.Dock="Right" Content="Kaydet" Padding="14,5" Click="OnSaveProtectedWords" />
+                    <Button DockPanel.Dock="Right" Content="Kaydet" Style="{StaticResource Button.Primary}"
+                            Click="OnSaveProtectedWords" />
                 </DockPanel>
                 <TextBox x:Name="ProtectedWordsBox" AcceptsReturn="True" TextWrapping="NoWrap"
                          FontFamily="Consolas"
@@ -182,17 +195,17 @@
 
         <!-- ============ Log ============ -->
         <TabItem Header="Log">
-            <DockPanel Margin="10">
-                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0,0,0,8">
-                    <ComboBox DockPanel.Dock="Left" x:Name="LogFilterCombo" Width="160"
+            <DockPanel Margin="22,18,22,20">
+                <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0,0,0,10">
+                    <ComboBox DockPanel.Dock="Left" x:Name="LogFilterCombo" Width="170"
                               SelectionChanged="OnLogFilterChanged">
                         <ComboBoxItem Content="Tümü" />
                         <ComboBoxItem Content="Sistem" />
                         <ComboBoxItem Content="Motor" />
                     </ComboBox>
-                    <Button DockPanel.Dock="Right" Content="Temizle" Padding="10,3" Click="OnClearLog" />
+                    <Button DockPanel.Dock="Right" Content="Temizle" Padding="12,4" Click="OnClearLog" />
                     <TextBlock DockPanel.Dock="Right" x:Name="LogCountText" VerticalAlignment="Center"
-                               Margin="0,0,10,0" Foreground="#777" />
+                               Margin="0,0,12,0" Foreground="{DynamicResource App.Text.Tertiary}" />
                 </DockPanel>
                 <ListBox x:Name="LogList" FontFamily="Consolas" FontSize="11"
                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
@@ -200,10 +213,17 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Time}" Foreground="#999" Margin="0,0,8,0" />
-                                <TextBlock Text="{Binding SourceLabel}" Foreground="{Binding SourceColor}" Margin="0,0,8,0" />
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Time}" Foreground="{DynamicResource App.Text.Tertiary}" Margin="0,0,8,0" />
+                                <TextBlock x:Name="SourceText" Text="{Binding SourceLabel}" Margin="0,0,8,0"
+                                           Foreground="{DynamicResource App.Log.Engine}" />
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource App.Text.Primary}" />
                             </StackPanel>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Source}" Value="{x:Static local:LogSource.System}">
+                                    <Setter TargetName="SourceText" Property="Foreground" Value="{DynamicResource App.Log.System}" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>

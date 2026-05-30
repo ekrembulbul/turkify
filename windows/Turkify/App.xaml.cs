@@ -33,6 +33,9 @@ public partial class App : Application
         _appState = new AppState(Dispatcher);
         _appState.Startup();
 
+        // Pencere oluşturulmadan önce temayı uygula ki ilk açılışta doğru renkler gelsin.
+        ThemeManager.Apply(ThemeManager.Parse(_appState.Settings.Theme));
+
         _mainWindow = new MainWindow(_appState);
         SetUpTrayIcon();
 

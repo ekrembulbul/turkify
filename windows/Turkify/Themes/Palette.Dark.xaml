@@ -1,0 +1,51 @@
+<!--
+  Koyu tema renk paleti. Palette.Light.xaml ile AYNI anahtar kümesini tanımlar
+  (yalnızca değerler farklı). ThemeManager çalışma anında bu sözlüğü değiştirir.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Yüzeyler -->
+    <SolidColorBrush x:Key="App.Bg.Window"       Color="#1B1D21" />
+    <SolidColorBrush x:Key="App.Bg.Nav"          Color="#202327" />
+    <SolidColorBrush x:Key="App.Bg.Surface"      Color="#25282E" />
+    <SolidColorBrush x:Key="App.Bg.SurfaceAlt"   Color="#1F2227" />
+    <SolidColorBrush x:Key="App.Bg.Control"      Color="#2B2F36" />
+    <SolidColorBrush x:Key="App.Bg.ControlHover" Color="#343941" />
+
+    <!-- Kenarlıklar -->
+    <SolidColorBrush x:Key="App.Border"               Color="#34383F" />
+    <SolidColorBrush x:Key="App.Divider"              Color="#2C3036" />
+    <SolidColorBrush x:Key="App.Control.Border"       Color="#3C424B" />
+    <SolidColorBrush x:Key="App.Control.BorderHover"  Color="#565D68" />
+
+    <!-- Metin -->
+    <SolidColorBrush x:Key="App.Text.Primary"    Color="#E7E9ED" />
+    <SolidColorBrush x:Key="App.Text.Secondary"  Color="#A2A9B4" />
+    <SolidColorBrush x:Key="App.Text.Tertiary"   Color="#6F7681" />
+
+    <!-- Vurgu (koyu zeminde okunur kalması için bir tık açık mavi) -->
+    <SolidColorBrush x:Key="App.Accent"          Color="#4D8BF0" />
+    <SolidColorBrush x:Key="App.Accent.Hover"    Color="#5F98F5" />
+    <SolidColorBrush x:Key="App.Accent.Pressed"  Color="#3D78DC" />
+    <SolidColorBrush x:Key="App.Accent.Fg"       Color="#FFFFFF" />
+    <SolidColorBrush x:Key="App.Accent.Subtle"   Color="#2A3A55" />
+
+    <!-- İkincil buton -->
+    <SolidColorBrush x:Key="App.Button.Bg"       Color="#2E323A" />
+    <SolidColorBrush x:Key="App.Button.Hover"    Color="#383D46" />
+    <SolidColorBrush x:Key="App.Button.Pressed"  Color="#434954" />
+    <SolidColorBrush x:Key="App.Button.Border"   Color="#3C424B" />
+
+    <!-- Durum -->
+    <SolidColorBrush x:Key="App.Warning"         Color="#E5A155" />
+
+    <!-- Log kaynak etiketleri -->
+    <SolidColorBrush x:Key="App.Log.System"      Color="#6FA8FF" />
+    <SolidColorBrush x:Key="App.Log.Engine"      Color="#B98BEE" />
+
+    <!-- Kaydırma çubuğu -->
+    <SolidColorBrush x:Key="App.Scroll.Thumb"      Color="#454B54" />
+    <SolidColorBrush x:Key="App.Scroll.ThumbHover" Color="#565D68" />
+
+</ResourceDictionary>

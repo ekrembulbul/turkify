@@ -4,23 +4,20 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Interop;
 using Microsoft.Win32;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
-using Brush = System.Windows.Media.Brush;
-using Brushes = System.Windows.Media.Brushes;
 
 namespace Turkify;
 
-/// Log satırının görünüm temsili (kaynak etiketi + renk).
+/// Log satırının görünüm temsili. Kaynağa göre renklendirme XAML'de (tema-duyarlı
+/// DynamicResource) yapılır; bu yüzden burada yalnızca <see cref="Source"/> taşınır.
 public sealed class LogRow(LogLine line)
 {
     public string Time { get; } = line.Time;
     public LogSource Source { get; } = line.Source;
     public string Text { get; } = line.Text;
     public string SourceLabel { get; } = line.Source == LogSource.System ? "[sistem]" : "[motor]";
-    public Brush SourceColor { get; } =
-        line.Source == LogSource.System ? Brushes.SteelBlue : Brushes.MediumPurple;
 }
 
 public partial class MainWindow : Window
@@ -35,6 +32,7 @@ public partial class MainWindow : Window
 
     private bool _recording;
     private bool _recordingCancelTarget;
+    private bool _themeInitialized;
 
     public MainWindow(AppState state)
     {
@@ -55,8 +53,20 @@ public partial class MainWindow : Window
         state.LogAdded += OnLogAdded;
 
         Loaded += OnLoaded;
-        Closed += (_, _) => state.LogAdded -= OnLogAdded;
+        // Pencere handle'ı oluşunca başlık çubuğunu (native) temaya uyarla; tema
+        // sonradan değişirse (Auto'da sistem teması dahil) yeniden uygula.
+        SourceInitialized += (_, _) => ApplyTitleBarTheme();
+        ThemeManager.Changed += ApplyTitleBarTheme;
+        Closed += (_, _) =>
+        {
+            state.LogAdded -= OnLogAdded;
+            ThemeManager.Changed -= ApplyTitleBarTheme;
+        };
     }
+
+    /// Native başlık çubuğunu (DWM) o an etkin görünüme (açık/koyu) uyarlar.
+    private void ApplyTitleBarTheme() =>
+        NativeTitleBar.Apply(new WindowInteropHelper(this).Handle, ThemeManager.IsDarkActive);
 
     /// Tray uygulaması: pencere kapatılınca uygulama sonlanmaz, yalnızca gizlenir.
     /// Çıkış yalnızca tray menüsündeki "Çıkış" ile yapılır.
@@ -72,6 +82,15 @@ public partial class MainWindow : Window
         // Model modu radyolarını ayara göre işaretle (Checked handler enable durumunu kurar).
         AutoRadio.IsChecked = _state.Settings.AutoModelSelection;
         ManualRadio.IsChecked = !_state.Settings.AutoModelSelection;
+
+        // Görünüm radyolarını ayara göre işaretle. _themeInitialized, init sırasında
+        // OnThemeChanged'in gereksiz Apply/Save yapmasını engeller (tema zaten App
+        // startup'ta uygulandı).
+        AppTheme theme = ThemeManager.Parse(_state.Settings.Theme);
+        ThemeAutoRadio.IsChecked = theme == AppTheme.Auto;
+        ThemeLightRadio.IsChecked = theme == AppTheme.Light;
+        ThemeDarkRadio.IsChecked = theme == AppTheme.Dark;
+        _themeInitialized = true;
 
         RefreshHotkeyLabels();
         ValidateLlmOptions();
@@ -191,7 +210,25 @@ public partial class MainWindow : Window
         JsonWarning.Visibility = valid ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    // ============ Diğer Ayarlar (kısayollar + başlangıç) ============
+    // ============ Diğer Ayarlar (görünüm + kısayollar + başlangıç) ============
+
+    private void OnThemeChanged(object sender, RoutedEventArgs e)
+    {
+        // Init sırasında (radyolar ayara göre kurulurken) tetiklenmesini yok say.
+        if (!_themeInitialized)
+        {
+            return;
+        }
+
+        AppTheme theme =
+            ThemeAutoRadio.IsChecked == true ? AppTheme.Auto :
+            ThemeDarkRadio.IsChecked == true ? AppTheme.Dark :
+            AppTheme.Light;
+
+        ThemeManager.Apply(theme);
+        _state.Settings.Theme = theme.ToString();
+        _state.Settings.SaveTheme();
+    }
 
     private void OnRecordCorrectionHotkey(object sender, RoutedEventArgs e) => ToggleRecording(cancelTarget: false);
 
