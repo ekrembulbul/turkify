@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -345,6 +346,13 @@ public partial class MainWindow : Window
     private void OnRecordingKeyDown(object sender, KeyEventArgs e)
     {
         e.Handled = true;
+
+        // Tuş tekrarını (basılı tutma) yok say; yalnızca ilk basışı dikkate al.
+        if (e.IsRepeat)
+        {
+            return;
+        }
+
         Key key = e.Key == Key.System ? e.SystemKey : e.Key;
 
         if (key == Key.Escape)
@@ -366,11 +374,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Modifier durumunu WPF yerine OS'ten (GetKeyState) oku. WPF'in
+        // Keyboard.IsKeyDown(LWin/RWin) ve Keyboard.Modifiers'ı Windows tuşunu
+        // güvenilir izlemez (Win, OS shell'i tarafından yakalanır); bu da kaydı
+        // tutarsız yapıyordu (bazen atamıyor / yanlış atıyor). GetKeyState ayrıca
+        // RegisterHotKey'in eşleştirdiği durumla birebir örtüşür.
         var mods = new List<string>();
-        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) mods.Add("ctrl");
-        if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0) mods.Add("alt");
-        if (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin)) mods.Add("win");
-        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) mods.Add("shift");
+        if (KeyHeld(VkControl)) mods.Add("ctrl");
+        if (KeyHeld(VkMenu)) mods.Add("alt");
+        if (KeyHeld(VkLWin) || KeyHeld(VkRWin)) mods.Add("win");
+        if (KeyHeld(VkShift)) mods.Add("shift");
 
         // Shift tek başına yeterli değil; en az bir Ctrl/Alt/Win gerekir.
         if (!mods.Any(m => m != "shift"))
@@ -425,6 +438,21 @@ public partial class MainWindow : Window
 
         return null;
     }
+
+    // Modifier sanal tuş kodları (Win32). VkControl/VkMenu/VkShift sol+sağ birleşik;
+    // Windows tuşu için ayrı sol/sağ kod vardır.
+    private const int VkShift = 0x10;
+    private const int VkControl = 0x11;
+    private const int VkMenu = 0x12; // Alt
+    private const int VkLWin = 0x5B;
+    private const int VkRWin = 0x5C;
+
+    /// İlgili modifier tuşu, işlenmekte olan giriş mesajı anında basılı mı?
+    /// (OS düzeyi; WPF'in Keyboard durumuna göre, özellikle Win tuşunda, daha güvenilir.)
+    private static bool KeyHeld(int virtualKey) => (GetKeyState(virtualKey) & 0x8000) != 0;
+
+    [DllImport("user32.dll")]
+    private static extern short GetKeyState(int nVirtKey);
 
     private void OnToggleStartup(object sender, RoutedEventArgs e)
     {
