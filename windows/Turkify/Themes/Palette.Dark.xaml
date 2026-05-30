@@ -40,6 +40,9 @@
     <!-- Durum -->
     <SolidColorBrush x:Key="App.Warning"         Color="#E5A155" />
     <SolidColorBrush x:Key="App.Success"         Color="#3FB950" />
+    <!-- Dolu buton geri bildirimi (beyaz metinle okunur derinlikte) -->
+    <SolidColorBrush x:Key="App.Success.Fill"    Color="#1E8E3E" />
+    <SolidColorBrush x:Key="App.Danger.Fill"     Color="#D32F2F" />
 
     <!-- Log kaynak etiketleri -->
     <SolidColorBrush x:Key="App.Log.System"      Color="#6FA8FF" />

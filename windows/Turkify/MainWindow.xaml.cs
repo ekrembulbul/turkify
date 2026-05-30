@@ -9,6 +9,7 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using Button = System.Windows.Controls.Button;
 
 namespace Turkify;
 
@@ -37,7 +38,8 @@ public partial class MainWindow : Window
     private bool _themeInitialized;
     private bool _discovering;            // eşzamanlı model keşfini önler (yükleme + radyo init yarışı)
     private bool _suppressModelSelection; // programatik combobox doldurması ayarları ezmesin
-    private DispatcherTimer? _copyFeedbackTimer; // "Kopyalandı" geri bildirimini geri alır
+    // Buton başına geri bildirim (Kopyalandı/Kaydedildi) zamanlayıcısı; süre sonunda geri alır.
+    private readonly Dictionary<Button, DispatcherTimer> _feedbackTimers = new();
 
     public MainWindow(AppState state)
     {
@@ -151,33 +153,50 @@ public partial class MainWindow : Window
         FlashCopied();
     }
 
-    /// Kopyala butonunda kısa süreli görsel geri bildirim: "✓ Kopyalandı" + yeşil,
-    /// 1.5 sn sonra normale döner. (macOS CopyButton'ın karşılığı.)
-    private void FlashCopied()
-    {
-        CopyOutputButton.Content = "✓ Kopyalandı";
-        CopyOutputButton.SetResourceReference(ForegroundProperty, "App.Success");
+    /// Kopyala (ikincil) butonunda geri bildirim: "✓ Kopyalandı" + yeşil metin.
+    private void FlashCopied() =>
+        FlashButton(CopyOutputButton, "✓ Kopyalandı", "Kopyala", ForegroundProperty, "App.Success");
 
-        _copyFeedbackTimer ??= CreateCopyFeedbackTimer();
-        _copyFeedbackTimer.Stop();
-        _copyFeedbackTimer.Start();
-    }
+    /// Kaydet (birincil/dolu) butonunda geri bildirim: başarıda yeşil "✓ Kaydedildi",
+    /// hatada kırmızı "✕ Kaydedilemedi" arka plan. (macOS SaveButton'ın karşılığı.)
+    private void FlashSaved(Button button, bool success) =>
+        FlashButton(
+            button,
+            success ? "✓ Kaydedildi" : "✕ Kaydedilemedi",
+            "Kaydet",
+            BackgroundProperty,
+            success ? "App.Success.Fill" : "App.Danger.Fill");
 
-    private DispatcherTimer CreateCopyFeedbackTimer()
+    /// Butonun içeriğini ve bir renk özelliğini (Foreground/Background) geçici değiştirir;
+    /// 1.6 sn sonra eski haline döner. Buton başına tek zamanlayıcı (hızlı tıklamada yeniden başlar).
+    private void FlashButton(Button button, string text, string idleText, DependencyProperty colorProperty, string colorKey)
     {
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
-        timer.Tick += (_, _) =>
+        button.Content = text;
+        button.SetResourceReference(colorProperty, colorKey);
+
+        if (!_feedbackTimers.TryGetValue(button, out DispatcherTimer? timer))
         {
-            timer.Stop();
-            CopyOutputButton.Content = "Kopyala";
-            CopyOutputButton.ClearValue(ForegroundProperty); // stil varsayılanına (App.Text.Primary) dön
-        };
-        return timer;
+            timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.6) };
+            timer.Tick += (_, _) =>
+            {
+                timer!.Stop();
+                button.Content = idleText;
+                button.ClearValue(colorProperty); // stil varsayılan rengine dön
+            };
+            _feedbackTimers[button] = timer;
+        }
+
+        timer.Stop();
+        timer.Start();
     }
 
     // ============ Motor Ayarları ============
 
-    private void OnSaveSettings(object sender, RoutedEventArgs e) => _state.SaveSettings();
+    private void OnSaveSettings(object sender, RoutedEventArgs e)
+    {
+        _state.SaveSettings();
+        FlashSaved((Button)sender, success: true);
+    }
 
     private void OnModelModeChanged(object sender, RoutedEventArgs e)
     {
@@ -489,8 +508,11 @@ public partial class MainWindow : Window
 
     // ============ Korumalı Kelimeler ============
 
-    private void OnSaveProtectedWords(object sender, RoutedEventArgs e) =>
-        _state.SaveProtectedWords(ProtectedWordsBox.Text);
+    private void OnSaveProtectedWords(object sender, RoutedEventArgs e)
+    {
+        bool ok = _state.SaveProtectedWords(ProtectedWordsBox.Text);
+        FlashSaved((Button)sender, ok);
+    }
 
     // ============ Log ============
 

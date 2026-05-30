@@ -80,7 +80,7 @@
                     <TextBlock DockPanel.Dock="Left" Style="{StaticResource Text.Status}"
                                Text="{Binding LastStatus}" />
                     <Button DockPanel.Dock="Right" Content="Kaydet" Style="{StaticResource Button.Primary}"
-                            Click="OnSaveSettings" />
+                            MinWidth="150" Click="OnSaveSettings" />
                 </DockPanel>
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
@@ -200,7 +200,7 @@
                                Style="{StaticResource Text.Hint}" Margin="0"
                                Text="Bu kelimeler düzeltilmez (her satıra bir kelime). Yalnızca buradaki kelimeler korunur." />
                     <Button DockPanel.Dock="Right" Content="Kaydet" Style="{StaticResource Button.Primary}"
-                            Click="OnSaveProtectedWords" />
+                            MinWidth="150" Click="OnSaveProtectedWords" />
                 </DockPanel>
                 <TextBox x:Name="ProtectedWordsBox" AcceptsReturn="True" TextWrapping="NoWrap"
                          FontFamily="Consolas"
