@@ -5,6 +5,26 @@ Bu dosya, projedeki kayda değer değişiklikleri sürüm sürüm belgeler.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve proje
 [Semantic Versioning](https://semver.org/lang/tr/) kullanır.
 
+## [1.2.0] - 2026-05-31
+
+### Eklendi
+- macOS ve Windows uygulamalarına **Hakkında** sekmesi: uygulama adı, sürüm,
+  kısa açıklama ve bağlantılar (proje sayfası, sürüm notları, lisans, üçüncü
+  taraf bileşenler). Sürüm dinamik okunur (macOS Info.plist, Windows assembly).
+
+### Düzeltildi
+- **Korumalı kelimeler** artık cümle başında/noktalama sonrası **büyük harfe
+  çevrilir**. Büyük harf yapma yalnızca yapısal kalıplardan (URL/e-posta/sayı/
+  kod) muaftır; kullanıcı korumalı kelimeleri yalnızca diakritik (şapka)
+  restorasyonundan muaf kalır, büyük harften değil.
+
+### İndirme
+- **macOS:** `Turkify-1.2.0.zip`
+- **Windows:** `TurkifySetup-1.2.0.exe`
+
+> macOS sürümü imzasız/notarize edilmemiştir. Açmak için bir kez:
+> `xattr -dr com.apple.quarantine /Applications/Turkify.app`
+
 ## [1.1.0] - 2026-05-31
 
 ### Eklendi
@@ -69,6 +89,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - Çok-platform yapılandırma ve kısayol altyapısı.
 - MIT lisansı ve üçüncü taraf atıfları.
 
+[1.2.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.0.0
 [0.1.0]: https://github.com/ekrembulbul/turkify/releases/tag/v0.1.0
