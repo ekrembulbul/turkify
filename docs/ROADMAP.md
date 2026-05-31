@@ -132,9 +132,35 @@ Python yalnızca **metin düzeltme**. Aradan geçen tek şey "metin → düzelti
 - ⏳ Varsayılan kısayol Hyper+A/Hyper+Q (Ctrl+Alt+Win).
 
 ### 6.3 — Linux (Python, terminal + servis)
-- Native GUI yok; `systemd --user` servisi motoru sıcak tutar (`serve --socket`).
-- Tetikleme: masaüstü ortamının kendi kısayolu (Wayland-uyumlu).
-- Pano: X11 `xclip`/`xsel`, Wayland `wl-clipboard`. ⚠️ Wayland yapıştırma best-effort.
+Native GUI yok; ince istemci motora `serve --socket` ile konuşur. Akış kararları
+[ADR 0005 (2026-06 güncellemesi)](adr/0005-linux-terminal-servis.md)'te.
+
+#### 6.3a — Çekirdek istemci + servis (MVP) 🚧 sıradaki
+- ➕ `config.socket_path()` (platform-nötr): `TURKIFY_SOCKET` env > varsayılan
+  `$XDG_RUNTIME_DIR/turkify/engine.sock`. İstemci ve servis aynı soketi paylaşır.
+- ➕ İnce istemci (`linux/turkify_fix.py` + `linux/bin/turkify-fix`): seçimi
+  **PRIMARY selection**'dan okur (tuş simülasyonu yok — `wl-paste --primary` /
+  `xclip -selection primary`), sokete gönderir; **soket düşükse cold-start
+  fallback** (motoru in-process yükler). Sonucu panoya yazar; `ydotool` kuruluysa
+  otomatik Ctrl+V, yoksa `notify-send` ile bildirim + elle yapıştırma.
+- ➕ `systemd --user` servisi (`turkify serve --socket …`, `RuntimeDirectory=turkify`)
+  motoru **baştan** sıcak tutar. `linux/service/turkify.service` + `linux/install.sh`
+  (python/repo yolunu çözüp unit'i yazar, servisi etkinleştirir, GNOME/KDE kısayol
+  talimatını basar).
+- ➕ Pano soyutlaması: `XDG_SESSION_TYPE` ile Wayland↔X11 tespiti; araç yoksa
+  eyleme geçirilebilir hata.
+- Testler: istemcinin saf parçaları (boş seçim, session tespiti, soket→cold-start
+  düşüşü, paste fallback) subprocess mock'lanarak.
+
+#### 6.3b — Rafine (opsiyonel)
+- **Socket activation:** ilk bağlantıda servisi başlat (`turkify.socket`) →
+  `serve`'e `LISTEN_FDS`/`socket.fromfd` desteği.
+- **Otomatik `reload`:** config.json değişince `{"cmd":"reload"}` (path unit/inotify
+  ya da küçük yardımcı); protokoldeki `reload` zaten hazır.
+
+#### 6.3c — İptal + eşzamanlılık ⏸️ ertelendi
+- `serve`'e eşzamanlılık + istek kaydı + `cancel` komutu + kesilebilir `correct()`.
+- Yalnızca Tier 3 (LLM) yoğun/yavaş kullanılırsa gerekçelenir (bkz. ADR 0005 §3).
 
 ### 6.4 — Paketleme & dağıtım
 - ⚠️ Motor **donmuş bağımsız ikili** (PyInstaller) olarak native app'in içine gömülür;

@@ -334,7 +334,22 @@ peyderpey doğrulanacaktır.
 |---|---|
 | Windows | Beklenen şekilde çalışır (henüz doğrulanmadı) |
 | Linux / X11 | Pano için `xclip` veya `xsel` kurulu olmalı |
-| Linux / Wayland | Global kısayol/enjeksiyon OS kısıtları nedeniyle sınırlı |
+| Linux / Wayland | Pano için `wl-clipboard`; otomatik yapıştırma `ydotool` ister |
+
+### Linux masaüstü entegrasyonu (Faz 6.3a)
+
+Native GUI yok: `systemd --user` servisi motoru sıcak tutar, DE kısayolu ince
+istemciyi (`turkify-fix`) çalıştırır — seçimi **PRIMARY selection**'dan okur
+(tuş simülasyonsuz, Wayland-uyumlu), düzeltir, panoya yazar ve `ydotool` varsa
+otomatik yapıştırır.
+
+```bash
+# Pano araçları:  Wayland → sudo apt install wl-clipboard ;  X11 → sudo apt install xclip
+linux/install.sh        # servisi kurar + GNOME/KDE kısayol talimatını basar
+```
+
+Tam adımlar, ydotool kurulumu ve servis yönetimi: **[linux/README.md](../linux/README.md)**.
+Tasarım gerekçesi: [ADR 0005](adr/0005-linux-terminal-servis.md).
 
 Ayrıntı: [PORTABILITY.md](PORTABILITY.md).
 

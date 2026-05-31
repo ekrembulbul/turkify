@@ -9,8 +9,9 @@
 > [ADR 0004](adr/0004-motor-sinir-protokolu.md) (serve protokolü),
 > [ADR 0005](adr/0005-linux-terminal-servis.md) (Linux).
 >
-> Durum: Çekirdek + CLI + `turkify serve` ve **macOS native uygulaması** çalışıyor.
-> Windows/Linux native frontend'leri sıradaki iştir (bkz. [ROADMAP Faz 6](ROADMAP.md)).
+> Durum: Çekirdek + CLI + `turkify serve`, **macOS native uygulaması** ve **Linux
+> ince istemci + systemd servisi** (Faz 6.3a) çalışıyor. Windows native frontend'i ve
+> paketleme sıradaki iştir (bkz. [ROADMAP Faz 6](ROADMAP.md)).
 
 ---
 
@@ -190,11 +191,11 @@ seçili metni kopyala → düzelt → yapıştır yapar.
   UserDefaults — [ADR 0007](adr/0007-ayar-saklama-gui-native.md)). Modifier adları
   uygulama içinde `ctrl`/`opt`/`cmd`/`shift` olarak tutulur; meta tuşu OS'a göre
   (macOS `cmd`, Windows `win`, Linux `super`).
-- **Linux:** uygulama kısayol *yakalamaz* (Wayland kısıtı). Hem düzeltme hem iptal
-  birer **DE custom shortcut**'tır (GNOME/KDE klavye ayarları); her biri bir komut
-  çalıştırır (düzeltme: seçim → sokete gönder → yapıştır; iptal: çalışan isteğe
-  iptal sinyali). Kombinasyonu kullanıcı DE'de tanımlar — bkz.
-  [ADR 0005](adr/0005-linux-terminal-servis.md).
+- **Linux:** uygulama kısayol *yakalamaz* (Wayland kısıtı). Düzeltme bir **DE custom
+  shortcut**'tır (GNOME/KDE klavye ayarları); ince istemciyi (`turkify-fix`) çalıştırır:
+  seçimi PRIMARY'den oku → sokete gönder → panoya yaz → (`ydotool` varsa) yapıştır.
+  Kombinasyonu kullanıcı DE'de tanımlar. İptal kısayolu şimdilik **ertelendi** (serve
+  sıralı; bkz. [ADR 0005 §3](adr/0005-linux-terminal-servis.md)). Kurulum: [linux/README.md](../linux/README.md).
 - Kurulum/kullanım (macOS): [`macos/README.md`](../macos/README.md).
 
 ---
@@ -206,7 +207,7 @@ seçili metni kopyala → düzelt → yapıştır yapar.
 | Windows | ✅ Beklenen şekilde çalışır |
 | macOS | ✅ Çalışır — **Erişilebilirlik (Accessibility) izni** gerekir |
 | Linux / X11 | ✅ Çalışır — pano için `xclip`/`xsel` kurulu olmalı |
-| Linux / Wayland | ⚠️ Global kısayol/enjeksiyon OS güvenlik kısıtları nedeniyle sınırlı |
+| Linux / Wayland | ✅ Çalışır — seçim PRIMARY'den okunur; **otomatik yapıştırma** `ydotool` ister (yoksa elle Ctrl+V) |
 
 ---
 
@@ -218,9 +219,10 @@ tam plan: [ROADMAP.md → Faz 6](ROADMAP.md). Özet sıra:
 | Aşama | Kapsam | Durum |
 |---|---|---|
 | **6.0** | `turkify serve` (stdio + soket JSON protokolü); eski `agent` kaldırıldı | tamam |
-| **6.1** | macOS native app (Swift / SwiftUI menü-bar) — MVP | sonra |
-| **6.2** | Windows native app (C#/.NET / WPF tray) | sonra |
-| **6.3** | Linux (Python, terminal + `systemd --user` servisi) | sonra |
+| **6.1** | macOS native app (Swift / SwiftUI menü-bar) — MVP | sürüyor |
+| **6.2** | Windows native app (C#/.NET / WPF tray) | sürüyor |
+| **6.3a** | Linux ince istemci (`turkify-fix`) + `systemd --user` servisi | tamam |
+| **6.3b/c** | Linux rafine (socket activation, reload) / iptal | sonra/ertelendi |
 | **6.4** | Paketleme & dağıtım (Python gömme, imzalama, repo/Flatpak) | en son |
 
 ---
