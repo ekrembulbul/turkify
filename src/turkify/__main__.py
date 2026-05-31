@@ -22,6 +22,8 @@ Tüm config ayarları bayrak olarak verilebilir:
                            reasoning'i atlatmak için $'<think>\\n\\n</think>\\n\\n'
     --protected-words-file YOL  Korumalı kelime dosyası (yalnızca bu dosyadaki kelimeler
                            korunur; verilmezse config dizinindeki standart dosya)
+    --capitalize-sentences /    Cümle sonu noktalamadan (.!?…) sonra küçük harfi büyütür /
+      --no-capitalize-sentences kapatır (varsayılan kapalı)
     --verbose | -v         Karar günlüğünü (Tier 2/3) stderr'e yazar; stdout temiz kalır
 
 NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
@@ -114,6 +116,9 @@ def _parse_settings_args(args: list[str]) -> tuple[dict, list[str]]:
 
     overrides["use_llm"] = _flag_tristate(args, "--llm", "--no-llm")
     overrides["use_morphology"] = _flag_tristate(args, "--morphology", "--no-morphology")
+    overrides["capitalize_sentences"] = _flag_tristate(
+        args, "--capitalize-sentences", "--no-capitalize-sentences"
+    )
     return overrides, args
 
 
@@ -155,6 +160,7 @@ def _cmd_correct(args: list[str]) -> int:
             use_morphology=settings["use_morphology"],
             model=settings["model"],
             protected_words_file=str(config.protected_words_path(settings)),
+            capitalize_sentences=settings["capitalize_sentences"],
         )
     )
     return 0

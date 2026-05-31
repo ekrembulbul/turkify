@@ -18,7 +18,7 @@ etkinleştirilebilir. Etkinken tercih, tüm katmanların önüne geçer.
 import logging
 from functools import lru_cache
 
-from turkify import frequency, harmony, learn, morphology, reranker
+from turkify import frequency, harmony, learn, morphology, reranker, sentence_case
 from turkify.candidates import generate_candidates
 from turkify.deasciifier import deasciify
 from turkify.protect import load_protected_words, protected_spans, tr_lower
@@ -299,6 +299,7 @@ def correct(
     use_morphology: bool = True,
     model: str | None = None,
     protected_words_file: str | None = None,
+    capitalize_sentences: bool = False,
 ) -> str:
     """ASCII Türkçe metni doğru diakritiklerle düzeltir.
 
@@ -318,6 +319,9 @@ def correct(
         protected_words_file: Korumalı kelime dosyası yolu. Yalnızca bu dosyadaki
             kelimeler korunur (bkz. ADR 0008). ``None`` ise kelime-listesi koruması
             yoktur (URL/e-posta/sayı/Türkçe-karakter koruması yine uygulanır).
+        capitalize_sentences: Açıksa, cümle sonu noktalamadan (``.!?…``) sonra gelen
+            küçük harfleri büyütür (Türkçe-duyarlı; bkz. ``sentence_case``). Metnin
+            ilk harfine dokunmaz. Varsayılan kapalı.
 
     Returns:
         Diakritikleri restore edilmiş metin.
@@ -329,7 +333,7 @@ def correct(
     corrected = deasciify(text)
     corrected = restore_spans(corrected, text, spans)
 
-    return _resolve_words(
+    result = _resolve_words(
         text,
         corrected,
         spans,
@@ -337,3 +341,9 @@ def correct(
         use_llm=use_llm,
         model=model,
     )
+
+    # Son-işlem: cümle başlarını büyüt (uzunluğu koruduğundan span'lar geçerli kalır).
+    if capitalize_sentences:
+        result = sentence_case.capitalize_sentences(result, spans)
+
+    return result

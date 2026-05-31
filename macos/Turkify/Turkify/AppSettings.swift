@@ -10,6 +10,8 @@ struct AppSettings {
     var model: String
     var useLLM: Bool
     var useMorphology: Bool
+    /// Cümle sonu noktalamadan (.!?…) sonra küçük harfi büyütür. Varsayılan kapalı.
+    var capitalizeSentences: Bool
     var timeout: Int  // saniye (tam sayı)
     var baseURL: String
     var apiKey: String
@@ -31,6 +33,7 @@ struct AppSettings {
         model: "",
         useLLM: false,
         useMorphology: true,
+        capitalizeSentences: false,
         timeout: 60,
         baseURL: "http://localhost:11434/v1",
         apiKey: "",
@@ -50,6 +53,7 @@ struct AppSettings {
             model: d.string(forKey: "model") ?? "",
             useLLM: d.object(forKey: "useLLM") as? Bool ?? fallback.useLLM,
             useMorphology: d.object(forKey: "useMorphology") as? Bool ?? fallback.useMorphology,
+            capitalizeSentences: d.object(forKey: "capitalizeSentences") as? Bool ?? fallback.capitalizeSentences,
             timeout: (d.object(forKey: "timeout") as? NSNumber)?.intValue ?? fallback.timeout,
             baseURL: d.string(forKey: "baseURL") ?? fallback.baseURL,
             apiKey: d.string(forKey: "apiKey") ?? "",
@@ -69,6 +73,7 @@ struct AppSettings {
         d.set(model, forKey: "model")
         d.set(useLLM, forKey: "useLLM")
         d.set(useMorphology, forKey: "useMorphology")
+        d.set(capitalizeSentences, forKey: "capitalizeSentences")
         d.set(timeout, forKey: "timeout")
         d.set(baseURL, forKey: "baseURL")
         d.set(apiKey, forKey: "apiKey")
@@ -91,6 +96,7 @@ struct AppSettings {
         if !model.isEmpty { args += ["--model", model] }
         args += [useLLM ? "--llm" : "--no-llm"]
         args += [useMorphology ? "--morphology" : "--no-morphology"]
+        args += [capitalizeSentences ? "--capitalize-sentences" : "--no-capitalize-sentences"]
         args += ["--timeout", String(timeout)]
         if !baseURL.isEmpty { args += ["--base-url", baseURL] }
         if !apiKey.isEmpty { args += ["--api-key", apiKey] }

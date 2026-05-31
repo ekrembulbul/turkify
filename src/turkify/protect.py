@@ -27,6 +27,11 @@ def tr_lower(text: str) -> str:
     return text.replace("I", "ı").replace("İ", "i").lower()
 
 
+def tr_upper(text: str) -> str:
+    """Türkçe locale kurallarına göre büyük harfe çevirir (i→İ, ı→I)."""
+    return text.replace("i", "İ").replace("ı", "I").upper()
+
+
 def load_protected_words(path: Path | str | None = None) -> frozenset[str]:
     """Korumalı kelime listesini bir dosyadan yükler (Türkçe küçük harfe normalize).
 

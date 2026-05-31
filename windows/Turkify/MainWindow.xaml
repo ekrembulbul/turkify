@@ -96,6 +96,11 @@
                                   IsChecked="{Binding Settings.UseLLM, Mode=TwoWay}" />
                         <TextBlock Style="{StaticResource Text.Hint}" Text="Birden çok geçerli aday bağlam gerektirdiğinde LLM seçer. OpenAI-uyumlu sunucu + model gerekir." />
 
+                        <TextBlock Text="Biçimlendirme" Style="{StaticResource Text.SectionHeader}" />
+                        <CheckBox x:Name="CapitalizeCheck" Content="Cümle başlarını büyük harfe çevir"
+                                  IsChecked="{Binding Settings.CapitalizeSentences, Mode=TwoWay}" />
+                        <TextBlock Style="{StaticResource Text.Hint}" Text="Cümle sonu noktalamadan (. ! ? …) sonra küçük harfle başlayan kelimeyi büyük harfe çevirir. Metnin ilk harfine dokunmaz." />
+
                         <TextBlock Text="LLM bağlantısı (Tier 3)" Style="{StaticResource Text.SectionHeader}" />
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                             <RadioButton x:Name="AutoRadio" Content="Otomatik" GroupName="ModelMode"

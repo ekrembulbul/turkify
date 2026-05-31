@@ -47,6 +47,9 @@ DEFAULTS: dict = {
     # (config dizini / protected_words.txt). Yalnızca bu dosyadaki kelimeler
     # korunur; paketle gelen örnek otomatik yüklenmez (bkz. ADR 0008).
     "protected_words_file": None,
+    # Cümle sonu noktalamadan (.!?…) sonraki küçük harfleri büyütür (Türkçe-duyarlı).
+    # Varsayılan kapalı (bkz. sentence_case).
+    "capitalize_sentences": False,
 }
 
 
@@ -135,6 +138,7 @@ _ENV_MAP: dict = {
     "llm_options": ("TURKIFY_LLM_OPTIONS", json.loads),
     "assistant_prefill": ("TURKIFY_ASSISTANT_PREFILL", str),
     "protected_words_file": ("TURKIFY_PROTECTED_WORDS_FILE", str),
+    "capitalize_sentences": ("TURKIFY_CAPITALIZE_SENTENCES", _to_bool),
 }
 
 

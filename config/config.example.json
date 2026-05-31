@@ -7,5 +7,6 @@
   "api_key": null,
   "llm_options": {},
   "assistant_prefill": null,
-  "protected_words_file": null
+  "protected_words_file": null,
+  "capitalize_sentences": false
 }

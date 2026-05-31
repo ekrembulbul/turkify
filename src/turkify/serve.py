@@ -67,9 +67,9 @@ class EngineService:
         """Motorun o an etkin ayarlarını (model/katmanlar/sunucu) loglar."""
         s = self._settings
         _log.info(
-            "[Motor] %s: model=%r use_llm=%s use_morphology=%s base_url=%s timeout=%ss",
+            "[Motor] %s: model=%r use_llm=%s use_morphology=%s capitalize_sentences=%s base_url=%s timeout=%ss",
             phase, s.get("model"), s.get("use_llm"), s.get("use_morphology"),
-            s.get("base_url"), s.get("timeout"),
+            s.get("capitalize_sentences"), s.get("base_url"), s.get("timeout"),
         )
 
     def reload(self) -> None:
@@ -92,6 +92,7 @@ class EngineService:
             use_morphology=s.get("use_morphology", True),
             model=s.get("model"),
             protected_words_file=str(config.protected_words_path(s)),
+            capitalize_sentences=s.get("capitalize_sentences", False),
         )
 
     def handle(self, request: dict) -> dict:

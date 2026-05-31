@@ -837,6 +837,14 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Cümle başlarını büyük harfe çevir", isOn: $state.settings.capitalizeSentences)
+                } header: {
+                    Text("Biçimlendirme")
+                } footer: {
+                    Text("Cümle sonu noktalamadan (. ! ? …) sonra küçük harfle başlayan kelimeyi büyük harfe çevirir. Metnin ilk harfine dokunmaz.")
+                }
+
+                Section {
                     // Mod: Otomatik (combobox) veya Manuel (elle).
                     Picker("Model seçimi", selection: $state.settings.autoModelSelection) {
                         Text("Otomatik").tag(true)

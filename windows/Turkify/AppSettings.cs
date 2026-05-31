@@ -15,6 +15,9 @@ public sealed class AppSettings
     public string Model { get; set; } = "";
     public bool UseLLM { get; set; }
     public bool UseMorphology { get; set; } = true;
+
+    /// Cümle sonu noktalamadan (.!?…) sonra küçük harfi büyütür. Varsayılan kapalı.
+    public bool CapitalizeSentences { get; set; }
     public int Timeout { get; set; } = 60; // saniye
     public string BaseURL { get; set; } = "http://localhost:11434/v1";
     public string ApiKey { get; set; } = "";
@@ -54,6 +57,7 @@ public sealed class AppSettings
             Model = GetString(key, "Model", fallback.Model),
             UseLLM = GetBool(key, "UseLLM", fallback.UseLLM),
             UseMorphology = GetBool(key, "UseMorphology", fallback.UseMorphology),
+            CapitalizeSentences = GetBool(key, "CapitalizeSentences", fallback.CapitalizeSentences),
             Timeout = GetInt(key, "Timeout", fallback.Timeout),
             BaseURL = GetString(key, "BaseURL", fallback.BaseURL),
             ApiKey = GetString(key, "ApiKey", fallback.ApiKey),
@@ -74,6 +78,7 @@ public sealed class AppSettings
         key.SetValue("Model", Model);
         key.SetValue("UseLLM", UseLLM ? "1" : "0");
         key.SetValue("UseMorphology", UseMorphology ? "1" : "0");
+        key.SetValue("CapitalizeSentences", CapitalizeSentences ? "1" : "0");
         key.SetValue("Timeout", Timeout.ToString());
         key.SetValue("BaseURL", BaseURL);
         key.SetValue("ApiKey", ApiKey);
@@ -112,6 +117,7 @@ public sealed class AppSettings
 
         args.Add(UseLLM ? "--llm" : "--no-llm");
         args.Add(UseMorphology ? "--morphology" : "--no-morphology");
+        args.Add(CapitalizeSentences ? "--capitalize-sentences" : "--no-capitalize-sentences");
         args.Add("--timeout");
         args.Add(Timeout.ToString());
 
