@@ -39,7 +39,8 @@ bir satır JSON yanıt vermeli.
 2. Şemada `TURKIFY_PYTHON` env'ini ayarlayın (yukarı).
 3. **Run (⌘R).** Menü-bar'da simge belirir (Dock ikonu yok — accessory app).
    Menü sade: **durum**, **İşlemi iptal et** (işlem sürerken etkin; Hyper+Q),
-   **Turkify'ı aç**, **Çıkış**.
+   **Turkify'ı aç**, **Çıkış**. Simgeye **sağ tık** (veya Cmd/Ctrl+tık) menüyü
+   atlayıp ana pencereyi doğrudan açar.
 4. **Ana pencere** (solda sidebar; bölüm seçilir):
    - **Düzeltme:** metni yaz → **Enter** (⇧Enter: alt satır) ya da **Düzelt** düzeltir;
      **⌘Enter** / **Düzelt ve Kopyala** sonucu panoya da yazar. İşlem sırasında giriş
