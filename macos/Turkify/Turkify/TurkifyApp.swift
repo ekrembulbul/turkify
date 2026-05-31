@@ -837,14 +837,21 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Cümle başlarını büyük harfe çevir", isOn: $state.settings.capitalizeSentences)
-                    Toggle("Seçimin ilk harfini de büyüt", isOn: $state.settings.capitalizeFirst)
-                        .disabled(!state.settings.capitalizeSentences)
+                    tierRow(
+                        title: "Cümle başlarını büyük harfe çevir",
+                        detail: "Cümle sonu noktalamadan (. ! ? …) sonra küçük harfle başlayan kelimeyi büyük harfe çevirir. Metnin ilk harfine dokunmaz.",
+                        isOn: $state.settings.capitalizeSentences
+                    )
+                    // Bağımlı alt-seçenek: "↳" öneki + "üstteki ayar açıkken" açıklaması +
+                    // üst ayar kapalıyken devre dışı (locked) ile bağımlılık belli edilir.
+                    tierRow(
+                        title: "↳ Seçimin ilk harfini de büyüt",
+                        detail: "Seçili metnin en başındaki küçük harfi de büyütür. Yalnızca üstteki ayar açıkken geçerlidir.",
+                        isOn: $state.settings.capitalizeFirst,
+                        locked: !state.settings.capitalizeSentences
+                    )
                 } header: {
                     Text("Biçimlendirme")
-                } footer: {
-                    Text("Cümle sonu noktalamadan (. ! ? …) sonra küçük harfle başlayan kelimeyi büyük harfe çevirir. "
-                         + "İkinci seçenek, seçili metnin en başındaki harfi de büyütür (üst ayar açıkken).")
                 }
 
                 Section {
@@ -944,8 +951,9 @@ struct SettingsView: View {
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
     }
 
-    /// Bir katman satırı: aç/kapa anahtarı + altında ne yaptığının kısa açıklaması.
-    /// ``locked`` (Tier 1) ise anahtar açık ve devre dışıdır (kapatılamaz).
+    /// Bir ayar satırı: aç/kapa anahtarı + altında ne yaptığının kısa açıklaması.
+    /// ``locked`` true ise anahtar devre dışıdır (Tier 1'de her zaman açık+kilitli;
+    /// bağımlı ayarlarda üst ayar kapalıyken kilitli).
     @ViewBuilder
     private func tierRow(
         title: String, detail: String, isOn: Binding<Bool>, locked: Bool = false
