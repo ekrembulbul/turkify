@@ -604,6 +604,7 @@ struct MainView: View {
         case other = "Diğer Ayarlar"
         case protectedWords = "Korumalı Kelimeler"
         case log = "Log"
+        case about = "Hakkında"
 
         var id: String { rawValue }
         var icon: String {
@@ -613,6 +614,7 @@ struct MainView: View {
             case .protectedWords: return "shield"
             case .other: return "slider.horizontal.3"
             case .log: return "doc.plaintext"
+            case .about: return "info.circle"
             }
         }
     }
@@ -644,6 +646,64 @@ struct MainView: View {
         case .protectedWords: ProtectedWordsView(state: state)
         case .other: OtherSettingsView(state: state)
         case .log: LogView(state: state)
+        case .about: AboutView(state: state)
+        }
+    }
+}
+
+// MARK: - Hakkında sekmesi (uygulama bilgileri + bağlantılar)
+
+struct AboutView: View {
+    @ObservedObject var state: AppState
+
+    private static let repoURL = URL(string: "https://github.com/ekrembulbul/turkify")!
+    private static let releasesURL = URL(string: "https://github.com/ekrembulbul/turkify/releases")!
+    private static let licenseURL = URL(string: "https://github.com/ekrembulbul/turkify/blob/main/LICENSE")!
+    private static let noticesURL = URL(string: "https://github.com/ekrembulbul/turkify/blob/main/THIRD-PARTY-NOTICES.md")!
+
+    /// Pazarlama sürümü Info.plist'ten okunur (MARKETING_VERSION ile senkron).
+    private var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Marka kısaltması "Tr" (menü-bar ikonuyla aynı).
+                Text("Tr")
+                    .font(.system(size: 44, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.tint)
+                    .padding(.top, 12)
+
+                VStack(spacing: 4) {
+                    Text("Turkify").font(.largeTitle).fontWeight(.semibold)
+                    Text("Sürüm \(version)").foregroundStyle(.secondary)
+                }
+
+                Text("Tamamen lokal, ücretsiz Türkçe diakritik (şapka) restorasyon "
+                     + "uygulaması. ASCII ile yazılmış Türkçe metni doğru Türkçe "
+                     + "karakterlere çevirir; internet gerektirmez, veriniz cihazdan çıkmaz.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: 460)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(spacing: 10) {
+                    Link("Proje sayfası (GitHub)", destination: Self.repoURL)
+                    Link("Sürüm notları", destination: Self.releasesURL)
+                    Link("Lisans (MIT)", destination: Self.licenseURL)
+                    Link("Üçüncü taraf bileşenler", destination: Self.noticesURL)
+                }
+                .font(.callout)
+                .padding(.top, 4)
+
+                Text("© 2026 Ekrem Bülbül · MIT Lisansı")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(32)
         }
     }
 }

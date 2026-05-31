@@ -1,11 +1,14 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -59,6 +62,7 @@ public partial class MainWindow : Window
 
         state.LogAdded += OnLogAdded;
 
+        ShowAboutVersion();
         Loaded += OnLoaded;
         // Pencere handle'ı oluşunca başlık çubuğunu (native) temaya uyarla; tema
         // sonradan değişirse (Auto'da sistem teması dahil) yeniden uygula.
@@ -69,6 +73,29 @@ public partial class MainWindow : Window
             state.LogAdded -= OnLogAdded;
             ThemeManager.Changed -= ApplyTitleBarTheme;
         };
+    }
+
+    /// Hakkinda sekmesindeki surum etiketini assembly surumunden doldurur
+    /// (csproj &lt;Version&gt; ile senkron; bkz. pyproject.toml).
+    private void ShowAboutVersion()
+    {
+        Version? v = Assembly.GetExecutingAssembly().GetName().Version;
+        AboutVersionText.Text = v is null ? "Sürüm —" : $"Sürüm {v.Major}.{v.Minor}.{v.Build}";
+    }
+
+    /// Hakkinda baglantilarini varsayilan tarayicida acar.
+    private void OnOpenLink(object sender, RequestNavigateEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Log.Info($"Baglanti acilamadi: {ex.Message}");
+        }
+
+        e.Handled = true;
     }
 
     /// Native başlık çubuğunu (DWM) o an etkin görünüme (açık/koyu) uyarlar.

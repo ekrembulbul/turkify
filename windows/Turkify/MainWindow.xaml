@@ -262,5 +262,34 @@
                 </ListBox>
             </DockPanel>
         </TabItem>
+
+        <!-- ============ Hakkında ============ -->
+        <TabItem Header="Hakkında">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
+                <StackPanel Margin="22,18,22,20" HorizontalAlignment="Center" MaxWidth="520">
+                    <!-- Marka kısaltması "Tr" (tray ikonuyla aynı). -->
+                    <TextBlock Text="Tr" FontSize="44" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" Margin="0,8,0,4"
+                               Foreground="{DynamicResource App.Accent}" />
+                    <TextBlock Text="Turkify" FontSize="26" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock x:Name="AboutVersionText" HorizontalAlignment="Center"
+                               Margin="0,2,0,12"
+                               Foreground="{DynamicResource App.Text.Secondary}" />
+                    <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                               Foreground="{DynamicResource App.Text.Secondary}"
+                               Text="Tamamen lokal, ücretsiz Türkçe diakritik (şapka) restorasyon uygulaması. ASCII ile yazılmış Türkçe metni doğru Türkçe karakterlere çevirir; internet gerektirmez, veriniz cihazdan çıkmaz." />
+                    <StackPanel Margin="0,16,0,0" HorizontalAlignment="Center">
+                        <TextBlock Margin="0,3" HorizontalAlignment="Center"><Hyperlink NavigateUri="https://github.com/ekrembulbul/turkify" RequestNavigate="OnOpenLink">Proje sayfası (GitHub)</Hyperlink></TextBlock>
+                        <TextBlock Margin="0,3" HorizontalAlignment="Center"><Hyperlink NavigateUri="https://github.com/ekrembulbul/turkify/releases" RequestNavigate="OnOpenLink">Sürüm notları</Hyperlink></TextBlock>
+                        <TextBlock Margin="0,3" HorizontalAlignment="Center"><Hyperlink NavigateUri="https://github.com/ekrembulbul/turkify/blob/main/LICENSE" RequestNavigate="OnOpenLink">Lisans (MIT)</Hyperlink></TextBlock>
+                        <TextBlock Margin="0,3" HorizontalAlignment="Center"><Hyperlink NavigateUri="https://github.com/ekrembulbul/turkify/blob/main/THIRD-PARTY-NOTICES.md" RequestNavigate="OnOpenLink">Üçüncü taraf bileşenler</Hyperlink></TextBlock>
+                    </StackPanel>
+                    <TextBlock Text="© 2026 Ekrem Bülbül · MIT Lisansı" HorizontalAlignment="Center"
+                               Margin="0,18,0,0" FontSize="11"
+                               Foreground="{DynamicResource App.Text.Tertiary}" />
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
     </TabControl>
 </Window>
