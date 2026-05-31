@@ -79,6 +79,8 @@ final class AppState: ObservableObject {
     private var hotKey: HotKey?
     private var cancelHotKey: HotKey?
     private var hotkeyRecordMonitor: Any?
+    /// Menü-bar ikonuna sağ/Cmd/Ctrl+tık için yerel NSEvent monitörü.
+    private var menuBarSecondaryClickMonitor: Any?
     private lazy var corrector = Corrector(engine: engine)
     private var windowOpen = false
     private var spinnerTimer: Timer?
@@ -122,6 +124,41 @@ final class AppState: ObservableObject {
         refreshPermissions()
         startEngine()
         registerHotKey()
+        installMenuBarSecondaryClick()
+    }
+
+    /// Menü-bar ikonuna sağ tık (veya Cmd/Ctrl+tık) ana pencereyi doğrudan açar.
+    ///
+    /// SwiftUI MenuBarExtra, sol/sağ tık ayrımı için resmî bir API sunmaz ve alttaki
+    /// NSStatusItem'a erişim vermez. Bu yüzden fare-aşağı olaylarını yerel bir
+    /// NSEvent monitörüyle dinleriz; yalnızca menü-bar ikonunun penceresine gelen
+    /// olaylarla ilgileniriz (contentView sınıfı `NSStatusBar…` ile başlar — bu
+    /// uygulamada teşhisle doğrulandı). İkincil tıkta olayı yutarız (menü açılmaz)
+    /// ve pencereyi açarız; sol tık olduğu gibi geçer (menü her zamanki gibi açılır).
+    /// presentMainWindow, Dock-tık ile aynı (kanıtlanmış) yolu kullanır.
+    private func installMenuBarSecondaryClick() {
+        guard menuBarSecondaryClickMonitor == nil else { return }
+        menuBarSecondaryClickMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.rightMouseDown, .leftMouseDown]
+        ) { [weak self] event in
+            guard Self.isMenuBarStatusEvent(event) else { return event }
+            let mods = event.modifierFlags
+            let isSecondaryClick = event.type == .rightMouseDown
+                || mods.contains(.command)
+                || mods.contains(.control)
+            guard isSecondaryClick else { return event }  // sol tık → menü açılsın
+            self?.presentMainWindow?()
+            return nil  // olayı yut → MenuBarExtra menüsü açılmaz
+        }
+    }
+
+    /// Olay, menü-bar ikonunun (status item) penceresine mi geldi? MenuBarExtra'nın
+    /// status penceresinin contentView sınıf adı `NSStatusBar…` ile başlar; ana
+    /// pencerede (`AppKitWindowHostingView…`) bu önek yoktur. Private sınıf adına
+    /// bağımlı bir ayraç — kırılırsa sağ tık etkisizleşir (sol tık + menü bozulmaz).
+    private static func isMenuBarStatusEvent(_ event: NSEvent) -> Bool {
+        guard let contentView = event.window?.contentView else { return false }
+        return String(describing: type(of: contentView)).hasPrefix("NSStatusBar")
     }
 
     /// Dock ikonu görünürlüğü: Ayarlar penceresi açıkken VEYA kullanıcı "Dock'ta
@@ -181,6 +218,10 @@ final class AppState: ObservableObject {
 
     func shutdown() {
         engine.stop()
+        if let monitor = menuBarSecondaryClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            menuBarSecondaryClickMonitor = nil
+        }
     }
 
     func refreshPermissions() {
