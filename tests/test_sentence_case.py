@@ -12,10 +12,27 @@ def test_capitalizes_after_question_and_exclamation():
     assert capitalize_sentences("ne? evet! oldu. son") == "ne? Evet! Oldu. Son"
 
 
-def test_does_not_touch_first_letter_of_text():
-    # Cümle ortasından seçilen parçada ilk harf büyütülmemeli.
+def test_does_not_touch_first_letter_of_text_by_default():
+    # Cümle ortasından seçilen parçada ilk harf büyütülmemeli (varsayılan).
     assert capitalize_sentences("merhaba dunya") == "merhaba dunya"
     assert capitalize_sentences("bir cumle.") == "bir cumle."
+
+
+def test_capitalize_first_capitalizes_text_start():
+    assert capitalize_sentences("merhaba dunya", capitalize_first=True) == "Merhaba dunya"
+    # İlk harf + cümle başı birlikte.
+    assert (
+        capitalize_sentences("merhaba. nasilsin", capitalize_first=True)
+        == "Merhaba. Nasilsin"
+    )
+
+
+def test_capitalize_first_turkish_and_openers_and_protected():
+    assert capitalize_sentences("iyi gunler", capitalize_first=True) == "İyi gunler"
+    # Baştaki açılış işareti atlanır.
+    assert capitalize_sentences('"merhaba"', capitalize_first=True) == '"Merhaba"'
+    # Korunan ilk kelime büyütülmez.
+    assert capitalize_sentences("github reposu", [(0, 6)], capitalize_first=True) == "github reposu"
 
 
 def test_turkish_dotted_i_uppercase():
@@ -75,4 +92,29 @@ def test_engine_capitalize_when_enabled():
     assert (
         engine.correct("art. ben", use_morphology=False, capitalize_sentences=True)
         == "art. Ben"
+    )
+
+
+def test_engine_capitalize_first_when_enabled():
+    assert (
+        engine.correct(
+            "ben art",
+            use_morphology=False,
+            capitalize_sentences=True,
+            capitalize_first=True,
+        )
+        == "Ben art"
+    )
+
+
+def test_engine_capitalize_first_ignored_when_sentences_off():
+    # Bağımlı ayar: üst ayar (capitalize_sentences) kapalıyken etkisiz.
+    assert (
+        engine.correct(
+            "ben art",
+            use_morphology=False,
+            capitalize_sentences=False,
+            capitalize_first=True,
+        )
+        == "ben art"
     )

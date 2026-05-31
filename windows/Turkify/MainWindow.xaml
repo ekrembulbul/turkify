@@ -100,6 +100,12 @@
                         <CheckBox x:Name="CapitalizeCheck" Content="Cümle başlarını büyük harfe çevir"
                                   IsChecked="{Binding Settings.CapitalizeSentences, Mode=TwoWay}" />
                         <TextBlock Style="{StaticResource Text.Hint}" Text="Cümle sonu noktalamadan (. ! ? …) sonra küçük harfle başlayan kelimeyi büyük harfe çevirir. Metnin ilk harfine dokunmaz." />
+                        <CheckBox x:Name="CapitalizeFirstCheck" Content="Seçimin ilk harfini de büyüt"
+                                  Margin="22,5,0,5"
+                                  IsEnabled="{Binding IsChecked, ElementName=CapitalizeCheck}"
+                                  IsChecked="{Binding Settings.CapitalizeFirst, Mode=TwoWay}" />
+                        <TextBlock Style="{StaticResource Text.Hint}" Margin="22,2,0,8"
+                                   Text="Üstteki ayar açıkken, seçili metnin en başındaki küçük harfi de büyütür." />
 
                         <TextBlock Text="LLM bağlantısı (Tier 3)" Style="{StaticResource Text.SectionHeader}" />
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">

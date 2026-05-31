@@ -24,6 +24,8 @@ Tüm config ayarları bayrak olarak verilebilir:
                            korunur; verilmezse config dizinindeki standart dosya)
     --capitalize-sentences /    Cümle sonu noktalamadan (.!?…) sonra küçük harfi büyütür /
       --no-capitalize-sentences kapatır (varsayılan kapalı)
+    --capitalize-first /        capitalize-sentences açıkken metnin (seçimin) ilk harfini
+      --no-capitalize-first     de büyütür (bağımlı ayar; varsayılan kapalı)
     --verbose | -v         Karar günlüğünü (Tier 2/3) stderr'e yazar; stdout temiz kalır
 
 NOT: ``learn`` / ``forget`` komutları Faz 7 (öğrenen sistem) ile birlikte
@@ -119,6 +121,9 @@ def _parse_settings_args(args: list[str]) -> tuple[dict, list[str]]:
     overrides["capitalize_sentences"] = _flag_tristate(
         args, "--capitalize-sentences", "--no-capitalize-sentences"
     )
+    overrides["capitalize_first"] = _flag_tristate(
+        args, "--capitalize-first", "--no-capitalize-first"
+    )
     return overrides, args
 
 
@@ -161,6 +166,7 @@ def _cmd_correct(args: list[str]) -> int:
             model=settings["model"],
             protected_words_file=str(config.protected_words_path(settings)),
             capitalize_sentences=settings["capitalize_sentences"],
+            capitalize_first=settings["capitalize_first"],
         )
     )
     return 0

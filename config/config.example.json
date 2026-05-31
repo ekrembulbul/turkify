@@ -8,5 +8,6 @@
   "llm_options": {},
   "assistant_prefill": null,
   "protected_words_file": null,
-  "capitalize_sentences": false
+  "capitalize_sentences": false,
+  "capitalize_first": false
 }

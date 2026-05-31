@@ -5,9 +5,10 @@ harf büyük yazılır. Bu modül, açıkça etkinleştirildiğinde bu konumlard
 harfleri Türkçe-duyarlı biçimde (i→İ, ı→I) büyütür.
 
 Tasarım notları:
-  * Yalnızca **noktalama sonrası** büyütür; metnin ilk harfine DOKUNMAZ. Düzeltme
-    çoğu kez bir cümlenin ortasından seçilen parça üzerinde çalışır; ilk harfi
-    büyütmek o durumda yanlış olurdu.
+  * Varsayılan davranış yalnızca **noktalama sonrası** büyütür; metnin ilk harfine
+    DOKUNMAZ. Düzeltme çoğu kez bir cümlenin ortasından seçilen parça üzerinde
+    çalışır; ilk harfi büyütmek o durumda yanlış olurdu. İsteyen için
+    ``capitalize_first=True`` metnin (seçimin) ilk harfini de büyütür.
   * Noktalama ile sonraki harf arasında en az bir boşluk aranır; böylece ondalık
     sayılar (``3.14``) ve boşluksuz noktalı yazımlar bölünmez.
   * Korunan aralıklardaki (URL/e-posta/kod/korumalı kelime) karakterler atlanır.
@@ -28,13 +29,39 @@ def _in_protected(index: int, spans: list[tuple[int, int]]) -> bool:
     return any(start <= index < end for start, end in spans)
 
 
-def capitalize_sentences(text: str, spans: list[tuple[int, int]] | None = None) -> str:
+def _capitalize_at(chars: list[str], start: int, spans: list[tuple[int, int]]) -> int:
+    """``start``'tan itibaren boşluk + açılış işaretlerini geçip ilk harfi büyütür.
+
+    Korunan aralıktaki ya da zaten büyük olan harf değiştirilmez. Bulunan (ve
+    işlenen) konumun index'ini döner; bulunamazsa metin sonunu (``len(chars)``).
+    """
+    n = len(chars)
+    k = start
+    while k < n and chars[k].isspace():
+        k += 1
+    while k < n and chars[k] in _OPENERS:
+        k += 1
+    if k < n and not _in_protected(k, spans):
+        upper = tr_upper(chars[k])
+        # Yalnızca tek karaktere eşlenen küçük harfleri değiştir (uzunluğu koru).
+        if len(upper) == 1 and upper != chars[k]:
+            chars[k] = upper
+    return k
+
+
+def capitalize_sentences(
+    text: str,
+    spans: list[tuple[int, int]] | None = None,
+    *,
+    capitalize_first: bool = False,
+) -> str:
     """Cümle sonu noktalamadan sonraki küçük harfleri büyütür (Türkçe-duyarlı).
 
     Args:
         text: Düzeltilmiş metin.
         spans: Korunan ``(start, end)`` aralıkları; bu konumlardaki harfler
             büyütülmez. ``None`` ise koruma uygulanmaz.
+        capitalize_first: ``True`` ise metnin (seçimin) ilk harfi de büyütülür.
 
     Returns:
         Cümle başları büyütülmüş metin. Uzunluk korunur.
@@ -42,6 +69,10 @@ def capitalize_sentences(text: str, spans: list[tuple[int, int]] | None = None) 
     spans = spans or []
     chars = list(text)
     n = len(chars)
+
+    # Opsiyonel: metnin başını da bir cümle başı say.
+    if capitalize_first:
+        _capitalize_at(chars, 0, spans)
 
     i = 0
     while i < n:
@@ -59,19 +90,6 @@ def capitalize_sentences(text: str, spans: list[tuple[int, int]] | None = None) 
             i = j + 1
             continue
 
-        # Boşlukları ve açılış işaretlerini (tırnak/parantez) geç.
-        k = j
-        while k < n and chars[k].isspace():
-            k += 1
-        while k < n and chars[k] in _OPENERS:
-            k += 1
-
-        if k < n and not _in_protected(k, spans):
-            upper = tr_upper(chars[k])
-            # Yalnızca tek karaktere eşlenen küçük harfleri değiştir (uzunluğu koru).
-            if len(upper) == 1 and upper != chars[k]:
-                chars[k] = upper
-
-        i = k + 1
+        i = _capitalize_at(chars, j, spans) + 1
 
     return "".join(chars)

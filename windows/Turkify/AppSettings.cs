@@ -18,6 +18,10 @@ public sealed class AppSettings
 
     /// Cümle sonu noktalamadan (.!?…) sonra küçük harfi büyütür. Varsayılan kapalı.
     public bool CapitalizeSentences { get; set; }
+
+    /// <see cref="CapitalizeSentences"/> açıkken metnin (seçimin) ilk harfini de
+    /// büyütür. Bağımlı ayar: üst ayar kapalıysa motorda etkisizdir. Varsayılan kapalı.
+    public bool CapitalizeFirst { get; set; }
     public int Timeout { get; set; } = 60; // saniye
     public string BaseURL { get; set; } = "http://localhost:11434/v1";
     public string ApiKey { get; set; } = "";
@@ -58,6 +62,7 @@ public sealed class AppSettings
             UseLLM = GetBool(key, "UseLLM", fallback.UseLLM),
             UseMorphology = GetBool(key, "UseMorphology", fallback.UseMorphology),
             CapitalizeSentences = GetBool(key, "CapitalizeSentences", fallback.CapitalizeSentences),
+            CapitalizeFirst = GetBool(key, "CapitalizeFirst", fallback.CapitalizeFirst),
             Timeout = GetInt(key, "Timeout", fallback.Timeout),
             BaseURL = GetString(key, "BaseURL", fallback.BaseURL),
             ApiKey = GetString(key, "ApiKey", fallback.ApiKey),
@@ -79,6 +84,7 @@ public sealed class AppSettings
         key.SetValue("UseLLM", UseLLM ? "1" : "0");
         key.SetValue("UseMorphology", UseMorphology ? "1" : "0");
         key.SetValue("CapitalizeSentences", CapitalizeSentences ? "1" : "0");
+        key.SetValue("CapitalizeFirst", CapitalizeFirst ? "1" : "0");
         key.SetValue("Timeout", Timeout.ToString());
         key.SetValue("BaseURL", BaseURL);
         key.SetValue("ApiKey", ApiKey);
@@ -118,6 +124,7 @@ public sealed class AppSettings
         args.Add(UseLLM ? "--llm" : "--no-llm");
         args.Add(UseMorphology ? "--morphology" : "--no-morphology");
         args.Add(CapitalizeSentences ? "--capitalize-sentences" : "--no-capitalize-sentences");
+        args.Add(CapitalizeFirst ? "--capitalize-first" : "--no-capitalize-first");
         args.Add("--timeout");
         args.Add(Timeout.ToString());
 

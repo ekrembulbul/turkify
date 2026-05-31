@@ -300,6 +300,7 @@ def correct(
     model: str | None = None,
     protected_words_file: str | None = None,
     capitalize_sentences: bool = False,
+    capitalize_first: bool = False,
 ) -> str:
     """ASCII Türkçe metni doğru diakritiklerle düzeltir.
 
@@ -322,6 +323,8 @@ def correct(
         capitalize_sentences: Açıksa, cümle sonu noktalamadan (``.!?…``) sonra gelen
             küçük harfleri büyütür (Türkçe-duyarlı; bkz. ``sentence_case``). Metnin
             ilk harfine dokunmaz. Varsayılan kapalı.
+        capitalize_first: Yalnızca ``capitalize_sentences`` açıkken anlamlıdır;
+            açıksa metnin (seçimin) ilk harfi de büyütülür. Varsayılan kapalı.
 
     Returns:
         Diakritikleri restore edilmiş metin.
@@ -343,7 +346,10 @@ def correct(
     )
 
     # Son-işlem: cümle başlarını büyüt (uzunluğu koruduğundan span'lar geçerli kalır).
+    # capitalize_first yalnızca capitalize_sentences açıkken etkilidir (bağımlı ayar).
     if capitalize_sentences:
-        result = sentence_case.capitalize_sentences(result, spans)
+        result = sentence_case.capitalize_sentences(
+            result, spans, capitalize_first=capitalize_first
+        )
 
     return result

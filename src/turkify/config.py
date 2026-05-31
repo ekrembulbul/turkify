@@ -50,6 +50,9 @@ DEFAULTS: dict = {
     # Cümle sonu noktalamadan (.!?…) sonraki küçük harfleri büyütür (Türkçe-duyarlı).
     # Varsayılan kapalı (bkz. sentence_case).
     "capitalize_sentences": False,
+    # capitalize_sentences açıkken metnin (seçimin) ilk harfini de büyütür. Bağımlı
+    # ayar: capitalize_sentences kapalıysa etkisizdir. Varsayılan kapalı.
+    "capitalize_first": False,
 }
 
 
@@ -139,6 +142,7 @@ _ENV_MAP: dict = {
     "assistant_prefill": ("TURKIFY_ASSISTANT_PREFILL", str),
     "protected_words_file": ("TURKIFY_PROTECTED_WORDS_FILE", str),
     "capitalize_sentences": ("TURKIFY_CAPITALIZE_SENTENCES", _to_bool),
+    "capitalize_first": ("TURKIFY_CAPITALIZE_FIRST", _to_bool),
 }
 
 

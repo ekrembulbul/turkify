@@ -838,10 +838,13 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Cümle başlarını büyük harfe çevir", isOn: $state.settings.capitalizeSentences)
+                    Toggle("Seçimin ilk harfini de büyüt", isOn: $state.settings.capitalizeFirst)
+                        .disabled(!state.settings.capitalizeSentences)
                 } header: {
                     Text("Biçimlendirme")
                 } footer: {
-                    Text("Cümle sonu noktalamadan (. ! ? …) sonra küçük harfle başlayan kelimeyi büyük harfe çevirir. Metnin ilk harfine dokunmaz.")
+                    Text("Cümle sonu noktalamadan (. ! ? …) sonra küçük harfle başlayan kelimeyi büyük harfe çevirir. "
+                         + "İkinci seçenek, seçili metnin en başındaki harfi de büyütür (üst ayar açıkken).")
                 }
 
                 Section {

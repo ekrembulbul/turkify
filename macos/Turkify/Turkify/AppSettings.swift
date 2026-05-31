@@ -12,6 +12,9 @@ struct AppSettings {
     var useMorphology: Bool
     /// Cümle sonu noktalamadan (.!?…) sonra küçük harfi büyütür. Varsayılan kapalı.
     var capitalizeSentences: Bool
+    /// `capitalizeSentences` açıkken metnin (seçimin) ilk harfini de büyütür.
+    /// Bağımlı ayar: üst ayar kapalıysa motorda etkisizdir. Varsayılan kapalı.
+    var capitalizeFirst: Bool
     var timeout: Int  // saniye (tam sayı)
     var baseURL: String
     var apiKey: String
@@ -34,6 +37,7 @@ struct AppSettings {
         useLLM: false,
         useMorphology: true,
         capitalizeSentences: false,
+        capitalizeFirst: false,
         timeout: 60,
         baseURL: "http://localhost:11434/v1",
         apiKey: "",
@@ -54,6 +58,7 @@ struct AppSettings {
             useLLM: d.object(forKey: "useLLM") as? Bool ?? fallback.useLLM,
             useMorphology: d.object(forKey: "useMorphology") as? Bool ?? fallback.useMorphology,
             capitalizeSentences: d.object(forKey: "capitalizeSentences") as? Bool ?? fallback.capitalizeSentences,
+            capitalizeFirst: d.object(forKey: "capitalizeFirst") as? Bool ?? fallback.capitalizeFirst,
             timeout: (d.object(forKey: "timeout") as? NSNumber)?.intValue ?? fallback.timeout,
             baseURL: d.string(forKey: "baseURL") ?? fallback.baseURL,
             apiKey: d.string(forKey: "apiKey") ?? "",
@@ -74,6 +79,7 @@ struct AppSettings {
         d.set(useLLM, forKey: "useLLM")
         d.set(useMorphology, forKey: "useMorphology")
         d.set(capitalizeSentences, forKey: "capitalizeSentences")
+        d.set(capitalizeFirst, forKey: "capitalizeFirst")
         d.set(timeout, forKey: "timeout")
         d.set(baseURL, forKey: "baseURL")
         d.set(apiKey, forKey: "apiKey")
@@ -97,6 +103,7 @@ struct AppSettings {
         args += [useLLM ? "--llm" : "--no-llm"]
         args += [useMorphology ? "--morphology" : "--no-morphology"]
         args += [capitalizeSentences ? "--capitalize-sentences" : "--no-capitalize-sentences"]
+        args += [capitalizeFirst ? "--capitalize-first" : "--no-capitalize-first"]
         args += ["--timeout", String(timeout)]
         if !baseURL.isEmpty { args += ["--base-url", baseURL] }
         if !apiKey.isEmpty { args += ["--api-key", apiKey] }
