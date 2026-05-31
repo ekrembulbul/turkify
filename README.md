@@ -78,6 +78,7 @@ Kaynaktan derleme/paketleme: **[macos/packaging/README.md](macos/packaging/READM
 
 | Doküman | İçerik |
 |---|---|
+| [CHANGELOG.md](CHANGELOG.md) | Sürüm sürüm değişiklikler |
 | [docs/KURULUM.md](docs/KURULUM.md) | Kurulum, kullanım, yapılandırma, sorun giderme |
 | [docs/PLAN.md](docs/PLAN.md) | Mimari ve tasarım kararları |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Fazlara bölünmüş uygulama planı |
