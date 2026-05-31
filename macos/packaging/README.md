@@ -15,6 +15,7 @@ PyInstaller (motor → turkify-engine)  →  .app Resources'a kopyala
 | `turkify_engine.py` | PyInstaller giriş noktası (`turkify` CLI `main()`'i çağırır) |
 | `turkify-engine.spec` | PyInstaller yapılandırması (onedir; turkify + zeyrek verisi gömülü) |
 | `build_engine.sh` | Temiz venv'de motoru dondurur → `dist/turkify-engine/` |
+| `build_all.sh` | Release `.app`'i derler + `dist/Turkify-<surum>-macos.zip` uretir |
 
 `build/`, `dist/`, `.build-venv/` git'te yok sayılır.
 
