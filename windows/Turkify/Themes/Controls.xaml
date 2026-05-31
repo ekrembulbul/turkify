@@ -457,7 +457,10 @@
         <Setter Property="Padding" Value="3" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <!-- Yatay kaydırma kapalı: öğeler viewport genişliğine sınırlanır, böylece
+             içerik (örn. Log) sarabilir. Dikey kaydırma gerektiğinde görünür. -->
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBox">
@@ -466,7 +469,9 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             SnapsToDevicePixels="True">
-                        <ScrollViewer Padding="{TemplateBinding Padding}" Focusable="False">
+                        <ScrollViewer Padding="{TemplateBinding Padding}" Focusable="False"
+                                      HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                      VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
                             <ItemsPresenter SnapsToDevicePixels="True" />
                         </ScrollViewer>
                     </Border>

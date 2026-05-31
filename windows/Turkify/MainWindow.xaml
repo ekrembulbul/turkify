@@ -224,17 +224,23 @@
                                Margin="0,0,12,0" Foreground="{DynamicResource App.Text.Tertiary}" />
                 </DockPanel>
                 <ListBox x:Name="LogList" FontFamily="Consolas" FontSize="11"
-                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
                          VirtualizingPanel.IsVirtualizing="True">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Time}" Foreground="{DynamicResource App.Text.Tertiary}" Margin="0,0,8,0" />
-                                <TextBlock x:Name="SourceText" Text="{Binding SourceLabel}" Margin="0,0,8,0"
+                            <!-- Zaman + kaynak sabit; mesaj yıldız sütununda sarar
+                                 (yatay StackPanel sonsuz genişlik verip sarmayı engelliyordu). -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Time}" Foreground="{DynamicResource App.Text.Tertiary}" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="1" x:Name="SourceText" Text="{Binding SourceLabel}" Margin="0,0,8,0"
                                            Foreground="{DynamicResource App.Log.Engine}" />
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                <TextBlock Grid.Column="2" Text="{Binding Text}" TextWrapping="Wrap"
                                            Foreground="{DynamicResource App.Text.Primary}" />
-                            </StackPanel>
+                            </Grid>
                             <DataTemplate.Triggers>
                                 <DataTrigger Binding="{Binding Source}" Value="{x:Static local:LogSource.System}">
                                     <Setter TargetName="SourceText" Property="Foreground" Value="{DynamicResource App.Log.System}" />
