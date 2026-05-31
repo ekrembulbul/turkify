@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# turkify-fix başlatıcı — DE custom shortcut'ı buna işaret eder.
+#
+# Doğru Python'u (önce repo .venv, sonra PATH'teki python3) bulur ve ince istemciyi
+# (linux/turkify_fix.py) çalıştırır. turkify paketinin o Python'da kurulu olması gerekir
+# (pip install -e ".[morphology]"). Bkz. linux/README.md.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # linux/bin
+linux_dir="$(cd "$here/.." && pwd)"                     # linux
+repo="$(cd "$linux_dir/.." && pwd)"                     # repo kökü
+
+if [[ -x "$repo/.venv/bin/python" ]]; then
+  py="$repo/.venv/bin/python"
+else
+  py="$(command -v python3 || true)"
+fi
+[[ -n "$py" ]] || { echo "turkify-fix: python3 bulunamadı" >&2; exit 1; }
+
+exec env PYTHONPATH="$linux_dir${PYTHONPATH:+:$PYTHONPATH}" "$py" -m turkify_fix "$@"

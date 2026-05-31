@@ -1,0 +1,23 @@
+# Turkify motor servisi (systemd --user) — motoru sıcak tutar, Unix soketinde dinler.
+#
+# Bu bir ŞABLONDUR: ExecStart'taki Python yolu makineye göre değişir. Kurulum için
+# linux/install.sh kullanın — doğru Python yolunu çözüp bu unit'i
+# ~/.config/systemd/user/turkify.service olarak yazar ve servisi etkinleştirir.
+#
+# RuntimeDirectory=turkify → systemd $XDG_RUNTIME_DIR/turkify (%t/turkify) dizinini
+# oluşturur ve servis durunca temizler. Soket yolu turkify.config.socket_path() ile
+# birebir aynıdır (ince istemci aynı yola bağlanır). Bkz. ADR 0005.
+
+[Unit]
+Description=Turkify düzeltme motoru (sıcak servis)
+Documentation=https://github.com/ekrembulbul/turkify
+
+[Service]
+Type=simple
+RuntimeDirectory=turkify
+ExecStart=/path/to/python -m turkify serve --socket %t/turkify/engine.sock
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

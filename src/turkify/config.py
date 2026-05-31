@@ -18,6 +18,7 @@ uygular. ``apply()`` çözülmüş ayarları reranker modülüne yazar.
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 
 # Config sorunları "turkify" günlüğüne WARNING olarak yazılır; --verbose olmasa
@@ -79,6 +80,22 @@ def protected_words_path(settings: dict | None = None) -> Path:
     if explicit:
         return Path(explicit)
     return config_path().parent / "protected_words.txt"
+
+
+def socket_path() -> Path:
+    """Linux servis soketinin yolunu döner (`turkify serve --socket` + ince istemci).
+
+    İnce istemci (``linux/turkify_fix.py``) ve ``systemd --user`` servisi aynı soketi
+    bulsun diye tek kaynak budur (bkz. [ADR 0005](../../docs/adr/0005-linux-terminal-servis.md)).
+
+    Öncelik: ``TURKIFY_SOCKET`` env > ``$XDG_RUNTIME_DIR/turkify/engine.sock``. Çalışma
+    zamanı dizini yoksa (nadiren) sistem geçici dizinine düşülür.
+    """
+    override = os.environ.get("TURKIFY_SOCKET")
+    if override:
+        return Path(override)
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()
+    return Path(runtime) / "turkify" / "engine.sock"
 
 
 def load(path: Path | str | None = None) -> dict:

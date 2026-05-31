@@ -31,4 +31,5 @@ turkify = ["data/*.txt", "prompts/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "linux": ince istemci (linux/turkify_fix.py) testlerden import edilebilsin.
+pythonpath = ["src", "linux"]

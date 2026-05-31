@@ -63,6 +63,29 @@ def test_config_path_uses_xdg_on_unix(monkeypatch):
     assert str(config.config_path()) == "/tmp/xdg/turkify/config.json"
 
 
+# --- socket_path(): Linux servis soketi (ADR 0005) ---
+
+
+def test_socket_path_respects_env(monkeypatch):
+    monkeypatch.setenv("TURKIFY_SOCKET", "/tmp/ozel/turkify.sock")
+    assert config.socket_path() == config.Path("/tmp/ozel/turkify.sock")
+
+
+def test_socket_path_uses_xdg_runtime_dir(monkeypatch):
+    monkeypatch.delenv("TURKIFY_SOCKET", raising=False)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+    assert str(config.socket_path()) == "/run/user/1000/turkify/engine.sock"
+
+
+def test_socket_path_falls_back_to_tempdir(monkeypatch):
+    # XDG_RUNTIME_DIR yoksa (nadiren) sistem geçici dizinine düşülür; çökmemeli.
+    monkeypatch.delenv("TURKIFY_SOCKET", raising=False)
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    path = config.socket_path()
+    assert path.name == "engine.sock"
+    assert path.parent.name == "turkify"
+
+
 # --- resolve(): tam oncelik (CLI > env > config > varsayilan) ---
 
 
