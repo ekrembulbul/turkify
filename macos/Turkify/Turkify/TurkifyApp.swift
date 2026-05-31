@@ -113,11 +113,6 @@ final class AppState: ObservableObject {
         if logLines.count > 1000 { logLines.removeFirst(logLines.count - 1000) }
     }
 
-    /// İdle/durum ikonu (busy iken spinner gösterilir; bkz. MenuBarLabel).
-    var menuBarSymbol: String {
-        engineRunning ? "textformat" : "exclamationmark.triangle"
-    }
-
     func startup() {
         // Log'ları UI'ya yönlendir (her thread'den çağrılabilir → main'e geç).
         Log.sink = { source, message in
@@ -543,8 +538,14 @@ struct MenuBarLabel: View {
             // animasyon yapmadığı için timer-güdümlü dönen bir SF Symbol kullanıyoruz.
             Image(systemName: "rays")
                 .rotationEffect(.degrees(state.spinnerAngle))
+        } else if state.engineRunning {
+            // Marka kısaltması "Tr" (uygulama ikonuyla aynı). Menü-bar tasarım gereği
+            // monokromdur; sistem yazı tipi + varsayılan renk ile açık/koyu görünüme uyar.
+            Text("Tr")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
         } else {
-            Image(systemName: state.menuBarSymbol)
+            // Motor çalışmıyor: durum uyarısı (eski davranış korunur).
+            Image(systemName: "exclamationmark.triangle")
         }
     }
 }
