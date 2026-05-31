@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Turkify uygulama ikonu üreticisi (Windows .ico + macOS AppIcon PNG seti).
 
-Tasarım: mavi gradyan yuvarlak-kare (squircle) + beyaz geometrik "T" + üstünde
-Türkçe diakritik işareti (breve ˘). Marka rengi macOS/Windows ortak mavi tonu.
+Tasarım: mavi gradyan yuvarlak-kare (squircle) + beyaz "Tr" harfleri (bold).
+Marka rengi macOS/Windows ortak mavi tonu.
 
 Tek bağımlılık: Pillow (yalnızca derleme/asset üretimi için; çalışma-zamanı değil).
 Çalıştırma:  python tools/icons/generate_icons.py
@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 # --- Tasarım sabitleri (tile boyutuna göre oransal) ---
 SS = 4  # supersampling: kenarları pürüzsüzleştirmek için bu kat büyük çizilir
@@ -20,6 +20,13 @@ RADIUS_RATIO = 0.225  # köşe yarıçapı / tile boyutu (squircle görünümü)
 GRAD_TOP = (62, 131, 244)    # #3E83F4 — üst (açık mavi)
 GRAD_BOTTOM = (27, 77, 189)  # #1B4DBD — alt (koyu mavi)
 GLYPH = (255, 255, 255)      # beyaz harf
+GLYPH_TEXT = "Tr"            # ikonda gösterilen marka metni
+
+# Glyph için bold yazı tipi adayları (yalnızca üretim anında, asset'e gömülür).
+FONT_CANDIDATES = [
+    r"C:\Windows\Fonts\segoeuib.ttf",  # Segoe UI Bold — uygulama UI yazı tipiyle uyumlu
+    r"C:\Windows\Fonts\arialbd.ttf",   # Arial Bold — yedek
+]
 
 REPO = Path(__file__).resolve().parents[2]
 WIN_ICO = REPO / "windows" / "Turkify" / "Assets" / "Turkify.ico"
@@ -45,43 +52,31 @@ def _rounded_mask(size: int, radius: int) -> Image.Image:
     return mask
 
 
-WITH_BREVE = False  # Türkçe breve aksanı (deneysel). Sade "T" her boyutta daha net okunur.
+def _font(size: int) -> ImageFont.FreeTypeFont:
+    for path in FONT_CANDIDATES:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    raise FileNotFoundError("Bold yazı tipi bulunamadı: " + ", ".join(FONT_CANDIDATES))
 
 
 def _draw_glyph(draw: ImageDraw.ImageDraw, box: tuple[float, float, float, float]) -> None:
-    """Verilen kutuya beyaz geometrik 'T' çizer (opsiyonel breve aksanıyla)."""
+    """Verilen kutuya beyaz 'Tr' metnini bold fontla, ortalanmış çizer."""
     x0, y0, x1, y1 = box
-    s = x1 - x0           # kutu (kare) boyutu
-    cx = (x0 + x1) / 2
+    s = x1 - x0
+    max_w, max_h = 0.80 * s, 0.62 * s  # metnin sığacağı sınırlar (kutuya göre)
 
-    bar_h = 0.15 * s
-    stem_w = 0.17 * s
-    type_w = 0.54 * s
-    type_h = 0.54 * s
-    corner = 0.04 * s
+    # Büyük başla, ölç, sınırlara göre tek seferde ölçekle, yeniden ölç ve ortala.
+    size = round(s)
+    left, top, right, bottom = draw.textbbox((0, 0), GLYPH_TEXT, font=_font(size))
+    width, height = right - left, bottom - top
+    size = max(1, round(size * min(max_w / width, max_h / height)))
 
-    if WITH_BREVE:
-        breve_h = 0.115 * s
-        gap = 0.085 * s
-        total_h = breve_h + gap + type_h
-        top = y0 + (s - total_h) / 2
-        breve_w, breve_th = 0.34 * s, 0.05 * s
-        draw.arc(
-            [cx - breve_w / 2, top, cx + breve_w / 2, top + breve_h * 2],
-            start=30, end=150, fill=GLYPH, width=round(breve_th),
-        )
-        t_top = top + breve_h + gap
-    else:
-        t_top = y0 + (s - type_h) / 2
-
-    # T: üst bar + dikey gövde (hafif yuvarlatılmış köşeler).
-    draw.rounded_rectangle(
-        [cx - type_w / 2, t_top, cx + type_w / 2, t_top + bar_h],
-        radius=corner, fill=GLYPH,
-    )
-    draw.rounded_rectangle(
-        [cx - stem_w / 2, t_top, cx + stem_w / 2, t_top + type_h],
-        radius=corner, fill=GLYPH,
+    font = _font(size)
+    left, top, right, bottom = draw.textbbox((0, 0), GLYPH_TEXT, font=font)
+    width, height = right - left, bottom - top
+    draw.text(
+        (x0 + (s - width) / 2 - left, y0 + (s - height) / 2 - top),
+        GLYPH_TEXT, font=font, fill=GLYPH,
     )
 
 
