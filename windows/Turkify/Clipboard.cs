@@ -14,7 +14,11 @@ public static class ClipboardBridge
 
     private const int InputKeyboard = 1;
     private const uint KeyEventKeyUp = 0x0002;
+    private const ushort VkShift = 0x10;
     private const ushort VkControl = 0x11;
+    private const ushort VkMenu = 0x12; // Alt
+    private const ushort VkLWin = 0x5B;
+    private const ushort VkRWin = 0x5C;
     private const ushort VkC = 0x43;
     private const ushort VkV = 0x56;
 
@@ -58,13 +62,23 @@ public static class ClipboardBridge
 
     public static void SendPaste(Dispatcher dispatcher) => SendCtrl(dispatcher, VkV);
 
-    /// Ctrl + <paramref name="key"/> kombinasyonunu aktif uygulamaya gönderir
-    /// (Ctrl↓, key↓, key↑, Ctrl↑).
+    /// Temiz bir Ctrl + <paramref name="key"/> kombinasyonunu aktif uygulamaya gönderir.
+    ///
+    /// Akış global kısayolla (örn. Ctrl+Alt+Win) tetiklendiğinde kullanıcı bu
+    /// modifier'ları HÂLÂ basılı tutuyor olabilir. Bırakılmazlarsa hedef uygulama
+    /// Ctrl+key yerine Ctrl+Alt+Win+key görür ve kopyala/yapıştır İŞLEMEZ (eski pano
+    /// kalır → eski metin yapıştırılır). Bu yüzden önce istenmeyen modifier'ları
+    /// (Alt/Win/Shift) bırakıp ardından temiz Ctrl+key göndeririz.
+    /// (macOS'ta CGEvent.flags = .maskCommand ile aynı amaç.)
     private static void SendCtrl(Dispatcher dispatcher, ushort key) =>
         dispatcher.Invoke(() =>
         {
             INPUT[] inputs =
             [
+                KeyUp(VkMenu),
+                KeyUp(VkLWin),
+                KeyUp(VkRWin),
+                KeyUp(VkShift),
                 KeyDown(VkControl),
                 KeyDown(key),
                 KeyUp(key),
