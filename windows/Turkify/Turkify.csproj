@@ -10,7 +10,13 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>Turkify</AssemblyName>
     <RootNamespace>Turkify</RootNamespace>
-    <ApplicationIcon></ApplicationIcon>
+    <!-- Exe ikonu (Explorer/taskbar). -->
+    <ApplicationIcon>Assets\Turkify.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pencere (Window.Icon) ve tray (NotifyIcon) pack URI ile bu kaynaktan okur. -->
+    <Resource Include="Assets\Turkify.ico" />
+  </ItemGroup>
 
 </Project>

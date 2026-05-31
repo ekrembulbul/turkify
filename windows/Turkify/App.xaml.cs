@@ -58,13 +58,33 @@ public partial class App : Application
 
         _trayIcon = new WinForms.NotifyIcon
         {
-            // TODO(ekrem): Aşama 3'te gerçek uygulama ikonu (.ico) ile değiştirilecek.
-            Icon = SystemIcons.Application,
+            Icon = LoadAppIcon(),
             Text = "Turkify",
             Visible = true,
             ContextMenuStrip = menu,
         };
         _trayIcon.DoubleClick += (_, _) => ShowMainWindow();
+    }
+
+    /// Tray ikonu: gömülü Turkify.ico'dan tray'e uygun küçük boyutu seçer.
+    /// Kaynak bulunamazsa sistem ikonuna düşer (uygulama yine de açılır).
+    private static Icon LoadAppIcon()
+    {
+        try
+        {
+            var info = Application.GetResourceStream(new Uri("pack://application:,,,/Assets/Turkify.ico"));
+            if (info is not null)
+            {
+                using var stream = info.Stream;
+                return new Icon(stream, WinForms.SystemInformation.SmallIconSize);
+            }
+        }
+        catch (Exception)
+        {
+            // Kaynak okunamadı: aşağıdaki sistem ikonuna düş.
+        }
+
+        return SystemIcons.Application;
     }
 
     private void ShowMainWindow()
