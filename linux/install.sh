@@ -101,8 +101,11 @@ cat <<EOF
     ydotool kuruluysa otomatik yapıştırılır; değilse Ctrl+V ile yapıştır.
 
 ==> (Opsiyonel) otomatik yapıştırma için ydotool:
-      sudo apt install ydotool        # veya dağıtımının paketi
-      systemctl --user enable --now ydotool   # ydotoold daemon'u (uinput erişimi gerekir)
+      sudo apt install ydotool          # veya dağıtımının paketi
+      sudo usermod -aG input "\$USER"    # /dev/uinput erişimi (zorunlu adım)
+      # --- oturumu kapatıp açın (grup üyeliği yeni oturumda geçerli olur) ---
+      systemctl --user enable --now ydotool.service
+    Detay/sorun giderme: linux/README.md → "Otomatik yapıştırma (ydotool)".
     Not: Flatpak sandbox uinput'a erişemez → ydotool Flatpak'te çalışmaz (ADR 0005).
 
 ==> Config değişince servisi tazele:  systemctl --user restart turkify.service

@@ -47,6 +47,45 @@ linux/install.sh
 Sonra **GNOME/KDE kısayol** kurulum adımlarını ve komutun tam yolunu
 (`…/linux/bin/turkify-fix`) ekrana yazar.
 
+## Kısayol tanımlama (GNOME/KDE)
+
+Düzeltme, masaüstü ortamının **kendi kısayoludur** (uygulama tuş yakalamaz —
+Wayland kısıtı). Kısayol `linux/bin/turkify-fix`'i çalıştırır. Kombinasyonu siz
+seçersiniz; başka kısayollarla çakışmayan biri olsun (Ubuntu'da `Ctrl+Alt+T`
+terminale bağlıdır — kullanmayın).
+
+### GNOME — Ayarlar (GUI)
+
+Ayarlar → **Klavye** → **Özel Kısayollar** → **+**:
+
+- **Ad:** `Turkify duzelt`
+- **Komut:** `<REPO>/linux/bin/turkify-fix` (tam yol; `install.sh` ekrana yazar)
+- **Kısayol:** tercihiniz (ör. `Ctrl+Super+Alt+A`)
+
+### GNOME — gsettings (komut satırı)
+
+Aynı tanımı terminalden yapmak için (komut yolunu ve `binding`'i kendinize göre
+düzenleyin):
+
+```bash
+KEY=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/turkify/
+SCHEMA="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$KEY"
+gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "['$KEY']"
+gsettings set "$SCHEMA" name 'Turkify duzelt'
+gsettings set "$SCHEMA" command "$HOME/projects/turkify/linux/bin/turkify-fix"
+gsettings set "$SCHEMA" binding '<Control><Super><Alt>a'   # ctrl+super+alt+a
+```
+
+> ⚠️ İlk `set` listeyi **tek girdiyle değiştirir**. Zaten özel kısayollarınız
+> varsa onları kaybetmemek için mevcut listeye `turkify` yolunu **ekleyin** (ya da
+> GUI'yi kullanın). Mevcut listeyi görmek için:
+> `gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings`
+
+### KDE
+
+Sistem Ayarları → **Kısayollar** → **Özel Kısayollar** → yeni global kısayol;
+eylem (komut) olarak `<REPO>/linux/bin/turkify-fix`.
+
 ## Kullanım
 
 Metni **vurgula** → kısayola **bas**. Düzeltilmiş metin panoya yazılır:
@@ -59,16 +98,42 @@ Metni **vurgula** → kısayola **bas**. Düzeltilmiş metin panoya yazılır:
 ## Otomatik yapıştırma (ydotool, opsiyonel)
 
 GNOME/KDE Wayland'da otomatik yapıştırma yalnızca **ydotool** ile mümkündür
-(`wtype` sadece wlroots tabanlı Sway/Hyprland'de çalışır):
+(`wtype` yalnızca wlroots tabanlı Sway/Hyprland'de çalışır). ydotool, `ydotoold`
+daemon'u üzerinden `/dev/uinput`'a tuş enjekte eder; bu cihaz `root:input 0660`
+olduğundan kullanıcının **`input` grubunda** olması gerekir.
 
 ```bash
-sudo apt install ydotool
-systemctl --user enable --now ydotool   # ydotoold daemon'u — /dev/uinput erişimi ister
+# 1) Kur
+sudo apt install ydotool          # veya dağıtımınızın paketi
+
+# 2) /dev/uinput erişimi için 'input' grubuna gir (daemon cihazı açabilsin)
+sudo usermod -aG input "$USER"
+
+# 3) OTURUMU KAPATIP AÇIN (veya yeniden başlatın) — grup üyeliği yalnızca yeni
+#    oturumda (ve systemd --user yöneticisinde) geçerli olur.
+
+# 4) Girişten sonra daemon'u başlat
+systemctl --user reset-failed ydotool.service   # eski başarısız denemeleri temizle
+systemctl --user enable --now ydotool.service
+systemctl --user status ydotool.service          # 'active (running)' olmalı
 ```
 
-`/dev/uinput` erişimi için kullanıcının `input` grubunda olması veya bir udev kuralı
-gerekebilir (dağıtıma göre). Kurulu/erişilebilir değilse istemci sessizce
-elle-yapıştırma bildirimine düşer.
+`/dev/uinput`'in grup/izni `80-uinput.rules` udev kuralıyla zaten ayarlıdır
+(`KERNEL=="uinput", GROUP="input", MODE="0660"`); tek gereken kullanıcının `input`
+grubunda olmasıdır.
+
+**Sorun giderme.** `systemctl --user status ydotool` `failed` ve logda
+`failed to open uinput device: Permission denied` görüyorsanız: henüz `input`
+grubunda değilsiniz ya da oturumu yenilemediniz.
+
+```bash
+groups | grep -q input && echo "input grubunda" || echo "input grubunda DEGIL -> 2-3. adim"
+journalctl --user -u ydotool.service -n 20 --no-pager   # gercek hata
+```
+
+ydotool kurulu/erişilebilir **değilse** `turkify-fix` sessizce elle-yapıştırma
+bildirimine düşer (metin panoda kalır, **Ctrl+V** ile yapıştırılır) — yani ydotool
+tamamen opsiyoneldir, kurulu olmadan da düzeltme çalışır.
 
 ## Servis yönetimi
 
