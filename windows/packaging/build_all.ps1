@@ -1,8 +1,8 @@
-# Turkify — Windows kurulum paketini (TurkifySetup.exe) TEK ADIMDA uretir.
+# Turkify — Windows kurulum paketini (TurkifySetup-<surum>.exe) TEK ADIMDA uretir.
 #
 # Sirasiyla:  motoru dondur (PyInstaller)  ->  uygulamayi yayinla + motoru gom (dotnet)
 #             ->  installer derle (Inno Setup)
-# Cikti:      windows\packaging\dist\TurkifySetup.exe
+# Cikti:      windows\packaging\dist\TurkifySetup-<surum>.exe
 #
 # Kullanim (repo kokunden veya herhangi bir yerden):
 #   .\windows\packaging\build_all.ps1
@@ -19,8 +19,16 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repo = (Resolve-Path (Join-Path $here '..\..')).Path
 $engineExe = Join-Path $here 'dist\turkify-engine\turkify-engine.exe'
-$setupExe = Join-Path $here 'dist\TurkifySetup.exe'
+
+# Surumu tek kaynaktan (pyproject.toml) oku; cikti adi TurkifySetup-<surum>.exe olur
+# (Inno Setup .iss OutputBaseFilename de ayni AppVersion'i kullanir).
+$pyproject = Join-Path $repo 'pyproject.toml'
+$versionLine = Select-String -Path $pyproject -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1
+if (-not $versionLine) { throw "pyproject.toml icinde surum bulunamadi: $pyproject" }
+$version = $versionLine.Matches[0].Groups[1].Value
+$setupExe = Join-Path $here "dist\TurkifySetup-$version.exe"
 
 function Find-Iscc {
     param([string]$Explicit)

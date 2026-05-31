@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Turkify — macOS dagitim paketini (Turkify-<surum>-macos.zip) TEK ADIMDA uretir.
+# Turkify — macOS dagitim paketini (Turkify-<surum>.zip) TEK ADIMDA uretir.
 #
 # Sirasiyla:  Release .app derle (xcodebuild; motor Run Script ile gomulur)
 #             ->  .app'i ditto ile zip'le
-# Cikti:      macos/packaging/dist/Turkify-<surum>-macos.zip
+# Cikti:      macos/packaging/dist/Turkify-<surum>.zip
 #
 # Kullanim (repo kokunden veya herhangi bir yerden):
 #   macos/packaging/build_all.sh                 # Release derle + zip'le
@@ -88,7 +88,7 @@ if [ ! -x "$APP/Contents/Resources/turkify-engine/turkify-engine" ]; then
 fi
 
 # 3) ditto ile zip'le (--keepParent: zip kokunde Turkify.app olur).
-ZIP="$DIST/Turkify-$VERSION-macos.zip"
+ZIP="$DIST/Turkify-$VERSION.zip"
 echo "==> [2/2] Paketleniyor: $ZIP"
 mkdir -p "$DIST"
 rm -f "$ZIP"

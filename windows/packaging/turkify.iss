@@ -3,10 +3,10 @@
 ;   (dist\Turkify\ icinde Turkify.exe + turkify-engine\ hazir olmali).
 ; Derleme: Inno Setup kurulu olmali (https://jrsoftware.org/isdl.php), sonra:
 ;   iscc windows\packaging\turkify.iss
-; Cikti: windows\packaging\dist\TurkifySetup.exe
+; Cikti: windows\packaging\dist\TurkifySetup-<surum>.exe
 
 #define AppName "Turkify"
-#define AppVersion "1.0.0"
+#define AppVersion "1.1.0"
 #define AppPublisher "Turkify"
 #define AppExeName "Turkify.exe"
 
@@ -19,7 +19,7 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir=dist
-OutputBaseFilename=TurkifySetup
+OutputBaseFilename=TurkifySetup-{#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

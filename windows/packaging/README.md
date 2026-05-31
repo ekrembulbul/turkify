@@ -17,7 +17,7 @@ PyInstaller (motor → turkify-engine.exe)   [build_engine.ps1]
 | `turkify-engine.spec` | PyInstaller yapılandırması (onedir; turkify + zeyrek verisi gömülü) |
 | `build_engine.ps1` | Temiz venv'de motoru dondurur → `dist\turkify-engine\turkify-engine.exe` |
 | `build_app.ps1` | WPF'i self-contained yayınlar + motoru gömer → `dist\Turkify\` |
-| `turkify.iss` | Inno Setup installer betiği → `dist\TurkifySetup.exe` |
+| `turkify.iss` | Inno Setup installer betiği → `dist\TurkifySetup-<surum>.exe` |
 
 `build\`, `dist\`, `.build-venv\` git'te yok sayılır.
 
@@ -45,7 +45,7 @@ bu gömülü ikiliyi kullanır.
 ```powershell
 iscc windows\packaging\turkify.iss
 ```
-Çıktı: `windows\packaging\dist\TurkifySetup.exe`. Program Files'a kurar, Başlat menüsü
+Çıktı: `windows\packaging\dist\TurkifySetup-<surum>.exe`. Program Files'a kurar, Başlat menüsü
 kısayolu ekler; isteğe bağlı masaüstü simgesi ve "Windows ile başlat".
 
 ---
