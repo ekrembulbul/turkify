@@ -845,7 +845,7 @@ struct SettingsView: View {
                     // Bağımlı alt-seçenek: "↳" öneki + "üstteki ayar açıkken" açıklaması +
                     // üst ayar kapalıyken devre dışı (locked) ile bağımlılık belli edilir.
                     tierRow(
-                        title: "↳ Seçimin ilk harfini de büyüt",
+                        title: "Seçimin ilk harfini de büyüt",
                         detail: "Seçili metnin en başındaki küçük harfi de büyütür. Yalnızca üstteki ayar açıkken geçerlidir.",
                         isOn: $state.settings.capitalizeFirst,
                         locked: !state.settings.capitalizeSentences
