@@ -21,7 +21,12 @@ from functools import lru_cache
 from turkify import frequency, harmony, learn, morphology, reranker, sentence_case
 from turkify.candidates import generate_candidates
 from turkify.deasciifier import deasciify
-from turkify.protect import load_protected_words, protected_spans, tr_lower
+from turkify.protect import (
+    load_protected_words,
+    pattern_spans,
+    protected_spans,
+    tr_lower,
+)
 from turkify.reconstruct import restore_spans
 from turkify.tokenizer import tokenize
 
@@ -347,9 +352,11 @@ def correct(
 
     # Son-işlem: cümle başlarını büyüt (uzunluğu koruduğundan span'lar geçerli kalır).
     # capitalize_first yalnızca capitalize_sentences açıkken etkilidir (bağımlı ayar).
+    # Yalnızca yapısal kalıplar (URL/e-posta) büyütmeden muaftır; kullanıcı korumalı
+    # kelimeleri cümle başında normal kelimeler gibi büyütülür (bkz. pattern_spans).
     if capitalize_sentences:
         result = sentence_case.capitalize_sentences(
-            result, spans, capitalize_first=capitalize_first
+            result, pattern_spans(text), capitalize_first=capitalize_first
         )
 
     return result

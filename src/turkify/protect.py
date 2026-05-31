@@ -104,3 +104,19 @@ def protected_spans(
                 spans.append((chunk_start + token.start, chunk_start + token.end))
 
     return spans
+
+
+def pattern_spans(text: str) -> list[tuple[int, int]]:
+    """Yalnızca yapısal kalıp (URL/e-posta/sayı/kod) içeren chunk aralıkları.
+
+    Büyük harf (``sentence_case``) bu aralıkları atlar: bir URL'nin ya da e-posta
+    adresinin ilk harfini büyütmek anlamı bozabilir (örn. ``ali@x.com`` →
+    ``Ali@x.com``). Kullanıcı korumalı kelimeleri ve zaten Türkçe-karakterli
+    kelimeler BURAYA dahil DEĞİLDİR; onlar cümle başında normal kelimeler gibi
+    büyütülür (yalnızca diakritik restorasyonundan muaftırlar, büyük harften değil).
+    """
+    spans: list[tuple[int, int]] = []
+    for chunk_match in _CHUNK_RE.finditer(text):
+        if _is_whole_chunk_protected(chunk_match.group()):
+            spans.append((chunk_match.start(), chunk_match.end()))
+    return spans
