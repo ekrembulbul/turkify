@@ -333,22 +333,21 @@ peyderpey doğrulanacaktır.
 | Platform | Durum |
 |---|---|
 | Windows | Beklenen şekilde çalışır (henüz doğrulanmadı) |
-| Linux / X11 | Pano için `xclip` veya `xsel` kurulu olmalı |
-| Linux / Wayland | Pano için `wl-clipboard`; otomatik yapıştırma `ydotool` ister |
+| Linux / X11 | Pano için `xclip` veya `xsel`; yapıştırma manuel (Ctrl+V) |
+| Linux / Wayland | Pano için `wl-clipboard`; yapıştırma manuel (Ctrl+V) |
 
-### Linux masaüstü entegrasyonu (Faz 6.3a)
+### Linux masaüstü entegrasyonu (Faz 6.3)
 
 Native GUI yok: `systemd --user` servisi motoru sıcak tutar, DE kısayolu ince
 istemciyi (`turkify-fix`) çalıştırır — seçimi **PRIMARY selection**'dan okur
-(tuş simülasyonsuz, Wayland-uyumlu), düzeltir, panoya yazar ve `ydotool` varsa
-otomatik yapıştırır.
+(tuş simülasyonsuz, Wayland-uyumlu), düzeltir, panoya yazar ve bildirim gösterir;
+kullanıcı **Ctrl+V** ile yapıştırır (otomatik tuş enjeksiyonu yoktur).
 
 ```bash
-# Pano araçları:  Wayland → sudo apt install wl-clipboard ;  X11 → sudo apt install xclip
-linux/install.sh        # servisi kurar + GNOME/KDE kısayol talimatını basar
+linux/install.sh        # tek komut: venv+paket, araçlar (apt), servis, GNOME kısayolu
 ```
 
-Tam adımlar, ydotool kurulumu ve servis yönetimi: **[linux/README.md](../linux/README.md)**.
+Tam adımlar ve servis yönetimi: **[linux/README.md](../linux/README.md)**.
 Tasarım gerekçesi: [ADR 0005](adr/0005-linux-terminal-servis.md).
 
 Ayrıntı: [PORTABILITY.md](PORTABILITY.md).

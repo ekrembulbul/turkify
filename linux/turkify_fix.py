@@ -5,12 +5,13 @@ kısayolu bu betiği çalıştırır. Akış (bkz. [ADR 0005](../docs/adr/0005-l
 
     1. Seçimi PRIMARY selection'dan oku (tuş simülasyonu YOK — Wayland-uyumlu).
     2. Sıcak servise (Unix soketi) gönder; soket yoksa cold-start fallback.
-    3. Düzeltilmiş metni panoya yaz.
-    4. ydotool varsa otomatik Ctrl+V; yoksa bildirim + kullanıcı elle yapıştırır.
+    3. Düzeltilmiş metni panoya yaz + bildirim göster.
+    4. Kullanıcı **Ctrl+V** ile yapıştırır. Otomatik tuş enjeksiyonu YOKTUR
+       (ydotool ile Ctrl+V kararsızdı; manuel yapıştırma kararlı ve basittir).
 
-Çekirdek motor (``src/turkify``) platform-nötr kalır; bu modül Linux'a özel pano/
-enjeksiyon glue'sudur. Yalnızca hafif ``turkify.config`` baştan import edilir
-(soket yolu ortak kaynağı); motor cold-start fallback'te tembel yüklenir.
+Çekirdek motor (``src/turkify``) platform-nötr kalır; bu modül Linux'a özel pano
+glue'sudur. Yalnızca hafif ``turkify.config`` baştan import edilir (soket yolu ortak
+kaynağı); motor cold-start fallback'te tembel yüklenir.
 """
 
 import json
@@ -19,31 +20,13 @@ import shutil
 import socket
 import subprocess
 import sys
-import time
 
 from turkify import config
 
-# Yapıştırmadan önce bekleme (sn): kullanıcının kısayol tuşlarını fiziksel bırakması
-# ve compositor'un odağı vermesi için. Race makineye/kişiye bağlı olduğundan
-# TURKIFY_PASTE_DELAY_MS env ile ayarlanabilir (bkz. _paste_delay_s).
-_DEFAULT_PASTE_DELAY_S = 0.25
-# Modifier bırakma ile Ctrl+V arasında, bırakmanın compositor'da işlenmesi için pay.
-_RELEASE_SETTLE_S = 0.06
-# ydotool'da tuş olayları arası gecikme (ms): Ctrl gerçekten basılı sayıldıktan sonra
-# V gelsin diye paste çağrısına verilir.
-_KEY_DELAY_MS = "12"
-# Pano/seçim/enjeksiyon araçlarına timeout (saniye) — takılı kalmayı önler.
+# Pano/seçim araçlarına timeout (saniye) — takılı kalmayı önler.
 _TOOL_TIMEOUT_S = 5.0
 # Sıcak servise bağlanma/yanıt timeout'u.
 _SOCKET_TIMEOUT_S = 10.0
-# Kısayolun basılı tuttuğu modifier tuşlarını ÖNCE bırak (key-up). Tetikleyici
-# kombinasyon (ör. Ctrl+Super+Alt+A) hâlâ fiziksel basılıyken enjekte edilen Ctrl+V
-# onlarla çakışır ve temiz bir yapıştırma olmaz; bu yüzden tümünü bırakırız. Linux
-# input-event-codes: LeftCtrl=29, RightCtrl=97, LeftShift=42, RightShift=54,
-# LeftAlt=56, RightAlt=100, LeftMeta(Super)=125, RightMeta=126 (durum 0 = bırak).
-_MODIFIER_RELEASE = ["29:0", "97:0", "42:0", "54:0", "56:0", "100:0", "125:0", "126:0"]
-# Ardından temiz Ctrl+V: Ctrl bas, V bas, V bırak, Ctrl bırak (KEY_V=47).
-_YDOTOOL_PASTE = ["29:1", "47:1", "47:0", "29:0"]
 
 # Uygulama adı (bildirim başlığı).
 _APP = "Turkify"
@@ -122,56 +105,6 @@ def write_clipboard(text: str) -> None:
             else [tool, "--clipboard", "--input"]
         )
     subprocess.run(cmd, input=text.encode("utf-8"), timeout=_TOOL_TIMEOUT_S)
-
-
-def _paste_delay_s() -> float:
-    """Yapıştırma öncesi bekleme (sn); ``TURKIFY_PASTE_DELAY_MS`` env ile ayarlanır.
-
-    Otomatik yapıştırma bazen ıskalıyorsa (kısayol tuşları geç bırakılıyorsa) bu
-    değeri artırın: ``TURKIFY_PASTE_DELAY_MS=400``. Geçersiz değer yok sayılır.
-    """
-    raw = os.environ.get("TURKIFY_PASTE_DELAY_MS")
-    if raw:
-        try:
-            return max(0.0, float(raw) / 1000.0)
-        except ValueError:
-            pass
-    return _DEFAULT_PASTE_DELAY_S
-
-
-def try_paste() -> bool:
-    """ydotool kuruluysa otomatik Ctrl+V enjekte eder; başardıysa ``True`` döner.
-
-    GNOME/KDE Wayland'da tek gerçekçi enjeksiyon yolu ydotool'dur (kernel uinput).
-    Akış, hotkey'in basılı tuttuğu modifier'larla çakışmayı önlemek için iki adımlı:
-
-    1. Bekle (:func:`_paste_delay_s`) — kullanıcı tuşları bıraksın, odak otursun.
-    2. Tüm modifier'ları bırak (:data:`_MODIFIER_RELEASE`), kısa pay, sonra **ayrı**
-       bir çağrıyla temiz Ctrl+V gönder. Tek seferde gönderilince bırakma bazen V'den
-       önce işlenmiyordu (aralıklı ıskalama); ayırmak bunu giderir.
-
-    ydotool yoksa / ``ydotoold`` çalışmıyorsa sessizce ``False`` döner; çağıran
-    elle-yapıştırma bildirimine düşer.
-    """
-    tool = _first_tool("ydotool")
-    if tool is None:
-        return False
-    time.sleep(_paste_delay_s())
-    try:
-        # 1) Basılı tutulan modifier'ları bırak (hotkey çakışmasını temizle).
-        subprocess.run(
-            [tool, "key", *_MODIFIER_RELEASE], capture_output=True, timeout=_TOOL_TIMEOUT_S
-        )
-        time.sleep(_RELEASE_SETTLE_S)
-        # 2) Temiz Ctrl+V (tuşlar arası küçük gecikmeyle).
-        paste = subprocess.run(
-            [tool, "key", "--key-delay", _KEY_DELAY_MS, *_YDOTOOL_PASTE],
-            capture_output=True,
-            timeout=_TOOL_TIMEOUT_S,
-        )
-    except subprocess.TimeoutExpired:
-        return False
-    return paste.returncode == 0
 
 
 def notify(message: str) -> None:
@@ -316,8 +249,6 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(f"turkify-fix: {exc}\n")
         return 1
 
-    if try_paste():
-        return 0
     notify("Düzeltildi — Ctrl+V ile yapıştır")
     return 0
 

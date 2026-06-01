@@ -1,11 +1,11 @@
 """Linux ince istemci (turkify_fix) testleri.
 
-Dış araçlar (wl-paste/xclip/ydotool/notify-send) ve soket subprocess/socket
-seviyesinde mock'lanır; gerçek pano/enjeksiyon yapılmaz. Düzeltme dağıtımının
-(soket → cold-start düşüşü) ve akışın saf mantığı doğrulanır.
+Dış araçlar (wl-paste/xclip/notify-send) ve soket subprocess/socket seviyesinde
+mock'lanır; gerçek pano işlemi yapılmaz. Düzeltme dağıtımının (soket → cold-start
+düşüşü) ve akışın saf mantığı doğrulanır. Yapıştırma manueldir (Ctrl+V); otomatik
+tuş enjeksiyonu yoktur.
 """
 
-import subprocess
 import types
 
 import pytest
@@ -24,12 +24,6 @@ def _completed(stdout: bytes = b"", returncode: int = 0):
 def _fake_which(available):
     """Yalnızca ``available`` kümesindeki araçlar için yol döndüren which sahtesi."""
     return lambda name: f"/usr/bin/{name}" if name in available else None
-
-
-@pytest.fixture(autouse=True)
-def _no_sleep(monkeypatch):
-    """Testlerde ydotool öncesi beklemeyi atla."""
-    monkeypatch.setattr(tf.time, "sleep", lambda _s: None)
 
 
 # --- session_type ---
@@ -132,57 +126,6 @@ def test_write_clipboard_missing_tool_raises(monkeypatch):
         tf.write_clipboard("x")
 
 
-# --- try_paste ---
-
-
-def test_try_paste_no_ydotool_returns_false(monkeypatch):
-    monkeypatch.setattr(tf.shutil, "which", _fake_which(set()))
-    assert tf.try_paste() is False
-
-
-def test_try_paste_success(monkeypatch):
-    monkeypatch.setattr(tf.shutil, "which", _fake_which({"ydotool"}))
-    calls = []
-
-    def fake_run(cmd, **kwargs):
-        calls.append(cmd)
-        return _completed(returncode=0)
-
-    monkeypatch.setattr(tf.subprocess, "run", fake_run)
-    assert tf.try_paste() is True
-    # İki ayrı çağrı: önce modifier'ları bırak, sonra temiz Ctrl+V.
-    assert len(calls) == 2
-    assert calls[0] == ["ydotool", "key", *tf._MODIFIER_RELEASE]
-    assert calls[1][:2] == ["ydotool", "key"]
-    assert "--key-delay" in calls[1]
-    assert calls[1][-len(tf._YDOTOOL_PASTE):] == tf._YDOTOOL_PASTE
-
-
-def test_paste_delay_env_override(monkeypatch):
-    monkeypatch.setenv("TURKIFY_PASTE_DELAY_MS", "400")
-    assert tf._paste_delay_s() == 0.4
-    monkeypatch.setenv("TURKIFY_PASTE_DELAY_MS", "gecersiz")
-    assert tf._paste_delay_s() == tf._DEFAULT_PASTE_DELAY_S  # bozuk deger yok sayilir
-    monkeypatch.delenv("TURKIFY_PASTE_DELAY_MS", raising=False)
-    assert tf._paste_delay_s() == tf._DEFAULT_PASTE_DELAY_S
-
-
-def test_try_paste_nonzero_returns_false(monkeypatch):
-    monkeypatch.setattr(tf.shutil, "which", _fake_which({"ydotool"}))
-    monkeypatch.setattr(tf.subprocess, "run", lambda *a, **k: _completed(returncode=1))
-    assert tf.try_paste() is False
-
-
-def test_try_paste_timeout_returns_false(monkeypatch):
-    monkeypatch.setattr(tf.shutil, "which", _fake_which({"ydotool"}))
-
-    def boom(*a, **k):
-        raise subprocess.TimeoutExpired(cmd="ydotool", timeout=5)
-
-    monkeypatch.setattr(tf.subprocess, "run", boom)
-    assert tf.try_paste() is False
-
-
 # --- notify ---
 
 
@@ -270,25 +213,16 @@ def test_main_tool_missing_returns_error(monkeypatch):
     assert tf.main() == 1
 
 
-def test_main_success_with_auto_paste(monkeypatch):
+def test_main_success_writes_clipboard_and_notifies(monkeypatch):
+    # Yapıştırma manuel: düzeltilmiş metin panoya yazılır + Ctrl+V bildirimi gösterilir.
     monkeypatch.setattr(tf, "read_selection", lambda: "bugun")
     monkeypatch.setattr(tf, "correct", lambda t: "bugün")
     written = {}
     monkeypatch.setattr(tf, "write_clipboard", lambda text: written.setdefault("text", text))
-    monkeypatch.setattr(tf, "try_paste", lambda: True)
-    monkeypatch.setattr(tf, "notify", lambda m: pytest.fail("otomatik yapıştırınca bildirim olmamalı"))
-    assert tf.main() == 0
-    assert written["text"] == "bugün"
-
-
-def test_main_success_manual_paste_notifies(monkeypatch):
-    monkeypatch.setattr(tf, "read_selection", lambda: "bugun")
-    monkeypatch.setattr(tf, "correct", lambda t: "bugün")
-    monkeypatch.setattr(tf, "write_clipboard", lambda text: None)
-    monkeypatch.setattr(tf, "try_paste", lambda: False)
     msgs = []
     monkeypatch.setattr(tf, "notify", lambda m: msgs.append(m))
     assert tf.main() == 0
+    assert written["text"] == "bugün"
     assert any("Ctrl+V" in m for m in msgs)
 
 

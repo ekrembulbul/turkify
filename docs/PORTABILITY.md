@@ -193,9 +193,10 @@ seçili metni kopyala → düzelt → yapıştır yapar.
   (macOS `cmd`, Windows `win`, Linux `super`).
 - **Linux:** uygulama kısayol *yakalamaz* (Wayland kısıtı). Düzeltme bir **DE custom
   shortcut**'tır (GNOME/KDE klavye ayarları); ince istemciyi (`turkify-fix`) çalıştırır:
-  seçimi PRIMARY'den oku → sokete gönder → panoya yaz → (`ydotool` varsa) yapıştır.
-  Kombinasyonu kullanıcı DE'de tanımlar. İptal kısayolu şimdilik **ertelendi** (serve
-  sıralı; bkz. [ADR 0005 §3](adr/0005-linux-terminal-servis.md)). Kurulum: [linux/README.md](../linux/README.md).
+  seçimi PRIMARY'den oku → sokete gönder → panoya yaz → **bildirim** (kullanıcı Ctrl+V
+  ile yapıştırır; otomatik enjeksiyon yok — [ADR 0005 §2](adr/0005-linux-terminal-servis.md)).
+  Kombinasyonu kullanıcı DE'de tanımlar. İptal kısayolu şimdilik **ertelendi**.
+  Kurulum: [linux/README.md](../linux/README.md).
 - Kurulum/kullanım (macOS): [`macos/README.md`](../macos/README.md).
 
 ---
@@ -206,8 +207,8 @@ seçili metni kopyala → düzelt → yapıştır yapar.
 |---|---|
 | Windows | ✅ Beklenen şekilde çalışır |
 | macOS | ✅ Çalışır — **Erişilebilirlik (Accessibility) izni** gerekir |
-| Linux / X11 | ✅ Çalışır — pano için `xclip`/`xsel` kurulu olmalı |
-| Linux / Wayland | ✅ Çalışır — seçim PRIMARY'den okunur; **otomatik yapıştırma** `ydotool` ister (yoksa elle Ctrl+V) |
+| Linux / X11 | ✅ Çalışır — pano için `xclip`/`xsel` kurulu olmalı; yapıştırma manuel (Ctrl+V) |
+| Linux / Wayland | ✅ Çalışır — seçim PRIMARY'den okunur, sonuç panoya yazılır; **yapıştırma manuel** (Ctrl+V) |
 
 ---
 

@@ -141,8 +141,9 @@ Native GUI yok; ince istemci motora `serve --socket` ile konuşur. Akış kararl
 - ➕ İnce istemci (`linux/turkify_fix.py` + `linux/bin/turkify-fix`): seçimi
   **PRIMARY selection**'dan okur (tuş simülasyonu yok — `wl-paste --primary` /
   `xclip -selection primary`), sokete gönderir; **soket düşükse cold-start
-  fallback** (motoru in-process yükler). Sonucu panoya yazar; `ydotool` kuruluysa
-  otomatik Ctrl+V, yoksa `notify-send` ile bildirim + elle yapıştırma.
+  fallback** (motoru in-process yükler). Sonucu panoya yazar + `notify-send` ile
+  bildirim gösterir; kullanıcı **Ctrl+V** ile yapıştırır (otomatik enjeksiyon yok —
+  ydotool denendi, kararsız olduğu için kaldırıldı; bkz. ADR 0005 §2).
 - ➕ `systemd --user` servisi (`turkify serve --socket …`, `RuntimeDirectory=turkify`)
   motoru **baştan** sıcak tutar. `linux/service/turkify.service` + `linux/install.sh`
   (python/repo yolunu çözüp unit'i yazar, servisi etkinleştirir, GNOME/KDE kısayol
@@ -179,10 +180,10 @@ Native GUI yok; ince istemci motora `serve --socket` ile konuşur. Akış kararl
   **gömülü** motoru başlatıyor.
 - macOS: `.app` + Developer ID kod imzalama/notarization (App Sandbox kapalı).
 - ✅ **Linux (kişisel/few-machines):** `linux/install.sh` eksiksiz **idempotent
-  bootstrap** — venv+paket, eksik araçları `apt`, ydotool+`input` grubu+servis, config
+  bootstrap** — venv+paket, eksik araçları `apt` (clipboard + libnotify-bin), config
   scaffold, systemd unit'leri, GNOME kısayolu (`gsettings`). Fresh clone → tek komut.
+  Yapıştırma manuel (Ctrl+V; otomatik enjeksiyon/ydotool kaldırıldı — ADR 0005 §2).
   Yayın kapsamı (PyPI/.deb/AUR) **bilinçli ertelendi** (şimdilik kişisel kullanım).
-  ⚠️ Flatpak elendi: sandbox `/dev/uinput`'a erişemez → `ydotool` çalışmaz (ADR 0005).
 - ⏸️ Geniş dağıtım (PyPI · `.deb`/`.rpm` frozen motor · AUR) ihtiyaç doğarsa.
 
 **Faz 6 başarı kriteri:** macOS'ta kısayolla seçili metin düzeltilir; izinler

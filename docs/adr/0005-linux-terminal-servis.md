@@ -45,20 +45,23 @@ Böylece macOS'un "Cmd+C sentezle" problemi (ve onun Accessibility izni) Linux't
 **tamamen atlanır**; Wayland'da kopya tuşunu enjekte edememe kısıtı okuma tarafını
 hiç etkilemez.
 
-### 2. Yapıştırma: pano + `ydotool` (best-effort), elle fallback
-Düzeltilmiş metin **panoya** yazılır (`wl-copy` / `xclip -selection clipboard`).
-Ardından yapıştırma denenir:
-- **`ydotool` kuruluysa** otomatik Ctrl+V enjekte edilir (kernel `uinput`;
-  derleyiciden bağımsız çalışır). GNOME/Mutter'da `wtype` **çalışmaz** (yalnızca
-  wlroots tabanlı derleyiciler virtual-keyboard protokolünü uygular), bu yüzden
-  Wayland'da tek gerçekçi enjeksiyon yolu `ydotool`'dur.
-- **`ydotool` yoksa** `notify-send` ile bildirim gösterilir ("düzeltildi —
-  Ctrl+V ile yapıştır") ve kullanıcı elle yapıştırır. Düzeltilmiş metin panoda
-  kaldığından bu her ortamda (GNOME Wayland dahil) çalışır.
+### 2. Yapıştırma: MANUEL (pano + bildirim) — otomatik enjeksiyon yok
+Düzeltilmiş metin **panoya** yazılır (`wl-copy` / `xclip -selection clipboard`),
+ardından `notify-send` ile "Düzeltildi — Ctrl+V ile yapıştır" bildirimi gösterilir.
+**Yapıştırmayı kullanıcı Ctrl+V ile yapar.** Tuş enjeksiyonu yoktur. Bu her ortamda
+(GNOME/KDE, Wayland/X11) kararlı ve basit çalışır; ekstra izin/araç gerektirmez.
 
-`ydotool`, `/dev/uinput` erişimi ve `ydotoold` daemon'u gerektirir (root ya da
-`input` grubu / udev kuralı). Bu yük kullanıcıya bırakılır; istemci `ydotool`'u
-en iyi-çaba ile kullanır, başarısızlıkta sessizce elle-yapıştırmaya düşer.
+> **Güncelleme (otomatik yapıştırma kaldırıldı):** Önce `ydotool` (kernel `uinput`)
+> ile otomatik Ctrl+V "best-effort" denendi (`wtype` GNOME/Mutter'da çalışmıyor).
+> Reddedildi çünkü:
+> - **Güvenilmez:** enjekte edilen Ctrl+V kısayolun basılı modifier'larıyla yarışıyor
+>   ve bazen düz `v`'ye düşüp **seçili metni siliyordu**; modifier-zamanlaması için
+>   yapılan tüm düzeltmeler (release + ayrı Ctrl basma + gecikme) sorunu tam çözmedi.
+> - **Kurulum yükü:** `/dev/uinput` için `input` grubu üyeliği + **oturum yenileme**
+>   + `ydotoold` daemon'u gerektiriyordu.
+> - **Değer/maliyet:** kazanç yalnızca tek bir Ctrl+V; bu karmaşıklık/kırılganlığa değmez.
+>
+> Karar: otomatik yapıştırma **tamamen kaldırıldı**; manuel Ctrl+V tek yoldur.
 
 ### 3. İptal (cancel): ERTELENDİ
 İlk taslak bir "iptal kısayolu" (çalışan isteğe iptal sinyali) tarif ediyordu.
@@ -94,23 +97,21 @@ sokete bağlanır, değilse cold-start'a düşer; ikisi de aynı sonucu verir.
   kısıtı okuma tarafını hiç etkilemez; izin (Accessibility benzeri) gerekmez.
 - ✅ Linux kullanıcısının doğal beklentisi (CLI + config + systemd) karşılanır.
 - ✅ Servis kapalıyken bile istemci cold-start ile çalışır (sıfır-servis senaryosu).
-- ➖ Wayland'da **otomatik yapıştırma** `ydotool`'a bağlı (uinput izni gerekir);
-  yoksa kullanıcı elle yapıştırır. OS kaynaklı; "best-effort". X11'de daha rahat.
+- ➖ **Yapıştırma manuel** (Ctrl+V): kullanıcı tek bir tuş kombinasyonu daha basar.
+  Karşılığında kararlılık + sıfır kurulum yükü (uinput/grup/daemon yok).
 - ➖ GNOME'da tray ikonu olmadığından "çalışıyor" göstergesi `systemctl --user
   status` / loglara ve `notify-send` bildirimlerine düşer (menü-bar yok).
 - ➖ İptal özelliği yok (ertelendi); Tier 3 yoğunsa elle bekleme gerekir.
-- ⚠️ **Paketleme tuzağı:** Flatpak sandbox'ı `/dev/uinput`'a erişimi engeller →
-  `ydotool` otomatik yapıştırma Flatpak'te **çalışmaz**. Otomatik yapıştırma
-  hedeflendiğinden native paketleme (pipx/AUR/.deb) tercih edilir; karar
-  paketleme fazında (bkz. [ADR 0009](0009-paketleme-frozen-motor.md), Faz 6.4).
 
 ## Değerlendirilen alternatifler
 - **Rust + GTK4 / C++ + Qt native GUI:** tray+Wayland sorunlarını çözmüyor, üçüncü dil
   yükü getiriyor. Reddedildi.
 - **Seçimi Cmd+C benzeri tuş enjeksiyonuyla okumak:** Wayland'da ayrıcalıksız
   uygulama kopya tuşu üretemez; PRIMARY selection zaten hazır. Gereksiz. Reddedildi.
-- **`wtype` ile yapıştırma:** yalnızca wlroots derleyicilerde çalışır, GNOME/KDE'de
-  değil. Yerine `ydotool` (uinput, derleyiciden bağımsız). Reddedildi.
+- **Otomatik yapıştırma (`ydotool`/`wtype` ile tuş enjeksiyonu):** `wtype` yalnızca
+  wlroots derleyicilerde çalışır (GNOME/KDE'de değil); `ydotool` (uinput) ise
+  güvenilmez (Ctrl+V bazen düz `v`) ve kurulum yükü yüksek (uinput/grup/daemon/relogin).
+  Denendi ve **kaldırıldı** — manuel Ctrl+V tercih edildi (bkz. §2). Reddedildi.
 - **Her kısayolda cold-start CLI (servissiz):** basit ama her çağrıda zeyrek
   yüklemesi yavaş. Servisli sıcak model tercih edildi; cold-start yalnızca
   **fallback** olarak korunur.
