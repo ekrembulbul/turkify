@@ -30,6 +30,8 @@ public partial class MainWindow : Window
 {
     private const string StartupRegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string StartupValueName = "Turkify";
+    // Konsol gibi: yalnızca son N satır tutulur (eski satırlar düşer → kasma olmaz).
+    private const int MaxLogRows = 500;
 
     private readonly AppState _state;
     private readonly ObservableCollection<LogRow> _logs = new();
@@ -64,6 +66,9 @@ public partial class MainWindow : Window
 
         ShowAboutVersion();
         Loaded += OnLoaded;
+        // Tray uygulaması: pencere kapatılmaz, gizlenir. Yeniden gösterilince Düzeltme
+        // sekmesi aktifse metin kutusu yeniden odaklansın.
+        IsVisibleChanged += OnWindowVisibleChanged;
         // Pencere handle'ı oluşunca başlık çubuğunu (native) temaya uyarla; tema
         // sonradan değişirse (Auto'da sistem teması dahil) yeniden uygula.
         SourceInitialized += (_, _) => ApplyTitleBarTheme();
@@ -137,7 +142,50 @@ public partial class MainWindow : Window
         {
             _ = RefreshModelsAsync();
         }
+
+        // Açılışta varsayılan sekme Düzeltme: metin kutusu odakta gelsin.
+        FocusInput();
     }
+
+    /// Pencere yeniden görünür olunca (tray'den) Düzeltme sekmesindeyse metni odakla.
+    private void OnWindowVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is true && ReferenceEquals(MainTabs.SelectedItem, CorrectionTab))
+        {
+            FocusInput();
+        }
+    }
+
+    /// Sekme değişiminde: Düzeltme'ye geçilince metni odakla, Log'a geçilince en alta kaydır.
+    private void OnTabChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // SelectionChanged iç ComboBox'lardan da kabarır; yalnızca sekme değişimini al.
+        if (!ReferenceEquals(e.OriginalSource, MainTabs))
+        {
+            return;
+        }
+
+        if (ReferenceEquals(MainTabs.SelectedItem, CorrectionTab))
+        {
+            FocusInput();
+        }
+        else if (ReferenceEquals(MainTabs.SelectedItem, LogTab))
+        {
+            // Sekme içeriği yeni gerçeklenir; kapsayıcılar oluşunca en alta kaydır.
+            Dispatcher.BeginInvoke(new Action(AutoScrollLog), DispatcherPriority.Background);
+        }
+    }
+
+    /// Düzeltme metin kutusunu klavye odağına alır. Layout/görünürlük yerleşsin diye
+    /// Input önceliğinde ertelenir (aksi halde odak sessizce kaybolabilir).
+    private void FocusInput() =>
+        Dispatcher.BeginInvoke(
+            new Action(() =>
+            {
+                InputBox.Focus();
+                Keyboard.Focus(InputBox);
+            }),
+            DispatcherPriority.Input);
 
     // ============ Düzeltme ============
 
@@ -548,7 +596,7 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(() =>
         {
             _logs.Add(new LogRow(line));
-            if (_logs.Count > 1000)
+            if (_logs.Count > MaxLogRows)
             {
                 _logs.RemoveAt(0);
             }
@@ -592,7 +640,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        int count = _logsView.Cast<object>().Count();
+        // "Tümü" filtresinde tüm koleksiyon görünür → O(1). Aksi halde eşleşenleri say.
+        // (Her log eklemede çağrıldığı için görünümü baştan saymaktan kaçınılır.)
+        int count = _logFilter == "Tümü" ? _logs.Count : _logs.Count(LogFilterPredicate);
         LogCountText.Text = $"{count} satır";
     }
 

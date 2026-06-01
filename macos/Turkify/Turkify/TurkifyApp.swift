@@ -107,12 +107,17 @@ final class AppState: ObservableObject {
         return f
     }()
 
-    /// Log satırını (zaman damgalı, kaynak etiketli) UI deposuna ekler; son 1000
-    /// satır tutulur.
+    /// Konsol gibi: yalnızca son ``maxLogLines`` satır tutulur (eski satırlar düşer →
+    /// kasma olmaz).
+    private static let maxLogLines = 500
+
+    /// Log satırını (zaman damgalı, kaynak etiketli) UI deposuna ekler.
     func appendLog(_ source: Log.Source, _ message: String) {
         let stamp = Self.logTimeFormatter.string(from: Date())
         logLines.append(LogLine(time: stamp, source: source, text: message))
-        if logLines.count > 1000 { logLines.removeFirst(logLines.count - 1000) }
+        if logLines.count > Self.maxLogLines {
+            logLines.removeFirst(logLines.count - Self.maxLogLines)
+        }
     }
 
     func startup() {
@@ -841,6 +846,7 @@ struct CorrectionInputEditor: NSViewRepresentable {
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.string = text
+        textView.focusWhenShown = true  // Düzeltme sekmesi açılınca metin kutusu odakta gelsin
 
         let scroll = NSScrollView()
         scroll.documentView = textView
@@ -877,6 +883,19 @@ final class SubmitTextView: NSTextView {
     var onSubmit: (() -> Void)?
     var onSubmitAndCopy: (() -> Void)?
     var onCancel: (() -> Void)?
+    /// Pencereye girince klavye odağını (first responder) bir kez al — Düzeltme
+    /// sekmesi açıldığında kullanıcı doğrudan yazmaya başlayabilsin.
+    var focusWhenShown = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard focusWhenShown, let window else { return }
+        // Pencere/layout yerleşsin diye bir sonraki döngüde odakla.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.window else { return }
+            window.makeFirstResponder(self)
+        }
+    }
 
     override func keyDown(with event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -1411,6 +1430,15 @@ struct LogView: View {
                         }
                     }
                     .padding(8)
+                }
+                .onAppear {
+                    // Sekme açılınca konsol gibi en altta (en yeni satırda) başla.
+                    // Layout yerleşsin diye bir sonraki döngüye ertele.
+                    DispatchQueue.main.async {
+                        if let last = visibleLines.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
                 }
                 .onChange(of: visibleLines.count) { _ in
                     // Yeni satır gelince en alta kaydır (canlı akış).
