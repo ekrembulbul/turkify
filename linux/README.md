@@ -153,10 +153,12 @@ gsettings set "$SCHEMA" command "env TURKIFY_PASTE_DELAY_MS=400 $HOME/projects/t
 
 ## Servis yönetimi
 
+Servis **`--verbose` ile** çalışır (varsayılan): her istek ve karar journald'a düşer.
+
 ```bash
 systemctl --user status  turkify.service     # durum
 systemctl --user restart turkify.service     # elle tam yeniden başlatma
-journalctl --user -u turkify.service -f      # canlı log
+journalctl --user -u turkify.service -f      # canlı log ([Motor]/[Istek] satırları)
 ```
 
 ## Otomatik reload (config değişince)

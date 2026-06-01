@@ -15,7 +15,7 @@ Documentation=https://github.com/ekrembulbul/turkify
 [Service]
 Type=simple
 RuntimeDirectory=turkify
-ExecStart=/path/to/python -m turkify serve --socket %t/turkify/engine.sock
+ExecStart=/path/to/python -m turkify serve --socket %t/turkify/engine.sock --verbose
 Restart=on-failure
 RestartSec=2
 

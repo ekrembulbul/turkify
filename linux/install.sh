@@ -73,7 +73,7 @@ Documentation=https://github.com/ekrembulbul/turkify
 [Service]
 Type=simple
 RuntimeDirectory=turkify
-ExecStart=$py -m turkify serve --socket %t/turkify/engine.sock
+ExecStart=$py -m turkify serve --socket %t/turkify/engine.sock --verbose
 Restart=on-failure
 RestartSec=2
 
@@ -108,10 +108,12 @@ WantedBy=default.target
 EOF
 echo "==> Reload izleyici yazıldı: $unit_dir/turkify-reload.path"
 
-# 5) Servisi + reload izleyiciyi etkinleştir + başlat.
+# 5) Servisi + reload izleyiciyi etkinleştir + (yeniden) başlat. restart kullanılır
+#    ki re-install'da güncellenen unit çalışan sürece de uygulansın (enable --now
+#    zaten çalışan servisi yeniden başlatmaz).
 systemctl --user daemon-reload
-systemctl --user enable --now turkify.service
-systemctl --user enable --now turkify-reload.path
+systemctl --user enable turkify.service turkify-reload.path
+systemctl --user restart turkify.service turkify-reload.path
 echo "==> Servis durumu:"
 systemctl --user --no-pager --lines=0 status turkify.service || true
 
