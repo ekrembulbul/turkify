@@ -178,7 +178,12 @@ Native GUI yok; ince istemci motora `serve --socket` ile konuşur. Akış kararl
   (`turkify.iss`). Uçtan uca doğrulandı: yayınlanmış app Python'suz açılıyor ve
   **gömülü** motoru başlatıyor.
 - macOS: `.app` + Developer ID kod imzalama/notarization (App Sandbox kapalı).
-  Linux: `.deb`/`.rpm`/AUR veya Flatpak.
+- ✅ **Linux (kişisel/few-machines):** `linux/install.sh` eksiksiz **idempotent
+  bootstrap** — venv+paket, eksik araçları `apt`, ydotool+`input` grubu+servis, config
+  scaffold, systemd unit'leri, GNOME kısayolu (`gsettings`). Fresh clone → tek komut.
+  Yayın kapsamı (PyPI/.deb/AUR) **bilinçli ertelendi** (şimdilik kişisel kullanım).
+  ⚠️ Flatpak elendi: sandbox `/dev/uinput`'a erişemez → `ydotool` çalışmaz (ADR 0005).
+- ⏸️ Geniş dağıtım (PyPI · `.deb`/`.rpm` frozen motor · AUR) ihtiyaç doğarsa.
 
 **Faz 6 başarı kriteri:** macOS'ta kısayolla seçili metin düzeltilir; izinler
 arayüzden yönetilir; motor sıcak (`serve`) ve frontend'den bağımsız test edilebilir.
