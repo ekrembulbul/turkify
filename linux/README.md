@@ -135,6 +135,22 @@ ydotool kurulu/erişilebilir **değilse** `turkify-fix` sessizce elle-yapıştı
 bildirimine düşer (metin panoda kalır, **Ctrl+V** ile yapıştırılır) — yani ydotool
 tamamen opsiyoneldir, kurulu olmadan da düzeltme çalışır.
 
+### Otomatik yapıştırma aralıklı ıskalıyorsa — bekleme süresi
+
+Kısayolun modifier tuşları (Ctrl/Super/Alt) hâlâ basılıyken enjekte edilen Ctrl+V
+onlarla çakışır. `turkify-fix` bunu iki yolla azaltır: yapıştırmadan önce modifier'ları
+bırakır ve kısa bir süre bekler. Bekleme **varsayılan 250 ms**; tuşları geç
+bırakıyorsan ara sıra ıskalayabilir. Süreyi `TURKIFY_PASTE_DELAY_MS` ile artır.
+
+Kısayol komutuna env ekleyerek (GNOME, gsettings):
+
+```bash
+SCHEMA="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/turkify/"
+gsettings set "$SCHEMA" command "env TURKIFY_PASTE_DELAY_MS=400 $HOME/projects/turkify/linux/bin/turkify-fix"
+```
+
+(400 → 500/600 deneyebilirsin; geri almak için `env TURKIFY_PASTE_DELAY_MS=… ` önekini çıkar.)
+
 ## Servis yönetimi
 
 ```bash

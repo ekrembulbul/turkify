@@ -142,16 +142,29 @@ def test_try_paste_no_ydotool_returns_false(monkeypatch):
 
 def test_try_paste_success(monkeypatch):
     monkeypatch.setattr(tf.shutil, "which", _fake_which({"ydotool"}))
-    captured = {}
+    calls = []
 
     def fake_run(cmd, **kwargs):
-        captured["cmd"] = cmd
+        calls.append(cmd)
         return _completed(returncode=0)
 
     monkeypatch.setattr(tf.subprocess, "run", fake_run)
     assert tf.try_paste() is True
-    assert captured["cmd"][:2] == ["ydotool", "key"]
-    assert captured["cmd"][2:] == tf._YDOTOOL_PASTE
+    # İki ayrı çağrı: önce modifier'ları bırak, sonra temiz Ctrl+V.
+    assert len(calls) == 2
+    assert calls[0] == ["ydotool", "key", *tf._MODIFIER_RELEASE]
+    assert calls[1][:2] == ["ydotool", "key"]
+    assert "--key-delay" in calls[1]
+    assert calls[1][-len(tf._YDOTOOL_PASTE):] == tf._YDOTOOL_PASTE
+
+
+def test_paste_delay_env_override(monkeypatch):
+    monkeypatch.setenv("TURKIFY_PASTE_DELAY_MS", "400")
+    assert tf._paste_delay_s() == 0.4
+    monkeypatch.setenv("TURKIFY_PASTE_DELAY_MS", "gecersiz")
+    assert tf._paste_delay_s() == tf._DEFAULT_PASTE_DELAY_S  # bozuk deger yok sayilir
+    monkeypatch.delenv("TURKIFY_PASTE_DELAY_MS", raising=False)
+    assert tf._paste_delay_s() == tf._DEFAULT_PASTE_DELAY_S
 
 
 def test_try_paste_nonzero_returns_false(monkeypatch):
