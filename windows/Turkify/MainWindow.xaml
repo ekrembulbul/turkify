@@ -13,9 +13,9 @@
         Background="{DynamicResource App.Bg.Window}"
         Foreground="{DynamicResource App.Text.Primary}">
 
-    <TabControl TabStripPlacement="Left">
+    <TabControl x:Name="MainTabs" TabStripPlacement="Left" SelectionChanged="OnTabChanged">
         <!-- ============ Düzeltme ============ -->
-        <TabItem Header="Düzeltme">
+        <TabItem x:Name="CorrectionTab" Header="Düzeltme">
             <Grid Margin="22,18,22,20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -221,7 +221,7 @@
         </TabItem>
 
         <!-- ============ Log ============ -->
-        <TabItem Header="Log">
+        <TabItem x:Name="LogTab" Header="Log">
             <DockPanel Margin="22,18,22,20">
                 <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0,0,0,10">
                     <ComboBox DockPanel.Dock="Left" x:Name="LogFilterCombo" Width="170"
@@ -235,7 +235,8 @@
                                Margin="0,0,12,0" Foreground="{DynamicResource App.Text.Tertiary}" />
                 </DockPanel>
                 <ListBox x:Name="LogList" FontFamily="Consolas" FontSize="11"
-                         VirtualizingPanel.IsVirtualizing="True">
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <!-- Zaman + kaynak sabit; mesaj yıldız sütununda sarar
