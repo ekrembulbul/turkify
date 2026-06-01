@@ -204,31 +204,53 @@ def _recv_line(sock: socket.socket) -> str | None:
     return data.split(b"\n", 1)[0].decode("utf-8", errors="replace")
 
 
-def correct_via_socket(text: str) -> str | None:
-    """Sıcak servise (Unix soketi) bağlanıp düzeltmeyi ister.
+def _send_request(payload: dict) -> dict | None:
+    """Sıcak servise (Unix soketi) bir JSON isteği gönderip yanıt nesnesini döner.
 
-    Servis ayakta değilse / yanıt hatalıysa ``None`` döner (çağıran cold-start'a düşer).
-    Soket yolu :func:`turkify.config.socket_path` ile servisle paylaşılır.
+    Bağlantı kurulamazsa (servis kapalı) ya da yanıt bozuksa ``None`` döner. Soket
+    yolu :func:`turkify.config.socket_path` ile servisle paylaşılır.
     """
     path = str(config.socket_path())
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
             sock.settimeout(_SOCKET_TIMEOUT_S)
             sock.connect(path)
-            request = json.dumps({"id": 1, "text": text}, ensure_ascii=False) + "\n"
-            sock.sendall(request.encode("utf-8"))
+            sock.sendall((json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8"))
             response = _recv_line(sock)
     except (OSError, TimeoutError, socket.timeout):
         return None
     if response is None:
         return None
     try:
-        data = json.loads(response)
+        return json.loads(response)
     except json.JSONDecodeError:
+        return None
+
+
+def correct_via_socket(text: str) -> str | None:
+    """Sıcak servise düzeltmeyi ister; servis yoksa / yanıt hatalıysa ``None``.
+
+    ``None`` dönerse çağıran cold-start'a düşer (bkz. :func:`correct`).
+    """
+    data = _send_request({"id": 1, "text": text})
+    if data is None:
         return None
     # Hata yanıtında "corrected" yoktur → None döner, cold-start denenir.
     corrected = data.get("corrected")
     return corrected if isinstance(corrected, str) else None
+
+
+def send_reload() -> bool:
+    """Çalışan servise ``{"cmd":"reload"}`` gönderir (config + korumalı kelime tazeleme).
+
+    Servis kapalıysa (bağlanılamıyorsa) tazelenecek sıcak motor yoktur — bir sonraki
+    başlangıçta zaten taze config okunur; bu durumda **no-op başarı** (``True``) döner.
+    Yalnızca servis ayaktayken reload hata verirse ``False`` döner.
+    """
+    data = _send_request({"id": 1, "cmd": "reload"})
+    if data is None:
+        return True  # servis kapalı → tazelenecek bir şey yok, sorun değil
+    return data.get("ok") is True
 
 
 def correct_local(text: str) -> str:
@@ -254,7 +276,21 @@ def correct(text: str) -> str:
     return correct_local(text)
 
 
-def main() -> int:
+def _cmd_reload() -> int:
+    """``--reload`` modu: çalışan servise reload gönderir (config değişiminde tetiklenir)."""
+    if send_reload():
+        return 0
+    # Servis ayakta ama reload hata verdi (bozuk config gibi). Bildirim yok: bu
+    # arka plan (path-unit) işidir, ayrıntı journald'a düşer.
+    sys.stderr.write("turkify-fix: reload basarisiz (servis ayakta, ayar hatali olabilir)\n")
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    if "--reload" in args:
+        return _cmd_reload()
+
     try:
         selection = read_selection()
     except ClipboardToolMissing as exc:

@@ -155,9 +155,26 @@ gsettings set "$SCHEMA" command "env TURKIFY_PASTE_DELAY_MS=400 $HOME/projects/t
 
 ```bash
 systemctl --user status  turkify.service     # durum
-systemctl --user restart turkify.service     # config.json değişince tazele
+systemctl --user restart turkify.service     # elle tam yeniden başlatma
 journalctl --user -u turkify.service -f      # canlı log
 ```
+
+## Otomatik reload (config değişince)
+
+`config.json` veya `protected_words.txt`'i düzenlediğinde motor **otomatik tazelenir**
+— servis sıcak kalır, restart gerekmez. Mekanizma (`install.sh` kurar):
+
+- `turkify-reload.path` config dizinini izler (dosya içi düzenleme + atomik kaydet).
+- Değişiklikte `turkify-reload.service` (oneshot) çalışır → `turkify-fix --reload` →
+  motora `{"cmd":"reload"}` gönderilir (config + korumalı kelimeler yeniden okunur).
+- Servis kapalıysa no-op'tur (bir sonraki başlangıçta taze config zaten okunur).
+
+```bash
+systemctl --user status turkify-reload.path           # izleyici durumu
+journalctl --user -u turkify-reload.service --no-pager # son reload tetiklemeleri
+```
+
+Editörün bu olayları üretmiyorsa (nadiren) elle: `systemctl --user restart turkify.service`.
 
 ## Cold-start (servissiz) çalışma
 

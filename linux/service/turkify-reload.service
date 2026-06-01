@@ -1,0 +1,12 @@
+# Turkify reload tetikleyici (oneshot). turkify-reload.path tarafından çağrılır;
+# çalışan motora {"cmd":"reload"} gönderir (turkify-fix --reload). Servis kapalıysa
+# no-op'tur (bir sonraki başlangıçta taze config zaten okunur). Bkz. ROADMAP Faz 6.3b.
+#
+# Bu bir ŞABLONDUR: ExecStart'taki ince istemci yolunu linux/install.sh yazar.
+
+[Unit]
+Description=Turkify ayarlarini yeniden yukle
+
+[Service]
+Type=oneshot
+ExecStart=/path/to/linux/bin/turkify-fix --reload

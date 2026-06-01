@@ -1,0 +1,19 @@
+# Turkify ayar izleyici (systemd --user path unit). config.json / protected_words.txt
+# değişince turkify-reload.service'i tetikler; o da motora {"cmd":"reload"} gönderir
+# (servis sıcak kalır, restart gerekmez). Bkz. ROADMAP Faz 6.3b.
+#
+# Bu bir ŞABLONDUR: gerçek config yollarını linux/install.sh çözüp yazar
+# (turkify.config.config_path() ile motorun okuduğu dizin baz alınır).
+
+[Unit]
+Description=Turkify ayar dosyalarini izle (degisince reload)
+
+[Path]
+# Dosya içi düzenleme (in-place) ve dizin değişikliği (atomik kaydet) — ikisi de:
+PathChanged=/path/to/.config/turkify/config.json
+PathChanged=/path/to/.config/turkify/protected_words.txt
+PathChanged=/path/to/.config/turkify
+Unit=turkify-reload.service
+
+[Install]
+WantedBy=default.target

@@ -152,11 +152,16 @@ Native GUI yok; ince istemci motora `serve --socket` ile konuşur. Akış kararl
 - Testler: istemcinin saf parçaları (boş seçim, session tespiti, soket→cold-start
   düşüşü, paste fallback) subprocess mock'lanarak.
 
-#### 6.3b — Rafine (opsiyonel)
-- **Socket activation:** ilk bağlantıda servisi başlat (`turkify.socket`) →
-  `serve`'e `LISTEN_FDS`/`socket.fromfd` desteği.
-- **Otomatik `reload`:** config.json değişince `{"cmd":"reload"}` (path unit/inotify
-  ya da küçük yardımcı); protokoldeki `reload` zaten hazır.
+#### 6.3b — Rafine
+- ✅ **Otomatik `reload`:** `config.json`/`protected_words.txt` değişince motor sıcak
+  kalarak tazelenir. `turkify-fix --reload` → sokete `{"cmd":"reload"}`; bir
+  `systemd --user` **path unit**'i (`turkify-reload.path`) config dizinini izleyip
+  oneshot `turkify-reload.service`'i tetikler (`install.sh` kurar). Servis kapalıysa
+  no-op. Testler dahil.
+- ⏸️ **Socket activation:** ertelendi (değeri mütevazı — yalnızca kullanılmayan
+  oturumda RAM tasarrufu; her açılışta ilk düzeltmeyi ~1.3 sn yavaşlatır). İlk
+  bağlantıda servisi başlatmak için `serve`'e `LISTEN_FDS`/`socket.fromfd` + ayrı
+  `turkify.socket` unit'i gerekir. İhtiyaç doğarsa opt-in olarak eklenir.
 
 #### 6.3c — İptal + eşzamanlılık ⏸️ ertelendi
 - `serve`'e eşzamanlılık + istek kaydı + `cancel` komutu + kesilebilir `correct()`.

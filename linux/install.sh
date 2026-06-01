@@ -82,9 +82,36 @@ WantedBy=default.target
 EOF
 echo "==> Unit yazıldı: $unit"
 
-# 5) Servisi etkinleştir + başlat.
+# 4b) Otomatik reload: config dosyaları değişince motora {"cmd":"reload"} gönderen
+#     path + oneshot servis (Faz 6.3b). Yollar motorun okuduğu config dizininden çözülür.
+cfg_dir="$(dirname "$cfg_json")"
+cat > "$unit_dir/turkify-reload.service" <<EOF
+[Unit]
+Description=Turkify ayarlarini yeniden yukle
+
+[Service]
+Type=oneshot
+ExecStart=$repo/linux/bin/turkify-fix --reload
+EOF
+cat > "$unit_dir/turkify-reload.path" <<EOF
+[Unit]
+Description=Turkify ayar dosyalarini izle (degisince reload)
+
+[Path]
+PathChanged=$cfg_json
+PathChanged=$prot_txt
+PathChanged=$cfg_dir
+Unit=turkify-reload.service
+
+[Install]
+WantedBy=default.target
+EOF
+echo "==> Reload izleyici yazıldı: $unit_dir/turkify-reload.path"
+
+# 5) Servisi + reload izleyiciyi etkinleştir + başlat.
 systemctl --user daemon-reload
 systemctl --user enable --now turkify.service
+systemctl --user enable --now turkify-reload.path
 echo "==> Servis durumu:"
 systemctl --user --no-pager --lines=0 status turkify.service || true
 
@@ -108,5 +135,6 @@ cat <<EOF
     Detay/sorun giderme: linux/README.md → "Otomatik yapıştırma (ydotool)".
     Not: Flatpak sandbox uinput'a erişemez → ydotool Flatpak'te çalışmaz (ADR 0005).
 
-==> Config değişince servisi tazele:  systemctl --user restart turkify.service
+==> Config değişince motor OTOMATİK tazelenir (turkify-reload.path izliyor).
+    Elle tazeleme gerekirse:  systemctl --user restart turkify.service
 EOF

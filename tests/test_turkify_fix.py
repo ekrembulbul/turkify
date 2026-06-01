@@ -206,6 +206,49 @@ def test_correct_falls_back_to_local_when_socket_down(monkeypatch):
     assert tf.correct("x") == "COLDSTART"
 
 
+# --- send_reload ve --reload modu (config degisiminde otomatik tazeleme) ---
+
+
+def test_send_reload_ok(monkeypatch):
+    monkeypatch.setattr(tf, "_send_request", lambda payload: {"ok": True})
+    assert tf.send_reload() is True
+
+
+def test_send_reload_sends_reload_command(monkeypatch):
+    sent = {}
+    monkeypatch.setattr(tf, "_send_request", lambda payload: sent.update(payload) or {"ok": True})
+    tf.send_reload()
+    assert sent.get("cmd") == "reload"
+
+
+def test_send_reload_error_response_returns_false(monkeypatch):
+    monkeypatch.setattr(tf, "_send_request", lambda payload: {"error": "bozuk config"})
+    assert tf.send_reload() is False
+
+
+def test_send_reload_service_down_is_noop_success(monkeypatch):
+    # Servis kapali (bağlanılamıyor) → tazelenecek sıcak motor yok → no-op başarı.
+    monkeypatch.setattr(tf, "_send_request", lambda payload: None)
+    assert tf.send_reload() is True
+
+
+def test_send_request_connection_refused_returns_none(monkeypatch, tmp_path):
+    # Var olmayan sokete (servis kapalı) bağlanınca None döner — gerçek socket.
+    monkeypatch.setenv("TURKIFY_SOCKET", str(tmp_path / "yok.sock"))
+    assert tf._send_request({"id": 1, "cmd": "ping"}) is None
+
+
+def test_main_reload_success_skips_selection(monkeypatch):
+    monkeypatch.setattr(tf, "send_reload", lambda: True)
+    monkeypatch.setattr(tf, "read_selection", lambda: pytest.fail("reload modunda secim okunmamali"))
+    assert tf.main(["--reload"]) == 0
+
+
+def test_main_reload_failure_returns_error(monkeypatch):
+    monkeypatch.setattr(tf, "send_reload", lambda: False)
+    assert tf.main(["--reload"]) == 1
+
+
 # --- main() akışı ---
 
 
