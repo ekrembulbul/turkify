@@ -63,31 +63,50 @@ fi
 
 SECONDS=0
 
-# notarytool: zip/dmg gonder, onay bekle. notarytool --wait "Invalid" durumunda
-# bile 0 cikis kodu donebildiginden, statusu acikca dogrularir; basarisizsa Apple'in
-# detay logunu (hangi ikili neden reddedildi) basip hata dondururuz.
+# Notarize: artifact'i Apple notary servisine gonderir ve onayi BEKLER — kendi
+# yoklama dongusuyle (canli ilerleme + sert zaman asimi). notarytool --wait bazen
+# (notary servisi gecikince) saatlerce takilabildiginden, burada gonderim sonrasi
+# her 30 sn'de bir durum sorgulanir ve NOTARY_TIMEOUT_SECONDS (varsayilan 30 dk)
+# sonunda pes edilir. "Invalid"de Apple'in detay logu basilir (hangi ikili reddedildi).
 notarize() {
-    local artifact="$1" out id status
-    echo "==> Notarize: $artifact"
-    out="$(xcrun notarytool submit "$artifact" \
-        --key "$APPLE_API_KEY_PATH" \
-        --key-id "$APPLE_API_KEY_ID" \
-        --issuer "$APPLE_API_ISSUER_ID" \
-        --wait --output-format json)"
-    echo "$out"
-    id="$(printf '%s' "$out" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
-    status="$(printf '%s' "$out" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",""))' 2>/dev/null || true)"
-    if [ "$status" != "Accepted" ]; then
-        echo "HATA: Notarization basarisiz (status='$status')." >&2
-        if [ -n "$id" ]; then
-            echo "--- notarytool log ($id) ---" >&2
-            xcrun notarytool log "$id" \
-                --key "$APPLE_API_KEY_PATH" \
-                --key-id "$APPLE_API_KEY_ID" \
-                --issuer "$APPLE_API_ISSUER_ID" >&2 || true
-        fi
+    local artifact="$1" submit_json id status elapsed=0
+    local interval=30 max="${NOTARY_TIMEOUT_SECONDS:-1800}"
+
+    echo "==> Notarize gonderiliyor: $artifact"
+    submit_json="$(xcrun notarytool submit "$artifact" \
+        --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER_ID" \
+        --output-format json)" || { echo "HATA: notarytool submit basarisiz." >&2; return 1; }
+    id="$(printf '%s' "$submit_json" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+    if [ -z "$id" ]; then
+        echo "HATA: Gonderim ID alinamadi. Yanit: $submit_json" >&2
         return 1
     fi
+    echo "    Gonderim ID: $id — onay bekleniyor (en fazla $((max / 60)) dk)..."
+
+    while :; do
+        status="$(xcrun notarytool info "$id" \
+            --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER_ID" \
+            --output-format json 2>/dev/null \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",""))' 2>/dev/null || true)"
+        echo "    [${elapsed} sn] durum: ${status:-(sorgulanamadi)}"
+        case "$status" in
+            Accepted) break ;;
+            Invalid | Rejected)
+                echo "HATA: Notarization $status (ID: $id). Apple detay logu:" >&2
+                xcrun notarytool log "$id" \
+                    --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER_ID" >&2 || true
+                return 1 ;;
+        esac
+        if [ "$elapsed" -ge "$max" ]; then
+            echo "HATA: Notarization zaman asimi ($((max / 60)) dk; ID: $id, son durum: ${status:-bilinmiyor})." >&2
+            echo "      Apple notary servisi gecikmis olabilir (developer.apple.com/system-status)." >&2
+            echo "      Servis duzelince is'i yeniden calistirin (Re-run) veya tekrar tag atin." >&2
+            return 1
+        fi
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+    done
+    echo "    Notarization: Accepted (ID: $id)"
 }
 
 # --- 1) Motoru dondur ---
