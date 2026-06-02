@@ -63,14 +63,31 @@ fi
 
 SECONDS=0
 
-# notarytool: zip/dmg gonder, onay bekle. Hata olursa loglari goster.
+# notarytool: zip/dmg gonder, onay bekle. notarytool --wait "Invalid" durumunda
+# bile 0 cikis kodu donebildiginden, statusu acikca dogrularir; basarisizsa Apple'in
+# detay logunu (hangi ikili neden reddedildi) basip hata dondururuz.
 notarize() {
-    echo "==> Notarize: $1"
-    xcrun notarytool submit "$1" \
+    local artifact="$1" out id status
+    echo "==> Notarize: $artifact"
+    out="$(xcrun notarytool submit "$artifact" \
         --key "$APPLE_API_KEY_PATH" \
         --key-id "$APPLE_API_KEY_ID" \
         --issuer "$APPLE_API_ISSUER_ID" \
-        --wait
+        --wait --output-format json)"
+    echo "$out"
+    id="$(printf '%s' "$out" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+    status="$(printf '%s' "$out" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",""))' 2>/dev/null || true)"
+    if [ "$status" != "Accepted" ]; then
+        echo "HATA: Notarization basarisiz (status='$status')." >&2
+        if [ -n "$id" ]; then
+            echo "--- notarytool log ($id) ---" >&2
+            xcrun notarytool log "$id" \
+                --key "$APPLE_API_KEY_PATH" \
+                --key-id "$APPLE_API_KEY_ID" \
+                --issuer "$APPLE_API_ISSUER_ID" >&2 || true
+        fi
+        return 1
+    fi
 }
 
 # --- 1) Motoru dondur ---
@@ -108,12 +125,17 @@ ENGINE_IN_APP="$APP/Contents/Resources/turkify-engine/turkify-engine"
 # ile imzali olmasini ister. PyInstaller motoru cok sayida .dylib/.so icerir.
 echo "==> [3/6] Imzalaniyor: $MACOS_SIGN_IDENTITY"
 ENGINE_DIR="$APP/Contents/Resources/turkify-engine"
-# Gomulu motorun tum dinamik kutuphaneleri (icten-disa imza).
-find "$ENGINE_DIR" -type f \( -name '*.dylib' -o -name '*.so' \) -print0 \
-    | xargs -0 -r codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY"
-# Motor calistirilabiliri.
-codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$ENGINE_IN_APP"
-# Tum .app (--deep: kalan ic icerik + ana ikili).
+# Gomulu motordaki TUM Mach-O ikililerini (uzanti farketmeksizin) icten-disa imzala.
+# Onemli: codesign --deep, Resources/ altindaki gevsek Mach-O dosyalarini imzalamaz;
+# ayrica PyInstaller uzantisiz Mach-O da uretir (or. _internal/Python.framework/.../
+# Python). Bunlari 'file' ile tespit edip tek tek imzalamazsak notarization
+# "hardened runtime yok / imzasiz" diye REDDEDER. (Symlink'leri -type f eler.)
+while IFS= read -r -d '' f; do
+    if file -b "$f" | grep -q 'Mach-O'; then
+        codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$f"
+    fi
+done < <(find "$ENGINE_DIR" -type f -print0)
+# Tum .app: ana ikili + muhur. --deep son guvenlik agi (ic ikililer yukarida imzalandi).
 codesign --force --options runtime --timestamp --deep --sign "$MACOS_SIGN_IDENTITY" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
