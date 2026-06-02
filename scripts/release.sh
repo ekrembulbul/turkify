@@ -48,7 +48,13 @@ scripts/set_version.sh "$VERSION"
 
 echo "==> Commit + tag + push..."
 git add -A
-git commit -m "build: surum $VERSION"
+# Surum dosyalari zaten istenen surumdeyse (or. basarisiz bir yayini yeniden deneme)
+# yeni commit'e gerek yok; dogrudan tag'lenir.
+if git diff --cached --quiet; then
+    echo "    (surum dosyalari zaten $VERSION — commit atlandi)"
+else
+    git commit -m "build: surum $VERSION"
+fi
 git tag -a "$TAG" -m "Turkify $VERSION"
 git push origin main
 git push origin "$TAG"
