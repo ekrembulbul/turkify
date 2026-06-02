@@ -5,6 +5,39 @@ Bu dosya, projedeki kayda değer değişiklikleri sürüm sürüm belgeler.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve proje
 [Semantic Versioning](https://semver.org/lang/tr/) kullanır.
 
+## [1.3.0] - 2026-06-02
+
+### Eklendi
+- **Linux desteği** (terminal/sunucu odaklı): ince istemci (`turkify-fix`) +
+  `systemd --user` servisi. Seçili metni (PRIMARY) okur, düzeltip panoya yazar;
+  uygulama **manuel Ctrl+V** ile yapılır. Soket üzerinden motor sıcak kalır, servis
+  kapalıysa tek seferlik (cold-start) çalışır. `linux/install.sh` temiz klondan
+  venv, paket ve sistem araçlarını (ydotool input grubu, GNOME kısayolu) tek adımda
+  kurar.
+- Linux servisi **yapılandırma değişikliğinde otomatik yenilenir**: config dizini
+  izlenir, motor yeniden başlamadan ayarlar ve korumalı kelimeler tazelenir.
+- Linux servisi varsayılan olarak **ayrıntılı loglar** (her istek/karar journald'a).
+- **Otomatik sürüm yayını** (GitHub Actions): `v*` tag'i push'lanınca macOS DMG ve
+  Windows kurulumu derlenip GitHub Release oluşturulur.
+
+### Düzeltildi
+- **Düzeltme** sekmesi açılınca metin kutusu otomatik **odaklanır** (macOS + Windows).
+- **Log** ekranı konsol gibi davranır: sekme açılınca en yeni satıra kayar, eski
+  satırlar bir sınırdan sonra düşer; Windows'ta liste sanallaştırması iyileştirilerek
+  kasma azaltıldı.
+
+### Değişti
+- macOS dağıtımı artık **imzalı + notarize edilmiş DMG** (`Turkify-<sürüm>.dmg`):
+  "tanınmayan geliştirici / hasarlı" uyarısı ve `xattr` adımı **gerekmez**.
+- macOS en düşük sürüm **13.0 (Ventura)** — daha eski Mac'lerde de çalışır.
+
+### İndirme
+- **macOS:** `Turkify-1.3.0.dmg`
+- **Windows:** `TurkifySetup-1.3.0.exe`
+- **Linux:** kaynaktan kurulum — `linux/install.sh`
+
+> Windows sürümü imzasızdır; ilk açılışta SmartScreen "Yine de çalıştır" diyebilir.
+
 ## [1.2.0] - 2026-05-31
 
 ### Eklendi
@@ -89,6 +122,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - Çok-platform yapılandırma ve kısayol altyapısı.
 - MIT lisansı ve üçüncü taraf atıfları.
 
+[1.3.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.3.0
 [1.2.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.0.0
