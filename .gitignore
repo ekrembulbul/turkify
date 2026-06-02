@@ -37,3 +37,6 @@ windows/packaging/dist/
 # Derlenmis uygulama paketi ve release zip'leri (git'e degil, GitHub Release ekine)
 *.app/
 Turkify-*.zip
+
+# Yerel notarize/DMG denemesi — gizli kimlik bilgileri icerir, ASLA commit'lenmez
+macos/packaging/notarize-local.sh
