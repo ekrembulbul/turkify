@@ -1,67 +1,54 @@
 name: Release
 
-# Elle tetiklenir: Actions sekmesi -> "Release" -> "Run workflow" -> surumu gir (or. 1.3.0).
-# Akis: tum dosyalarda surumu guncelle -> commit + tag -> macOS DMG + Windows EXE derle
-#       -> GitHub Release olustur (CHANGELOG.md'den notlarla).
+# Otomatik tetiklenir: "v" ile baslayan bir surum tag'i push'laninca (or. v1.3.0).
+# Akis: tag'i dogrula -> macOS DMG + Windows EXE derle -> GitHub Release olustur
+#       (CHANGELOG.md'den notlarla).
+#
+# Surum hazirligi (dosya guncelleme + commit + tag) YERELDE yapilir:
+#   scripts/release.sh 1.3.0
+# Bu script tag'i push'lar ve bu workflow'u tetikler. Tag, surum numaralari
+# guncellenmis commit'i gosterdigi icin yayinlanan kaynak ile birebir tutarli olur.
 #
 # On kosul (tek seferlik): repo Secrets'ta macOS imzalama anahtarlari tanimli olmali
 #   MACOS_CERT_P12_BASE64, MACOS_CERT_PASSWORD, MACOS_SIGN_IDENTITY,
 #   APPLE_API_KEY_P8_BASE64, APPLE_API_KEY_ID, APPLE_API_ISSUER_ID
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Surum (ornek: 1.3.0) — tum dosyalar bu surumle guncellenir"
-        required: true
-        type: string
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.event.inputs.version }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  # 1) Surumu tum dosyalarda guncelle, commit'le ve tag'le.
+  # 1) Tag'i dogrula: semver mi + dosyalardaki surum tag ile uyusuyor mu.
   prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
-      tag: ${{ steps.v.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ github.ref_name }}
 
-      - name: Surumu dogrula
+      - name: Tag'i dogrula ve surumu cikar
         id: v
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-          VERSION="${VERSION#v}"
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Gecersiz surum: '$VERSION' (ornek: 1.3.0)"; exit 1
+            echo "::error::Tag semver degil: '$TAG' (ornek: v1.3.0)"; exit 1
           fi
-          TAG="v$VERSION"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag zaten var: $TAG (bu surum daha once cikmis)"; exit 1
+          PY="$(awk -F'"' '/^version[[:space:]]*=/{print $2; exit}' pyproject.toml)"
+          if [[ "$PY" != "$VERSION" ]]; then
+            echo "::error::pyproject.toml surumu ($PY) tag ($VERSION) ile uyusmuyor. Tag'lemeden once 'scripts/release.sh $VERSION' kullan (dosyalari gunceller, commit'ler, tag'ler)."; exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Tum dosyalarda surumu guncelle
-        run: bash scripts/set_version.sh "${{ steps.v.outputs.version }}"
-
-      - name: Commit + tag + push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "build: surum ${{ steps.v.outputs.version }}"
-          git tag -a "${{ steps.v.outputs.tag }}" -m "Turkify ${{ steps.v.outputs.version }}"
-          git push origin "HEAD:${{ github.ref_name }}"
-          git push origin "${{ steps.v.outputs.tag }}"
 
   # 2) macOS: imzali + notarize edilmis DMG.
   # Proje deployment target'i macOS 13.0 (Ventura+); macos-latest bunu rahat derler.
@@ -71,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-python@v5
         with:
@@ -127,7 +114,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-python@v5
         with:
@@ -157,7 +144,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ github.ref_name }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -185,7 +172,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ needs.prepare.outputs.tag }}"
+          TAG="${{ github.ref_name }}"
           VERSION="${{ needs.prepare.outputs.version }}"
           mapfile -t ASSETS < <(find artifacts -type f \( -name '*.dmg' -o -name '*.exe' \))
           if [[ ${#ASSETS[@]} -eq 0 ]]; then
