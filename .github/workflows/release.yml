@@ -21,6 +21,12 @@ on:
 permissions:
   contents: write
 
+# Node.js 20 uzerinde calisan JS aksiyonlari (or. actions/checkout) icin emeklilik
+# uyarisini susturur: tum JS aksiyonlarini Node.js 24 ile calistirir (16 Haz 2026'da
+# zaten varsayilan olacak). Bkz. GitHub duyurusu 2025-09-19.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 concurrency:
   group: release-${{ github.ref_name }}
   cancel-in-progress: false
@@ -32,7 +38,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
@@ -56,7 +62,7 @@ jobs:
     needs: prepare
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
@@ -112,7 +118,7 @@ jobs:
     needs: prepare
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
@@ -142,7 +148,7 @@ jobs:
     needs: [prepare, macos, windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
