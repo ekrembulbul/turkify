@@ -5,6 +5,23 @@ Bu dosya, projedeki kayda değer değişiklikleri sürüm sürüm belgeler.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve proje
 [Semantic Versioning](https://semver.org/lang/tr/) kullanır.
 
+## [1.3.1] - 2026-06-04
+
+### Değişti
+- macOS uygulaması artık **macOS 26 (Tahoe) ve üzerini** gerektirir; karşılığında
+  sistemin modern görünümüyle (Liquid Glass) çalışır. Dağıtım derlemesi de macOS 26
+  SDK'sına (Xcode 26) geçirildi.
+
+### İndirme
+- **macOS:** `Turkify-1.3.1.dmg`
+- **Windows:** `TurkifySetup-1.3.1.exe`
+- **Linux:** kaynaktan kurulum — `linux/install.sh`
+
+> macOS bu sürümde imzalıdır ama henüz **notarize edilmemiştir**. İlk açılışta uyarı
+> çıkarsa: **sağ tık → Aç**, ya da bir kez
+> `xattr -dr com.apple.quarantine /Applications/Turkify.app`.
+> Windows sürümü imzasızdır; ilk açılışta SmartScreen "Yine de çalıştır" diyebilir.
+
 ## [1.3.0] - 2026-06-02
 
 ### Eklendi
@@ -125,6 +142,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - Çok-platform yapılandırma ve kısayol altyapısı.
 - MIT lisansı ve üçüncü taraf atıfları.
 
+[1.3.1]: https://github.com/ekrembulbul/turkify/releases/tag/v1.3.1
 [1.3.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.3.0
 [1.2.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ekrembulbul/turkify/releases/tag/v1.1.0
