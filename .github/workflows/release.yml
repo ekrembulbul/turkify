@@ -21,12 +21,6 @@ on:
 permissions:
   contents: write
 
-# Node.js 20 uzerinde calisan JS aksiyonlari (or. actions/checkout) icin emeklilik
-# uyarisini susturur: tum JS aksiyonlarini Node.js 24 ile calistirir (16 Haz 2026'da
-# zaten varsayilan olacak). Bkz. GitHub duyurusu 2025-09-19.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 concurrency:
   group: release-${{ github.ref_name }}
   cancel-in-progress: false
@@ -66,7 +60,7 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -110,7 +104,7 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/AuthKey.p8"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-dmg
           path: macos/packaging/dist/*.dmg
@@ -125,11 +119,11 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -140,7 +134,7 @@ jobs:
         shell: pwsh
         run: .\windows\packaging\build_all.ps1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-exe
           path: windows/packaging/dist/*.exe
@@ -155,7 +149,7 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
 
