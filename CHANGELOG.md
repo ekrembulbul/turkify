@@ -27,8 +27,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
   kasma azaltıldı.
 
 ### Değişti
-- macOS dağıtımı artık **imzalı + notarize edilmiş DMG** (`Turkify-<sürüm>.dmg`):
-  "tanınmayan geliştirici / hasarlı" uyarısı ve `xattr` adımı **gerekmez**.
+- macOS dağıtımı artık **Developer ID ile imzalı DMG** (`Turkify-<sürüm>.dmg`).
+  (Notarization bir sonraki sürümde eklenecek; ilk açılış için aşağıdaki nota bakın.)
 - macOS en düşük sürüm **13.0 (Ventura)** — daha eski Mac'lerde de çalışır.
 
 ### İndirme
@@ -36,6 +36,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) temellidir ve pr
 - **Windows:** `TurkifySetup-1.3.0.exe`
 - **Linux:** kaynaktan kurulum — `linux/install.sh`
 
+> macOS bu sürümde imzalıdır ama henüz **notarize edilmemiştir**. İlk açılışta uyarı
+> çıkarsa: **sağ tık → Aç**, ya da bir kez
+> `xattr -dr com.apple.quarantine /Applications/Turkify.app`.
 > Windows sürümü imzasızdır; ilk açılışta SmartScreen "Yine de çalıştır" diyebilir.
 
 ## [1.2.0] - 2026-05-31
