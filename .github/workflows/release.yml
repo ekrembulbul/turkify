@@ -50,11 +50,13 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-  # 2) macOS: imzali + notarize edilmis DMG.
-  # Proje deployment target'i macOS 13.0 (Ventura+); macos-latest bunu rahat derler.
+  # 2) macOS: imzali DMG.
+  # macos-26 runner'i: Xcode 26 / macOS 26 SDK -> uygulama modern (Liquid Glass)
+  # gorunumle derlenir ve deployment target 26 desteklenir. (macos-latest hala
+  # macOS 15 SDK ile derler -> eski gorunum; deployment target 26'yi de derleyemez.)
   macos:
     needs: prepare
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
         with:
