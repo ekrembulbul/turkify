@@ -6,7 +6,7 @@
 ; Cikti: windows\packaging\dist\TurkifySetup-<surum>.exe
 
 #define AppName "Turkify"
-#define AppVersion "1.3.1"
+#define AppVersion "1.3.2"
 #define AppPublisher "Turkify"
 #define AppExeName "Turkify.exe"
 
