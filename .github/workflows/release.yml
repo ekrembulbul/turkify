@@ -91,16 +91,13 @@ jobs:
           KEY_B64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
         run: echo "$KEY_B64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
 
-      # GECICI: Apple yeni hesabin notarization'ini serbest birakana kadar
-      # --no-notarize ile yalniz IMZALI (notarize edilmemis) DMG uretilir.
-      # Cozulunce: asagidaki "--no-notarize"i kaldir (API key env'leri zaten duruyor).
-      - name: DMG uret (imzala + DMG; notarize gecici kapali)
+      - name: DMG uret (imzala + notarize + staple)
         env:
           MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
           APPLE_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
-        run: bash macos/packaging/build_dmg.sh --no-notarize
+        run: bash macos/packaging/build_dmg.sh
 
       - name: API anahtarini sil
         if: always()
